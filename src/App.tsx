@@ -40,6 +40,12 @@ import { PageLoader } from './shared/components/PageLoader';
 const HomePage = lazy(() => import('./app/layout/HomePage').then((m) => ({ default: m.HomePage })));
 const LoginPage = lazy(() => import('./features/auth/LoginPage').then((m) => ({ default: m.LoginPage })));
 const SignupPage = lazy(() => import('./features/auth/SignupPage').then((m) => ({ default: m.SignupPage })));
+const ForgotPasswordPage = lazy(() =>
+  import('./features/auth/ForgotPasswordPage').then((m) => ({ default: m.ForgotPasswordPage })),
+);
+const ResetPasswordPage = lazy(() =>
+  import('./features/auth/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage })),
+);
 const AcceptInvitePage = lazy(() =>
   import('./features/auth/AcceptInvitePage').then((m) => ({ default: m.AcceptInvitePage })),
 );
@@ -93,6 +99,8 @@ export default function App() {
                   <Routes>
                     {/* PUBLIC: invite acceptance manages its own session (no guard). */}
                     <Route path="/accept-invite" element={<AcceptInvitePage />} />
+                    {/* PUBLIC: the reset email's recovery session must not bounce it to "/". */}
+                    <Route path="/reset-password" element={<ResetPasswordPage />} />
 
                     {/* PUBLIC: legal pages, linkable from anywhere (incl. app stores). */}
                     <Route path="/privacy" element={<LegalPage doc="privacy" />} />
@@ -103,6 +111,7 @@ export default function App() {
                       <Route path="/login" element={<LoginPage />} />
                       {/* Owners create their organization (store release); staff join by invite. */}
                       <Route path="/signup" element={<SignupPage />} />
+                      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                     </Route>
 
                     {/* PROTECTED: requires a session; redirects to "/login" otherwise. */}

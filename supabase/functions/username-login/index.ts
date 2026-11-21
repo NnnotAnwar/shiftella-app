@@ -65,6 +65,12 @@ Deno.serve(async (req) => {
             email: profile.email,
             password,
         });
+        // Unconfirmed email: GoTrue only reports this AFTER the password matched,
+        // so passing the code on is no oracle — it lets the app say "confirm
+        // your email" instead of the misleading "wrong password".
+        if (error?.code === 'email_not_confirmed') {
+            return json({ error: GENERIC, code: 'email_not_confirmed' }, 400);
+        }
         if (error || !data.session) return json({ error: GENERIC }, 400);
 
         // 3. Return only the tokens; the client adopts them via setSession().

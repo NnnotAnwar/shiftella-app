@@ -2,9 +2,37 @@ import type { ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SunIcon, MoonIcon } from '@phosphor-icons/react';
 import { useTheme } from '@app/providers/ThemeContext';
-import { useTranslation } from '@shared/preferences/PreferencesContext';
+import { usePreferences, useTranslation } from '@shared/preferences/PreferencesContext';
+import { LANGUAGES } from '@shared/i18n/translations';
 import { BrandGlyph } from '@shared/components/BrandGlyph';
 import { APP_NAME } from '@shared/brand';
+
+/** One-tap CS/EN switch for the signed-out pages (saved like the Settings choice). */
+export function LanguageToggle() {
+    const { language, setLanguage, t } = usePreferences();
+    // Czech first — the home market.
+    const options = [...LANGUAGES.filter((l) => l.code === 'cs'), ...LANGUAGES.filter((l) => l.code !== 'cs')];
+    return (
+        <div role="group" aria-label={t('auth.language')} className="segmented ring-1 ring-inset ring-gray-200/60 backdrop-blur-md dark:ring-white/10">
+            {options.map((l) => {
+                const active = l.code === language;
+                return (
+                    <button
+                        key={l.code}
+                        type="button"
+                        lang={l.code}
+                        onClick={() => setLanguage(l.code)}
+                        aria-pressed={active}
+                        aria-label={l.label}
+                        className={`h-6.5 min-w-8 rounded-[9px] px-2 text-caption font-semibold uppercase transition-colors ${active ? 'segment-active text-ink dark:text-white' : 'text-ink-soft hover:text-ink dark:text-slate-400 dark:hover:text-white'}`}
+                    >
+                        {l.code}
+                    </button>
+                );
+            })}
+        </div>
+    );
+}
 
 /**
  * --- AUTH SHELL ---
@@ -23,25 +51,28 @@ export function AuthShell({ title, eyebrow, children, below }: { title: string; 
             <div className="pointer-events-none absolute -top-24 -left-24 w-80 h-80 rounded-full bg-emerald-500/20 blur-3xl" />
             <div className="pointer-events-none absolute -bottom-32 -right-20 w-96 h-96 rounded-full bg-emerald-400/10 blur-3xl" />
 
-            {/* Theme toggle */}
-            <button
-                onClick={() => setTheme(isDark ? 'light' : 'dark')}
-                aria-label={t('common.toggleTheme')}
-                className="absolute top-[calc(1rem+env(safe-area-inset-top,0px))] right-[calc(1rem+env(safe-area-inset-right,0px))] z-10 p-2 rounded-xl bg-white/60 dark:bg-white/5 border border-gray-200/60 dark:border-white/10 text-gray-500 dark:text-gray-300 backdrop-blur-md hover:bg-white/80 dark:hover:bg-white/10 active:scale-90 transition-all"
-            >
-                <AnimatePresence mode="wait" initial={false}>
-                    <motion.span
-                        key={resolvedTheme}
-                        initial={{ y: -6, opacity: 0, rotate: -30 }}
-                        animate={{ y: 0, opacity: 1, rotate: 0 }}
-                        exit={{ y: 6, opacity: 0, rotate: 30 }}
-                        transition={{ duration: 0.2 }}
-                        className="block"
-                    >
-                        {isDark ? <SunIcon weight="bold" className="size-4" /> : <MoonIcon weight="bold" className="size-4" />}
-                    </motion.span>
-                </AnimatePresence>
-            </button>
+            {/* Language + theme toggles */}
+            <div className="absolute top-[calc(1rem+env(safe-area-inset-top,0px))] right-[calc(1rem+env(safe-area-inset-right,0px))] z-10 flex items-center gap-2">
+                <LanguageToggle />
+                <button
+                    onClick={() => setTheme(isDark ? 'light' : 'dark')}
+                    aria-label={t('common.toggleTheme')}
+                    className="p-2 rounded-xl bg-white/60 dark:bg-white/5 border border-gray-200/60 dark:border-white/10 text-gray-500 dark:text-gray-300 backdrop-blur-md hover:bg-white/80 dark:hover:bg-white/10 active:scale-90 transition-all"
+                >
+                    <AnimatePresence mode="wait" initial={false}>
+                        <motion.span
+                            key={resolvedTheme}
+                            initial={{ y: -6, opacity: 0, rotate: -30 }}
+                            animate={{ y: 0, opacity: 1, rotate: 0 }}
+                            exit={{ y: 6, opacity: 0, rotate: 30 }}
+                            transition={{ duration: 0.2 }}
+                            className="block"
+                        >
+                            {isDark ? <SunIcon weight="bold" className="size-4" /> : <MoonIcon weight="bold" className="size-4" />}
+                        </motion.span>
+                    </AnimatePresence>
+                </button>
+            </div>
 
             <motion.div
                 initial={{ opacity: 0, y: 20, scale: 0.97 }}
@@ -59,7 +90,7 @@ export function AuthShell({ title, eyebrow, children, below }: { title: string; 
                             </div>
                         </div>
                         <h1 className="text-display text-ink dark:text-white mt-3 sm:mt-4">{title}</h1>
-                        <p className="text-eyebrow text-emerald-600 dark:text-emerald-300 mt-2">{eyebrow}</p>
+                        <p className="text-eyebrow leading-snug text-balance text-emerald-600 dark:text-emerald-300 mt-2">{eyebrow}</p>
                     </div>
                     {children}
                 </div>

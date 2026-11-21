@@ -4,6 +4,7 @@ import { useAuthContext } from '@features/auth/AuthContext';
 import { supabase } from '@shared/api/supabaseClient';
 import { translations, type Language, type TranslationKey } from '@shared/i18n/translations';
 import { setTimeFormatPreference, setLocalePreference, type TimeFormat } from '@shared/utils/date';
+import { browserLanguages, detectLanguage } from './detectLanguage';
 
 /**
  * --- PREFERENCES CONTEXT ---
@@ -29,7 +30,8 @@ const defaultLocationKey = (userId: string) => `default-location-id:${userId}`;
 
 function readLanguage(): Language {
     const v = localStorage.getItem(STORAGE.language);
-    return v === 'en' || v === 'cs' ? v : 'en';
+    // No saved choice yet → follow the browser (cs/sk → Czech, else English).
+    return v === 'en' || v === 'cs' ? v : detectLanguage(browserLanguages());
 }
 function readTimeFormat(): TimeFormat {
     return localStorage.getItem(STORAGE.timeFormat) === '12h' ? '12h' : '24h';

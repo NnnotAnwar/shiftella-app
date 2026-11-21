@@ -9,8 +9,8 @@ import { PageLoader } from '@shared/components/PageLoader';
  * predictable place that decides where an un/authenticated user may go (no races,
  * no content flashing before a redirect).
  *
- * Note: /accept-invite is intentionally NOT wrapped by either guard — it manages
- * its own session (verifyOtp) and must stay reachable while logged out.
+ * Note: /accept-invite (and /reset-password) are intentionally NOT wrapped by either guard — they manage
+ * their own session (verifyOtp) and must stay reachable while logged out.
  */
 
 /** Pages that require a session (the whole app shell). */

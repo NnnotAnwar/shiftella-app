@@ -27,8 +27,8 @@ import { useBiometricEnabled, setBiometricEnabled } from '@features/auth/biometr
 import { Select } from '@shared/components/Select';
 import { LANGUAGES } from '@shared/i18n/translations';
 import { PageHeader } from '@shared/components/PageHeader';
+import { APP_NAME } from '@shared/brand';
 
-const APP_NAME = 'Planuj Směny';
 const APP_VERSION = __APP_VERSION__;
 const SUPPORT_EMAIL = 'anuarkairulla@gmail.com';
 

@@ -13,7 +13,7 @@
   overwriting the dashboard Site URL.
 
   Paste the contents into Authentication → Emails → Invite user (Source).
-  Suggested subject: Pozvánka do týmu · You're invited — Planuj Směny
+  Suggested subject: Pozvánka do týmu · You're invited — Shiftella
 -->
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
@@ -32,8 +32,8 @@
           <td style="padding:0 4px 16px;">
             <table role="presentation" cellpadding="0" cellspacing="0">
               <tr>
-                <td width="32" height="32" align="center" valign="middle" bgcolor="#4f46e5" style="width:32px;height:32px;border-radius:8px;background-color:#4f46e5;background-image:linear-gradient(135deg,#818cf8 0%,#4f46e5 100%);color:#ffffff;font-size:13px;font-weight:800;letter-spacing:-0.5px;">PS</td>
-                <td style="padding-left:9px;font-size:14px;font-weight:700;letter-spacing:-0.2px;color:#1b1a2e;">Planuj Směny</td>
+                <td width="32" height="32" align="center" valign="middle" bgcolor="#4f46e5" style="width:32px;height:32px;border-radius:8px;background-color:#4f46e5;background-image:linear-gradient(135deg,#818cf8 0%,#4f46e5 100%);color:#ffffff;font-size:17px;font-weight:800;letter-spacing:0;">S</td>
+                <td style="padding-left:9px;font-size:14px;font-weight:700;letter-spacing:-0.2px;color:#1b1a2e;">Shiftella</td>
               </tr>
             </table>
           </td>
@@ -50,7 +50,7 @@
               {{ if $cs }}{{ with index .Data "first_name" }}{{ . }}, vítejte{{ else }}Vítejte{{ end }} v týmu{{ else }}{{ with index .Data "first_name" }}Welcome to the team, {{ . }}{{ else }}Welcome to the team{{ end }}{{ end }}
             </h1>
             <p style="margin:10px 0 0;font-size:14px;line-height:1.6;color:#66637f;">
-              {{ if $cs }}{{ with index .Data "inviter_name" }}<strong style="color:#1b1a2e;font-weight:600;">{{ . }}</strong> vás zve{{ else }}Jste zváni{{ end }} do Planuj Směny — tady uvidíte své směny, zapíšete příchod a odchod a pošlete žádosti. Nastavte si heslo a můžete začít.{{ else }}{{ with index .Data "inviter_name" }}<strong style="color:#1b1a2e;font-weight:600;">{{ . }}</strong> invited you{{ else }}You've been invited{{ end }} to Planuj Směny — where you'll see your shifts, clock in and out, and send requests. Set a password to get started.{{ end }}
+              {{ if $cs }}{{ with index .Data "inviter_name" }}<strong style="color:#1b1a2e;font-weight:600;">{{ . }}</strong> vás zve{{ else }}Jste zváni{{ end }} do aplikace Shiftella — tady uvidíte své směny, zapíšete příchod a odchod a pošlete žádosti. Nastavte si heslo a můžete začít.{{ else }}{{ with index .Data "inviter_name" }}<strong style="color:#1b1a2e;font-weight:600;">{{ . }}</strong> invited you{{ else }}You've been invited{{ end }} to Shiftella — where you'll see your shifts, clock in and out, and send requests. Set a password to get started.{{ end }}
             </p>
 
             <!-- Organization + role -->
@@ -115,7 +115,7 @@
         <tr>
           <td style="padding:16px 8px 0;text-align:center;font-size:11px;line-height:1.6;color:#8e8ba5;">
             {{ if $cs }}Pozvánka pro {{ .Email }}. Pokud ji nečekáte, tento e-mail klidně ignorujte.{{ else }}This invitation was sent to {{ .Email }}. If you weren't expecting it, you can safely ignore this email.{{ end }}
-            <br>Planuj Směny
+            <br>Shiftella · <a href="https://shiftella.app" style="color:#8e8ba5;text-decoration:underline;">shiftella.app</a>
           </td>
         </tr>
 

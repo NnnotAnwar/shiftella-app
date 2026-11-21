@@ -16,19 +16,19 @@ Everything below the "Client code" section requires resources only the project
 owner has: an **Apple Developer account** and the **Firebase console**, plus a
 Mac with Xcode to build and device-test (the Simulator can't receive push).
 
-Bundle identifier: `com.planujsmeny.app` (matches Android `applicationId`).
+Bundle identifier: `com.shiftella.app` (matches Android `applicationId`).
 
 ## 1. Apple Developer (external)
 
 1. In the Apple Developer portal, enable the **Push Notifications** capability for
-   the App ID `com.planujsmeny.app`.
+   the App ID `com.shiftella.app`.
 2. Create an **APNs Auth Key** (`.p8`, Keys → +, APNs). Note the **Key ID** and
    your **Team ID**. Keep the `.p8` — you upload it to Firebase, not the repo.
 
 ## 2. Firebase console (external)
 
 1. In the same Firebase project that powers Android, **Add app → iOS**, bundle id
-   `com.planujsmeny.app`. Download **`GoogleService-Info.plist`**.
+   `com.shiftella.app`. Download **`GoogleService-Info.plist`**.
 2. Project Settings → **Cloud Messaging → Apple app configuration**: upload the
    APNs `.p8` with its Key ID + Team ID.
 3. Drop `GoogleService-Info.plist` into `ios/App/App/` (it is **gitignored** like

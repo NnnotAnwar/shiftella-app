@@ -1,6 +1,6 @@
 ---
 name: biometrics-schedule
-description: "Use when finishing and polishing biometric authentication setup and the shift scheduling system in the Planuj Smeny app. Focus on existing code, visual polish, and feature completion without adding unrelated functionality."
+description: "Use when finishing and polishing biometric authentication setup and the shift scheduling system in the Shiftella app. Focus on existing code, visual polish, and feature completion without adding unrelated functionality."
 applyTo:
   - "src/**"
   - "package.json"

@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { SunIcon, MoonIcon } from '@phosphor-icons/react';
 import { useTheme } from '@app/providers/ThemeContext';
 import { useTranslation } from '@shared/preferences/PreferencesContext';
+import { BrandGlyph } from '@shared/components/BrandGlyph';
+import { APP_NAME } from '@shared/brand';
 
 /**
  * --- AUTH SHELL ---
@@ -53,7 +55,7 @@ export function AuthShell({ title, eyebrow, children, below }: { title: string; 
                         <div className="relative">
                             <div className="absolute inset-0 rounded-2xl bg-emerald-500/40 blur-xl" />
                             <div className="relative size-10 sm:size-12 bg-linear-to-br from-emerald-400 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/30">
-                                <span className="font-display text-white font-bold text-lg tracking-wide">PS</span>
+                                <BrandGlyph className="size-full text-white" />
                             </div>
                         </div>
                         <h1 className="text-display text-ink dark:text-white mt-3 sm:mt-4">{title}</h1>
@@ -62,7 +64,7 @@ export function AuthShell({ title, eyebrow, children, below }: { title: string; 
                     {children}
                 </div>
                 {below}
-                <p className="hidden sm:block text-center text-micro text-gray-400 mt-5">Planuj Směny · 2026</p>
+                <p className="hidden sm:block text-center text-micro text-gray-400 mt-5">{APP_NAME} · 2026</p>
             </motion.div>
         </div>
     );

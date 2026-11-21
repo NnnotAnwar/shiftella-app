@@ -14,6 +14,7 @@ import { getFullInitials } from '@shared/utils/getInitials';
 import { useBackHandler } from '@shared/hooks/useBackHandler';
 import { useNavItems, NAV_SECTIONS, SECTION_LABEL_KEYS } from '../navigation';
 import { LANGUAGES } from '@shared/i18n/translations';
+import { APP_NAME } from '@shared/brand';
 
 /**
  * --- BOTTOM NAVIGATION (mobile) ---
@@ -219,7 +220,7 @@ export function BottomNav() {
                                 {t('nav.logout')}
                             </button>
                             <p className="mt-2 text-center text-micro normal-case tracking-normal text-gray-400 dark:text-gray-500">
-                                Planuj Směny v{__APP_VERSION__}
+                                {APP_NAME} v{__APP_VERSION__}
                             </p>
                         </motion.div>
                     </motion.div>

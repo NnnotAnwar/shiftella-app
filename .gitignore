@@ -46,3 +46,6 @@ old_migrations
 
 planuj-smeny-app-firebase-adminsdk-fbsvc-4f9de2ce53.json
 android/app/google-services.json
+
+# Marketing drafts (promo video sources, renders, voice-over) — local only for now
+marketing/

@@ -105,8 +105,10 @@ export const authService = {
    * ignored there by design. The confirmation email brings them to /login.
    */
   async signUpOwner(input: { firstName: string; lastName: string; email: string; password: string; organizationName: string; language?: 'en' | 'cs' }) {
-    // The native app has no web origin of its own for the email link.
-    const origin = Capacitor.isNativePlatform() ? 'https://planuj-smeny.vercel.app' : window.location.origin;
+    // The native app has no web origin of its own for the email link: use the
+    // public web URL (VITE_PUBLIC_SITE_URL), falling back to the legacy host.
+    const nativeOrigin = import.meta.env.VITE_PUBLIC_SITE_URL || 'https://planuj-smeny.vercel.app';
+    const origin = Capacitor.isNativePlatform() ? nativeOrigin : window.location.origin;
     return await supabase.auth.signUp({
       email: input.email,
       password: input.password,

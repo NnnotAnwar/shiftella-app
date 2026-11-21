@@ -158,6 +158,9 @@ export const en = {
     'cmd.actions': 'Actions',
     'cmd.toggleTheme': 'Toggle light / dark',
     'cmd.empty': 'No results',
+    'cmd.hintMove': 'move',
+    'cmd.hintOpen': 'open',
+    'cmd.hintClose': 'close',
 
     // Settings
     'settings.preferences': 'Preferences',
@@ -1066,6 +1069,9 @@ export const cs: Record<TranslationKey, string> = {
     'cmd.actions': 'Akce',
     'cmd.toggleTheme': 'Přepnout světlý / tmavý',
     'cmd.empty': 'Žádné výsledky',
+    'cmd.hintMove': 'pohyb',
+    'cmd.hintOpen': 'otevřít',
+    'cmd.hintClose': 'zavřít',
 
     'settings.preferences': 'Předvolby',
     'settings.title': 'Nastavení',

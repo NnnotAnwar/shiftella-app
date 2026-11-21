@@ -391,6 +391,3 @@ Caddy will serve them.
 - The deploy key can write to `/srv/shiftella` but has no sudo. If it leaks,
   rotate it: new key in `~deploy/.ssh/authorized_keys` and the `HETZNER_SSH_KEY`
   secret.
-- Side finding (not hosting): `public/manifest.webmanifest` points at
-  `../icons/icon-*.webp`, but only PNG icons exist in `public/icons/`, so those
-  icon URLs 404.

@@ -491,6 +491,16 @@ Deno.serve(async (req) => {
     try {
         const payload = await req.json();
 
+        // Push notifications are a Team+ feature: Free organizations (incl. an
+        // expired trial) keep the in-app bell but get no device pushes.
+        const orgId = payload?.record?.organization_id as string | undefined;
+        if (orgId) {
+            const { data: plan } = await admin.rpc('org_plan', { p_org: orgId });
+            if (plan === 'free') {
+                return new Response(JSON.stringify({ ok: true, skipped: 'plan' }), { headers: { 'Content-Type': 'application/json' } });
+            }
+        }
+
         let messages: PushMessage[];
         if (payload?.type === 'INSERT' && payload?.table && payload?.record) {
             messages = await messagesFromWebhook(payload.table, payload.record);

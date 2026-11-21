@@ -47,6 +47,7 @@ import { useLocationSettings } from '@features/locations/settings/useLocationSet
 import { restIssues, restIssuesFor, type RestIssue } from './restRules';
 import { openingHours, isOutsideHours, isHoursShift, fullDayShift, type OpeningHours } from '@features/locations/settings/openingHours';
 import { buildShiftDates } from '@features/timesheets/shiftTimes';
+import { useEntitlements, useUpgradeNudge } from '@features/billing/useBilling';
 
 /**
  * --- SCHEDULE PAGE (rota) ---
@@ -71,6 +72,9 @@ export default function SchedulePage() {
     // Managers OBSERVE the team rota; admins PLAN it (see permissions.ts).
     const canObserve = can(user, 'rota.view');
     const canManage = can(user, 'rota.edit');
+    // Plan gates (billing): Team+ templates/copy month, swaps, open shifts, exports; Business coverage + rest rules.
+    const ent = useEntitlements();
+    const nudge = useUpgradeNudge();
 
     const [selectedMonth, setSelectedMonth] = useState(() => monthKeyOf(new Date()));
     const [activeTab, setActiveTab] = useState<'mine' | 'team'>(canObserve ? 'team' : 'mine');
@@ -155,7 +159,7 @@ export default function SchedulePage() {
         const [y, m, d] = date.split('-').map(Number);
         return new Date(y, m - 1, d).getDay();
     };
-    const requiredOn = (locId: string | null) => (date: string) => (locId ? coverage.requiredFor(locId, dowOf(date)) : 0);
+    const requiredOn = (locId: string | null) => (date: string) => (locId && ent.can('coverage') ? coverage.requiredFor(locId, dowOf(date)) : 0);
     const [coverageFor, setCoverageFor] = useState<{ id: string; name: string } | null>(null);
     const [now] = useState(() => Date.now());
     const confirmations = useShiftConfirmations(user);
@@ -163,7 +167,7 @@ export default function SchedulePage() {
         () => new Set((confirmations.orgConfirmations.data ?? []).map((c) => c.scheduled_shift_id)),
         [confirmations.orgConfirmations.data],
     );
-    const templates = useShiftTemplates(canManage ? user : null);
+    const templates = useShiftTemplates(canManage && ent.can('templates') ? user : null);
     const templateList = useMemo(() => templates.list.data ?? [], [templates.list.data]);
     // Roster grid "brush": what a tap on an empty cell puts down (null = all day).
     const [brushId, setBrushId] = useState<string | null>(null);
@@ -237,7 +241,8 @@ export default function SchedulePage() {
     const shifts = useMemo(() => scheduleQ.data ?? [], [scheduleQ.data]);
     // Czech rest rules (11 h between shifts, days in a row) across every
     // location of the month — warnings for the planner, never blocks.
-    const rest = useMemo(() => restIssues(shifts), [shifts]);
+    const restOn = ent.can('restRules');
+    const rest = useMemo(() => (restOn ? restIssues(shifts) : new Map<string, RestIssue[]>()), [shifts, restOn]);
     const restText = (i: RestIssue) => (i.kind === 'short-rest' ? t('rest.short', { h: i.hours }) : t('rest.streak', { n: i.day }));
     const teamView = canObserve && activeTab === 'team';
     const draftCount = useMemo(() => shifts.filter((s) => !s.published).length, [shifts]);
@@ -492,6 +497,7 @@ export default function SchedulePage() {
      *  so Mon-shifts land on Mondays. Days already holding anything for that
      *  member are skipped; timed shifts keep their time of day and duration. */
     const copyLastMonth = () => {
+        if (!ent.can('templates')) return nudge('templates');
         const [y, m] = selectedMonth.split('-').map(Number);
         const prevStart = new Date(y, m - 2, 1);
         const prevEnd = new Date(y, m - 1, 1);
@@ -610,7 +616,7 @@ export default function SchedulePage() {
                         <div className="flex items-center gap-2 shrink-0">
                             <div className="relative">
                                 <button
-                                    onClick={() => setExportOpen((v) => !v)}
+                                    onClick={() => (ent.can('exports') ? setExportOpen((v) => !v) : nudge('exports'))}
                                     disabled={!hasAnything}
                                     className="glass flex items-center justify-center w-9 h-9 rounded-xl text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 active:scale-90 transition-all disabled:opacity-40"
                                     title={t('overview.export')}
@@ -762,9 +768,9 @@ export default function SchedulePage() {
             )}
 
             {/* OPEN SHIFTS — post (managers) / claim (members). */}
-            {user && <OpenShiftsCard user={user} locations={locations} canManage={teamView && canManage} />}
+            {user && ent.can('openShifts') && <OpenShiftsCard user={user} locations={locations} canManage={teamView && canManage} />}
             {/* SWAPS — shifts colleagues offered (take one) + ones you took, awaiting approval. */}
-            {user && <SwapOffersCard user={user} locationName={locationName} />}
+            {user && ent.can('swaps') && <SwapOffersCard user={user} locationName={locationName} />}
 
             {scheduleQ.isLoading ? (
                 <div className="space-y-3" aria-hidden>
@@ -774,7 +780,7 @@ export default function SchedulePage() {
                 </div>
             ) : teamView ? (
                 <div className="space-y-3">
-                    {viewMode === 'grid' && canManage && (
+                    {viewMode === 'grid' && canManage && ent.can('templates') && (
                         <TemplateBrush
                             templates={templateList}
                             value={brush?.id ?? null}
@@ -825,7 +831,7 @@ export default function SchedulePage() {
                                     {sec.id && canManage && (
                                         <button
                                             type="button"
-                                            onClick={() => setCoverageFor({ id: sec.id!, name: sec.name })}
+                                            onClick={() => (ent.can('coverage') ? setCoverageFor({ id: sec.id!, name: sec.name }) : nudge('coverage'))}
                                             title={t('coverage.title')}
                                             aria-label={`${t('coverage.title')}: ${sec.name}`}
                                             className="shrink-0 p-2 rounded-xl text-gray-400 hover:text-emerald-600 hover:bg-emerald-500/10 transition-colors"
@@ -941,9 +947,9 @@ export default function SchedulePage() {
                         templates={templateList}
                         hoursFor={hoursOf}
                         restFor={(memberId, candidate, replacing) =>
-                            restIssuesFor({ user_id: memberId, ...candidate }, shifts.filter((s) => s.id !== replacing)).map(restText)
+                            restOn ? restIssuesFor({ user_id: memberId, ...candidate }, shifts.filter((s) => s.id !== replacing)).map(restText) : []
                         }
-                        onSaveTemplate={(input) => templates.create.mutateAsync(input)}
+                        onSaveTemplate={ent.can('templates') ? (input) => templates.create.mutateAsync(input) : undefined}
                         onRemoveTemplate={(id) => templates.remove.mutate(id)}
                     />
                 )}

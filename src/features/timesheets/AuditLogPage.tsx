@@ -36,6 +36,8 @@ import {
     BuildingsIcon,
     ClockIcon,
     ChatTextIcon,
+    CreditCardIcon,
+    GiftIcon,
 } from '@phosphor-icons/react';
 
 import { useAuthContext } from '@features/auth/AuthContext';
@@ -124,6 +126,9 @@ const ACTION: Record<string, ActionMeta> = {
     request_declined: { labelKey: 'audit.a.request_declined', Icon: XCircleIcon, badge: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400' },
     request_cancelled: { labelKey: 'audit.a.request_cancelled', Icon: XCircleIcon, badge: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300' },
     org_updated: { labelKey: 'audit.a.org_updated', Icon: BuildingsIcon, badge: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400' },
+    plan_changed: { labelKey: 'audit.a.plan_changed', Icon: CreditCardIcon, badge: 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400' },
+    plan_granted: { labelKey: 'audit.a.plan_granted', Icon: GiftIcon, badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' },
+    plan_grant_removed: { labelKey: 'audit.a.plan_grant_removed', Icon: GiftIcon, badge: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300' },
 };
 
 /** "rw" → "View · Change" for a permission cell. */
@@ -464,6 +469,7 @@ function GenericBody({ entry }: { entry: ShiftAuditLog }) {
     if (d.pinned) parts.push(t('audit.pinned'));
     const rows = (d.changes ?? []).filter((c) => !!c.field);
     const yesNo = (v?: string | null) => (v === 'true' ? t('audit.yes') : v === 'false' ? t('audit.no') : v || '—');
+    const isFlag = (f?: string) => f === 'pinned' || f === 'cancel_at_period_end';
 
     if (parts.length === 0 && rows.length === 0 && !d.new_name && !d.note) return null;
     return (
@@ -475,9 +481,9 @@ function GenericBody({ entry }: { entry: ShiftAuditLog }) {
                     <span className="text-caption text-gray-400">{t(`audit.field.${c.field}` as TranslationKey)}{c.field === 'text' ? '' : ':'}</span>
                     {c.field !== 'text' && (
                         c.old == null && c.new != null ? (
-                            <span className="text-caption tabular-nums text-gray-700 dark:text-gray-200">{c.field === 'pinned' ? yesNo(c.new) : c.new}</span>
+                            <span className="text-caption tabular-nums text-gray-700 dark:text-gray-200">{isFlag(c.field) ? yesNo(c.new) : c.new}</span>
                         ) : (
-                            <DiffRow before={c.field === 'pinned' ? yesNo(c.old) : c.old || '—'} after={c.field === 'pinned' ? yesNo(c.new) : c.new || '—'} />
+                            <DiffRow before={isFlag(c.field) ? yesNo(c.old) : c.old || '—'} after={isFlag(c.field) ? yesNo(c.new) : c.new || '—'} />
                         )
                     )}
                 </div>

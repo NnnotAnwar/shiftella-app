@@ -11,6 +11,7 @@ import {
   CaretRightIcon,
   DownloadSimpleIcon,
   TrashIcon,
+  CreditCardIcon,
 } from '@phosphor-icons/react';
 import { ConfirmDialog } from '@features/admin/components/Modal';
 import { toast } from '@shared/toast/toastStore';
@@ -28,6 +29,7 @@ import { Select } from '@shared/components/Select';
 import { LANGUAGES } from '@shared/i18n/translations';
 import { PageHeader } from '@shared/components/PageHeader';
 import { APP_NAME } from '@shared/brand';
+import { canManageBilling } from '@features/billing/useBilling';
 
 const APP_VERSION = __APP_VERSION__;
 const SUPPORT_EMAIL = 'anuarkairulla@gmail.com';
@@ -333,6 +335,16 @@ export default function SettingsPage() {
           <p className="px-3.5 py-2.5 text-caption text-ink-soft dark:text-slate-400">{t('settings.notif.pushHint')}</p>
         </div>
       </div>
+
+      {/* SUBSCRIPTION — the org's plan (Head Admin / Superadmin), see /billing */}
+      {canManageBilling(user) && (
+        <div className="space-y-2">
+          <h3 className="px-1 text-eyebrow text-ink-soft dark:text-slate-400">{t('billing.title')}</h3>
+          <div className={`${cardClass} overflow-hidden`}>
+            <NavRow icon={<CreditCardIcon weight="bold" className="w-4 h-4" />} label={t('billing.settingsRow')} to="/billing" />
+          </div>
+        </div>
+      )}
 
       {/* ABOUT — app info, support & legal */}
       <div className="space-y-2">

@@ -15,6 +15,7 @@
 // =============================================================================
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { syncSeats } from '../_shared/billing.ts';
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -110,6 +111,9 @@ Deno.serve(async (req) => {
             if (logId) await admin.from('shift_audit_log').delete().eq('id', logId);
             return json({ error: delErr.message }, 400);
         }
+
+        // Business bills per member — keep the Stripe quantity in step (best effort).
+        await syncSeats(admin, profile.organization_id);
 
         return json({ success: true }, 200);
     } catch (err) {

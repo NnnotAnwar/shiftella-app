@@ -7,6 +7,7 @@ import { Button } from '@shared/components/Button';
 import { toast } from '@shared/toast/toastStore';
 import { useShiftConfirmations } from './useShiftConfirmations';
 import { useShiftSwaps } from '../swaps/useShiftSwaps';
+import { useEntitlements, useUpgradeNudge } from '@features/billing/useBilling';
 import { personName } from '../swaps/types';
 
 /**
@@ -36,8 +37,11 @@ export function UpcomingShifts({
     const liveSwap = new Map(
         swaps.swaps.filter((w) => w.from_user === user.id && (w.status === 'open' || w.status === 'taken')).map((w) => [w.shift_id, w]),
     );
+    // Swaps are a Team+ feature: on Free the button explains instead (one tap, no popup).
+    const ent = useEntitlements();
+    const nudge = useUpgradeNudge();
     const offerShift = (shiftId: string) =>
-        swaps.offer.mutate(shiftId, {
+        !ent.can('swaps') ? nudge('swaps') : swaps.offer.mutate(shiftId, {
             onSuccess: (row) =>
                 toast(t('swap.offered'), 'success', {
                     action: { label: t('common.undo'), onClick: () => row && swaps.withdraw.mutate((row as { id: string }).id) },

@@ -140,10 +140,12 @@ describe('resend cooldown', () => {
         expect(other.result.current.left).toBe(0);
     });
 
+    // Cooldowns live at module level (they survive re-renders and page changes):
+    // give each test its own key so one test's lock can't leak into the next.
     it('<ResendButton> sends once, then locks until the cooldown ends', async () => {
         const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
         const onSend = vi.fn(async () => ({ error: null }));
-        render(<ResendButton onSend={onSend} />);
+        render(<ResendButton cooldownKey="t:sends-once" onSend={onSend} />);
         const btn = screen.getByRole('button', { name: /auth.resend/ });
         await user.click(btn);
         expect(onSend).toHaveBeenCalledOnce();
@@ -157,16 +159,17 @@ describe('resend cooldown', () => {
     });
 
     it('<ResendButton cooledDown> starts locked (an email just went out)', () => {
-        render(<ResendButton cooledDown onSend={vi.fn(async () => ({ error: null }))} />);
+        render(<ResendButton cooledDown cooldownKey="t:cooled-down" onSend={vi.fn(async () => ({ error: null }))} />);
         expect(screen.getByRole('button')).toBeDisabled();
     });
 
     it('<ResendButton> shows the rate-limit message and locks', async () => {
         const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
         vi.spyOn(console, 'error').mockImplementation(() => {});
-        render(<ResendButton onSend={vi.fn(async () => ({ error: { status: 429, message: 'rate limit' } }))} />);
+        render(<ResendButton cooldownKey="t:rate-limited" onSend={vi.fn(async () => ({ error: { status: 429, message: 'rate limit' } }))} />);
         await user.click(screen.getByRole('button'));
-        expect(screen.getByText('auth.rateLimited')).toBeInTheDocument();
+        // The handler is async (await onSend → setState): wait for the message.
+        expect(await screen.findByText('auth.rateLimited')).toBeInTheDocument();
         expect(screen.getByRole('button')).toBeDisabled();
     });
 });

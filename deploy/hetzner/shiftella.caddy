@@ -1,0 +1,99 @@
+# Shiftella site file for the shared edge Caddy (anwar.os server).
+#
+# Installed on the server as /opt/edge/sites/shiftella.caddy; the edge base
+# Caddyfile (/etc/caddy/base/Caddyfile, owned by the anwar.os repo, infra/edge)
+# defines the global options + the `security_headers` snippet and imports
+# /etc/caddy/sites/*.caddy. Installing / changing THIS file needs a Caddy reload
+# (docker access) — a manual step, see README "Install or change the site file".
+#
+# Serves the static Vite build (no server-side code):
+#   shiftella.app      <- /srv/sites/shiftella/prod/current   (prod Supabase)
+#   dev.shiftella.app  <- /srv/sites/shiftella/dev/current    (preprod Supabase)
+# `current` is an absolute symlink swapped atomically by shiftella-release; Caddy
+# follows it per request, so deploys and rollbacks need NO reload.
+#
+# Headers from the edge `security_headers` snippet (HSTS, nosniff, Referrer-Policy,
+# X-Frame-Options DENY, COOP same-origin, Permissions-Policy camera/mic/geolocation/
+# payment/usb off) all fit Shiftella: no geolocation, no embedded Stripe (billing
+# is a redirect to Stripe Checkout). Only the CSP is added here.
+#
+# __DEV_AUTH_HASH__ is a placeholder: it is replaced on the server with a bcrypt
+# hash from `caddy hash-password` when the file is installed. Never commit a hash.
+
+# ---------------------------------------------------------------------------
+# Shared site definition.
+#   args[0]  env dir under /srv/sites/shiftella  (prod | dev)
+#   args[1]  Supabase project ref of that build   (CSP connect-src)
+#   args[2]  CSP header name: Content-Security-Policy, or
+#            Content-Security-Policy-Report-Only while a CSP is being trialled
+# ---------------------------------------------------------------------------
+(shiftella_spa) {
+	import security_headers
+	encode zstd gzip
+	root * /srv/sites/shiftella/{args[0]}/current
+
+	# What the app loads (index.html + src/):
+	#   own origin (JS/CSS chunks, icons, manifest); Supabase REST/Auth/Functions
+	#   over https + Realtime over wss; Google Fonts (Inter) and Fontshare
+	#   (Satoshi) CSS + font files; blob:/data: for PDF/XLSX exports and the
+	#   embedded PDF font. 'unsafe-inline' styles: framer-motion & co. set inline
+	#   styles; scripts stay strictly 'self'. Adding a third-party script (e.g.
+	#   Stripe.js) means adding its origins here first — see README "CSP".
+	header {args[2]} "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://api.fontshare.com; font-src 'self' data: https://fonts.gstatic.com https://cdn.fontshare.com https://api.fontshare.com; img-src 'self' data: blob:; connect-src 'self' https://{args[1]}.supabase.co wss://{args[1]}.supabase.co; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
+
+	# Hashed build output (/assets/<name>-<hash>.js|css): cache forever. A
+	# missing asset is a real 404, never index.html (avoids "text/html is not a
+	# valid JavaScript MIME type" after a deploy).
+	handle /assets/* {
+		@exists file
+		header @exists Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+
+	# Un-hashed files from public/: cache briefly.
+	@static path /icons/* /favicon.svg
+	handle @static {
+		header Cache-Control "public, max-age=86400"
+		file_server
+	}
+
+	# PWA manifest: always revalidate.
+	handle /manifest.webmanifest {
+		header Cache-Control "no-cache"
+		header Content-Type "application/manifest+json"
+		file_server
+	}
+
+	# Client-side routes: SPA fallback; index.html always revalidated so a
+	# deploy is picked up at once. (No service worker today; if one is added,
+	# give sw.js this treatment too.)
+	handle {
+		header Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+}
+
+# --- Production -------------------------------------------------------------
+www.shiftella.app {
+	import security_headers
+	redir https://shiftella.app{uri} permanent
+}
+
+shiftella.app {
+	# Prod Supabase: dcqvipzjqxpbaymaxhxu. CSP starts Report-Only so a missed
+	# origin can't break prod; switch the last argument to
+	# Content-Security-Policy once dev ran the enforced policy without console
+	# errors (login, realtime, invites, PDF/XLSX export, billing checkout).
+	import shiftella_spa prod dcqvipzjqxpbaymaxhxu Content-Security-Policy-Report-Only
+}
+
+# --- Preprod (private) --------------------------------------------------------
+dev.shiftella.app {
+	header X-Robots-Tag "noindex, nofollow"
+	basic_auth {
+		anwar __DEV_AUTH_HASH__
+	}
+	# Preprod Supabase: fusnqxykhdzcvhqbsevb. CSP enforced here first.
+	import shiftella_spa dev fusnqxykhdzcvhqbsevb Content-Security-Policy
+}

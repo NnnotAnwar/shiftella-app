@@ -168,7 +168,8 @@ describe('resend cooldown', () => {
         vi.spyOn(console, 'error').mockImplementation(() => {});
         render(<ResendButton cooldownKey="t:rate-limited" onSend={vi.fn(async () => ({ error: { status: 429, message: 'rate limit' } }))} />);
         await user.click(screen.getByRole('button'));
-        expect(screen.getByText('auth.rateLimited')).toBeInTheDocument();
+        // The handler is async (await onSend → setState): wait for the message.
+        expect(await screen.findByText('auth.rateLimited')).toBeInTheDocument();
         expect(screen.getByRole('button')).toBeDisabled();
     });
 });

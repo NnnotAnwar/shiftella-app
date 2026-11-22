@@ -14,7 +14,23 @@ Website: [shiftella.app](https://shiftella.app).
 
 ## 📸 Screenshots
 
-_New screenshots of the Shiftella UI (demo data) are being prepared._
+_Czech UI, default theme. Demo data (invented): a Prague café with three locations._
+
+| Home — live board | Roster grid (location letters, Σ hours) |
+| :--: | :--: |
+| ![Home](docs/screenshots/desktop-dashboard.png) | ![Roster grid](docs/screenshots/schedule-grid.png) |
+
+| My hours — month pace vs last month | Requests inbox |
+| :--: | :--: |
+| ![My hours](docs/screenshots/my-hours.png) | ![Requests](docs/screenshots/requests.png) |
+
+| Billing — plans | Command palette (⌘K) |
+| :--: | :--: |
+| ![Billing](docs/screenshots/billing.png) | ![Command palette](docs/screenshots/command-palette.png) |
+
+| Mobile (home · my shifts · More) |
+| :--: |
+| <img src="docs/screenshots/mobile-home.png" width="200" /> <img src="docs/screenshots/mobile-schedule.png" width="200" /> <img src="docs/screenshots/mobile-more.png" width="200" /> |
 
 ---
 

@@ -15,6 +15,10 @@
 		X-Frame-Options "DENY"
 		Cross-Origin-Opener-Policy "same-origin"
 		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+	}
+	# Deletions in their own block: a block with deletions is deferred and
+	# would otherwise skip Caddy's own error responses (basic_auth 401, 404).
+	header {
 		-Server
 		-X-Powered-By
 	}

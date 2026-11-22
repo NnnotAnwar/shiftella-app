@@ -1,0 +1,271 @@
+name: Deploy (Hetzner)
+
+# Builds the SPA and ships it to the Hetzner web host (see deploy/hetzner/README.md).
+#
+#   master -> GitHub Environment "production" -> https://shiftella.app      (prod Supabase)
+#   dev    -> GitHub Environment "preprod"    -> https://dev.shiftella.app  (preprod Supabase)
+#
+# INERT UNTIL THE SWITCH-OVER: for now this only runs when started by hand
+# (Actions -> "Deploy (Hetzner)" -> Run workflow), so merging it changes nothing
+# while Vercel still serves the app. To turn on automatic deploys on push,
+# uncomment the `push:` block below (README step 9).
+#
+# Rollback: Run workflow -> action "rollback" (optionally with a sha). Takes
+# seconds: it only repoints the `current` symlink on the server; nothing is rebuilt.
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Environment
+        type: choice
+        options: [preprod, production]
+        default: preprod
+      action:
+        description: deploy = build the selected branch and ship it; rollback = switch back to an earlier release
+        type: choice
+        options: [deploy, rollback]
+        default: deploy
+      rollback_to:
+        description: "Rollback only: release sha (or its first 7+ chars). Empty = the previously live release."
+        required: false
+        default: ''
+      skip_smoke_test:
+        description: "Deploy only: skip the post-deploy HTTP check (e.g. before DNS points at Hetzner)"
+        type: boolean
+        default: false
+  # push:
+  #   branches: [master, dev]
+
+permissions:
+  contents: read
+
+env:
+  COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
+
+jobs:
+  # Works out where this run goes and refuses unsafe combinations.
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      target: ${{ steps.r.outputs.target }}
+      site: ${{ steps.r.outputs.site }}
+      url: ${{ steps.r.outputs.url }}
+      supabase_ref: ${{ steps.r.outputs.supabase_ref }}
+      action: ${{ steps.r.outputs.action }}
+    steps:
+      - id: r
+        env:
+          EVENT: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_TARGET: ${{ inputs.target }}
+          INPUT_ACTION: ${{ inputs.action }}
+        run: |
+          if [ "$EVENT" = "push" ]; then
+            action=deploy
+            case "$REF_NAME" in
+              master) target=production ;;
+              dev)    target=preprod ;;
+              *) echo "::error::push to '$REF_NAME' is not deployed"; exit 1 ;;
+            esac
+          else
+            action="$INPUT_ACTION"
+            target="$INPUT_TARGET"
+          fi
+
+          # Production is only ever built from master. (Also set a deployment
+          # branch rule on the "production" environment; see README.)
+          if [ "$action" = "deploy" ] && [ "$target" = "production" ] && [ "$REF_NAME" != "master" ]; then
+            echo "::error::production deploys must run on master (this run is on '$REF_NAME')"; exit 1
+          fi
+
+          # Supabase project refs are public (they are in every built bundle);
+          # pinning them here stops a prod build from talking to the preprod DB
+          # and keeps the build in line with the CSP in deploy/hetzner/shiftella.caddy.
+          case "$target" in
+            production) site=prod; url=https://shiftella.app;     ref=dcqvipzjqxpbaymaxhxu ;;
+            preprod)    site=dev;  url=https://dev.shiftella.app; ref=fusnqxykhdzcvhqbsevb ;;
+            *) echo "::error::unknown target '$target'"; exit 1 ;;
+          esac
+
+          {
+            echo "target=$target"
+            echo "site=$site"
+            echo "url=$url"
+            echo "supabase_ref=$ref"
+            echo "action=$action"
+          } >> "$GITHUB_OUTPUT"
+          echo "### $action -> $target ($url) from \`$REF_NAME\`" >> "$GITHUB_STEP_SUMMARY"
+
+  deploy:
+    needs: resolve
+    if: needs.resolve.outputs.action == 'deploy'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: ${{ needs.resolve.outputs.target }}
+      url: ${{ needs.resolve.outputs.url }}
+    # One deploy per environment at a time; never cancel one half-way.
+    concurrency:
+      group: deploy-hetzner-${{ needs.resolve.outputs.target }}
+      cancel-in-progress: false
+    env:
+      SITE: ${{ needs.resolve.outputs.site }}
+      SITE_URL: ${{ needs.resolve.outputs.url }}
+      SUPABASE_REF: ${{ needs.resolve.outputs.supabase_ref }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Yarn Berry 4 via Corepack (version pinned by package.json "packageManager");
+      # a plain Yarn 1.x would break the install.
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Locate Yarn cache
+        id: yarn-cache
+        run: echo "dir=$(corepack yarn config get cacheFolder)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Yarn packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.yarn-cache.outputs.dir }}
+          key: yarn-${{ runner.os }}-${{ hashFiles('yarn.lock') }}
+          restore-keys: yarn-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: corepack yarn install --immutable
+
+      - name: Build (tsc -b + vite build)
+        env:
+          # Public client values, stored as environment *variables* (or secrets, if preferred).
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL || secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY || secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_PUBLIC_SITE_URL: ${{ needs.resolve.outputs.url }}
+        run: |
+          for v in VITE_SUPABASE_URL VITE_SUPABASE_PUBLISHABLE_KEY; do
+            [ -n "${!v}" ] || { echo "::error::$v is not set for the '${{ needs.resolve.outputs.target }}' environment"; exit 1; }
+          done
+          expected="https://${SUPABASE_REF}.supabase.co"
+          if [ "${VITE_SUPABASE_URL%/}" != "$expected" ]; then
+            echo "::error::VITE_SUPABASE_URL must be $expected for this environment"; exit 1
+          fi
+          corepack yarn build
+          test -f dist/index.html
+
+      - name: Configure SSH
+        env:
+          HETZNER_HOST: ${{ secrets.HETZNER_HOST }}
+          HETZNER_SSH_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+          HETZNER_KNOWN_HOSTS: ${{ secrets.HETZNER_KNOWN_HOSTS }}
+        run: |
+          for v in HETZNER_HOST HETZNER_SSH_KEY HETZNER_KNOWN_HOSTS; do
+            [ -n "${!v}" ] || { echo "::error::secret $v is not set"; exit 1; }
+          done
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$HETZNER_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$HETZNER_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          printf '%s\n' \
+            "Host shiftella" \
+            "  HostName $HETZNER_HOST" \
+            "  User shiftella-deploy" \
+            "  IdentityFile ~/.ssh/deploy_key" \
+            "  IdentitiesOnly yes" \
+            "  StrictHostKeyChecking yes" \
+            "  ConnectTimeout 15" > ~/.ssh/config
+
+      # The CI key is bound to a forced command (/usr/local/bin/shiftella-release,
+      # see deploy/hetzner/setup-shared.sh): the "command" sent here is only its
+      # arguments. The build travels as a gzip'd tar on stdin; the script unpacks
+      # it into releases/<sha> and swaps the `current` symlink atomically.
+      - name: Upload and activate release
+        run: tar -cz -C dist . | ssh shiftella "deploy $SITE $GITHUB_SHA"
+
+      - name: Smoke test
+        if: ${{ !inputs.skip_smoke_test }}
+        env:
+          DEV_BASIC_AUTH: ${{ secrets.DEV_BASIC_AUTH }}
+        run: |
+          # The live index.html must be exactly the one just built ...
+          sleep 2
+          # dev.shiftella.app is behind basic auth: DEV_BASIC_AUTH = "user:password".
+          auth=()
+          [ -n "${DEV_BASIC_AUTH:-}" ] && [ "$SITE" = dev ] && auth=(-u "$DEV_BASIC_AUTH")
+          curl -fsS "${auth[@]}" --retry 3 --retry-delay 3 "$SITE_URL/" -o live-index.html
+          if ! cmp -s live-index.html dist/index.html; then
+            echo "::error::$SITE_URL/ does not serve the new build (DNS not pointing at the server yet? shiftella.caddy not installed in the edge?)"
+            exit 1
+          fi
+          # ... its entry chunk must load ...
+          asset=$(grep -o '/assets/[^"]*\.js' dist/index.html | head -n1)
+          curl -fsS "${auth[@]}" -o /dev/null "$SITE_URL$asset"
+          # ... and deep links must fall back to the SPA.
+          curl -fsS "${auth[@]}" "$SITE_URL/login" | cmp -s - dist/index.html || { echo "::error::SPA fallback broken"; exit 1; }
+          echo "Smoke test passed for $SITE_URL" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "- commit: \`${GITHUB_SHA}\`"
+            echo "- releases on the server:"
+            echo '```'
+            ssh shiftella "list $SITE" 2>&1 || true
+            echo '```'
+            echo "If this release is bad: Run workflow -> target \`${{ needs.resolve.outputs.target }}\`, action \`rollback\`."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  rollback:
+    needs: resolve
+    if: needs.resolve.outputs.action == 'rollback'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment:
+      name: ${{ needs.resolve.outputs.target }}
+      url: ${{ needs.resolve.outputs.url }}
+    concurrency:
+      group: deploy-hetzner-${{ needs.resolve.outputs.target }}
+      cancel-in-progress: false
+    env:
+      SITE: ${{ needs.resolve.outputs.site }}
+    steps:
+      - name: Configure SSH
+        env:
+          HETZNER_HOST: ${{ secrets.HETZNER_HOST }}
+          HETZNER_SSH_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+          HETZNER_KNOWN_HOSTS: ${{ secrets.HETZNER_KNOWN_HOSTS }}
+        run: |
+          for v in HETZNER_HOST HETZNER_SSH_KEY HETZNER_KNOWN_HOSTS; do
+            [ -n "${!v}" ] || { echo "::error::secret $v is not set"; exit 1; }
+          done
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$HETZNER_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$HETZNER_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          printf '%s\n' \
+            "Host shiftella" \
+            "  HostName $HETZNER_HOST" \
+            "  User shiftella-deploy" \
+            "  IdentityFile ~/.ssh/deploy_key" \
+            "  IdentitiesOnly yes" \
+            "  StrictHostKeyChecking yes" \
+            "  ConnectTimeout 15" > ~/.ssh/config
+
+      - name: Roll back
+        env:
+          ROLLBACK_TO: ${{ inputs.rollback_to }}
+        run: |
+          # Arguments reach the forced command via SSH_ORIGINAL_COMMAND: only allow sha-like input.
+          if [ -n "$ROLLBACK_TO" ] && ! [[ "$ROLLBACK_TO" =~ ^[0-9a-f]{4,40}(-[0-9]{14})?$ ]]; then
+            echo "::error::rollback_to must be a (partial) commit sha"; exit 1
+          fi
+          ssh shiftella "rollback $SITE $ROLLBACK_TO"
+          {
+            echo '```'
+            ssh shiftella "list $SITE"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

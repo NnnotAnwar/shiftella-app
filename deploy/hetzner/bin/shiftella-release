@@ -1,0 +1,140 @@
+#!/usr/bin/env bash
+# shiftella-release: atomic release switching for Shiftella on the shared
+# anwar.os Hetzner server. Installed as /usr/local/bin/shiftella-release by
+# setup-shared.sh and run as the SSH forced command of user `shiftella-deploy`
+# (authorized_keys: restrict,command="/usr/local/bin/shiftella-release").
+# The CI key can therefore do exactly the commands below, nothing else.
+#
+# Layout (created by setup-shared.sh; Caddy sees the same paths read-only):
+#   /srv/sites/shiftella/<env>/releases/<sha>/   one directory per build
+#   /srv/sites/shiftella/<env>/current  -> /srv/sites/shiftella/<env>/releases/<sha>
+#   /srv/sites/shiftella/<env>/previous -> …       (instant rollback target)
+#   /srv/sites/shiftella/<env>/history             (activation log)
+# <env> is "prod" (shiftella.app) or "dev" (dev.shiftella.app).
+#
+# Commands (from SSH_ORIGINAL_COMMAND, or argv when run locally by root):
+#   deploy <env> <sha>        read a gzip'd tar of dist/ on stdin, make it live
+#                             e.g. tar -cz -C dist . | ssh shiftella-deploy@HOST "deploy prod $SHA"
+#   rollback <env> [<sha>]    make <sha> (or prefix) live again; no sha = the
+#                             previously live release (twice = toggle back)
+#   list <env>                releases on disk, newest first
+#   current <env>             print the live release name
+set -euo pipefail
+umask 022   # Caddy (another uid) must be able to read everything
+
+ROOT=/srv/sites/shiftella
+KEEP=5          # releases kept on disk (current/previous are never pruned)
+CARRY_DAYS=14   # hashed assets younger than this are carried into the next release
+MAX_MB=200      # refuse absurd uploads
+
+die() { echo "shiftella-release: $*" >&2; exit 1; }
+
+if [ -n "${SSH_ORIGINAL_COMMAND:-}" ]; then
+  # Never eval: split on whitespace only; every word is validated below.
+  read -r -a argv <<< "$SSH_ORIGINAL_COMMAND"
+else
+  argv=("$@")
+fi
+cmd=${argv[0]:-}
+env=${argv[1]:-}
+arg=${argv[2]:-}
+[ "${#argv[@]}" -le 3 ] || die "too many arguments"
+
+case "$env" in prod|dev) ;; *) die "env must be 'prod' or 'dev' (got '${env}')" ;; esac
+base="$ROOT/$env"
+releases="$base/releases"
+[ -d "$releases" ] || die "$releases does not exist (was setup-shared.sh run?)"
+
+link_target() { [ -L "$base/$1" ] && basename "$(readlink "$base/$1")" || true; }
+
+# Atomically repoint a symlink (absolute target): temp link + rename(2).
+relink() { # <link-name> <release-name>
+  ln -sfn "$releases/$2" "$base/.$1.tmp"
+  mv -Tf "$base/.$1.tmp" "$base/$1"
+}
+
+switch_to() { # <release-name>
+  local name=$1 old
+  [ -f "$releases/$name/index.html" ] || die "release '$name' has no index.html"
+  old=$(link_target current)
+  if [ "$old" = "$name" ]; then echo "$name is already live on $env"; return; fi
+  relink current "$name"
+  [ -n "$old" ] && [ -d "$releases/$old" ] && relink previous "$old"
+  touch "$releases/$name"   # mtime = last time it went live; used for pruning
+  echo "$(date -u +%FT%TZ) $name" >> "$base/history"
+  echo "live on $env: $name (previous: ${old:-none})"
+}
+
+prune() {
+  local cur prev
+  cur=$(link_target current); prev=$(link_target previous)
+  find "$releases" -mindepth 1 -maxdepth 1 -name '.upload-*' -mmin +60 -exec rm -rf {} +
+  ls -1t "$releases" | tail -n +$((KEEP + 1)) | while read -r d; do
+    [ "$d" = "$cur" ] || [ "$d" = "$prev" ] || rm -rf "${releases:?}/$d"
+  done
+}
+
+case "$cmd" in
+  deploy)
+    sha=$arg
+    [[ "$sha" =~ ^[0-9a-f]{7,40}$ ]] || die "bad sha '$sha'"
+    upload="$releases/.upload-$$"
+    mkdir "$upload"
+    trap 'rm -rf "$upload"' EXIT
+    # Size-capped, no absolute paths / owners from the archive.
+    head -c $((MAX_MB * 1024 * 1024 + 1)) | tar -xz --no-same-owner --no-same-permissions -C "$upload" \
+      || die "could not unpack the upload (not a gzip'd tar, or larger than ${MAX_MB} MB)"
+    [ -f "$upload/index.html" ] || die "upload has no index.html at its root (tar -C dist .)"
+    if find "$upload" -type l | grep -q .; then die "symlinks are not allowed in a release"; fi
+    chmod -R u=rwX,go=rX "$upload"
+
+    name=$sha
+    # Same commit again (e.g. after changing a build variable): keep both.
+    [ -e "$releases/$name" ] && name="$sha-$(date -u +%Y%m%d%H%M%S)"
+
+    # Tabs that loaded the old index.html lazy-load route chunks by their old
+    # hashed names: hard-link the live release's recent assets into the new one.
+    if [ -d "$base/current/assets/" ] && [ -d "$upload/assets" ]; then
+      find "$base/current/assets/" -maxdepth 1 -type f -mtime "-$CARRY_DAYS" \
+        -exec cp -l --update=none -t "$upload/assets/" {} +
+    fi
+
+    mv -T "$upload" "$releases/$name"
+    trap - EXIT
+    switch_to "$name"
+    prune
+    ;;
+
+  rollback)
+    want=$arg
+    if [ -z "$want" ]; then
+      target=$(link_target previous)
+      [ -n "$target" ] || die "no previous release recorded for $env; pass a sha (see: list $env)"
+    else
+      [[ "$want" =~ ^[0-9a-f]{4,40}(-[0-9]{14})?$ ]] || die "bad sha '$want'"
+      # Release names are hex shas (+ optional -timestamp): ls is safe here.
+      # shellcheck disable=SC2010
+      target=$(ls -1t "$releases" | grep -m1 "^$want" || true)
+      [ -n "$target" ] || die "no release matching '$want' on $env (see: list $env)"
+    fi
+    switch_to "$target"
+    ;;
+
+  list)
+    cur=$(link_target current); prev=$(link_target previous)
+    ls -1t "$releases" | while read -r d; do
+      mark=""
+      [ "$d" = "$cur" ] && mark="  <- current"
+      [ "$d" = "$prev" ] && mark="  <- previous"
+      printf '%s  %s%s\n' "$(date -u -r "$releases/$d" +%FT%TZ)" "$d" "$mark"
+    done
+    ;;
+
+  current)
+    link_target current
+    ;;
+
+  *)
+    die "usage: {deploy <env> <sha> (tar.gz on stdin) | rollback <env> [sha] | list <env> | current <env>}"
+    ;;
+esac

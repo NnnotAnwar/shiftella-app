@@ -13,7 +13,8 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400..900&display=swap" />
     <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@500,700,900&display=swap" />
     <meta name="description" content="Shiftella – modern shift management for teams. Clock in/out by location in real time, see the live board, monthly analytics and admin tools." />
-    <link rel="manifest" href="/manifest.webmanifest" />
+    <!-- use-credentials: browsers fetch the manifest without credentials by default, so behind basic auth (dev.shiftella.app) it would 401. -->
+    <link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials" />
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
     <title>Shiftella</title>
   </head>

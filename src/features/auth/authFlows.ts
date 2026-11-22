@@ -60,15 +60,77 @@ export function carryEmail(value: string): { email: string } | undefined {
 }
 
 /**
- * Cooldown end times by key (e.g. "signup:me@x.cz"), kept at module level so a
- * lock survives the button unmounting — re-submitting the form or hopping
- * between sign-up and sign-in doesn't hand out a fresh "Resend".
+ * Cooldown end times by key (e.g. "signup:me@x.cz"). Kept at module level so a
+ * lock survives the button unmounting (re-submitting the form, hopping between
+ * sign-up and sign-in), AND mirrored to localStorage so a page reload or a new
+ * tab doesn't hand out a fresh "Resend" either. Storage holds only a hash of
+ * the key — never the email itself — and drops expired entries.
+ *
+ * This is a UX guard; the real limit is server-side (Supabase allows one
+ * confirmation / recovery email per address per ~60 s plus a global hourly cap).
  */
+const STORAGE_KEY = 'auth-cooldowns';
 const cooldowns = new Map<string, number>();
+
+/** FNV-1a: a short, stable, non-reversible-enough tag for the storage key. */
+function tag(key: string): string {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < key.length; i++) {
+        h ^= key.charCodeAt(i);
+        h = Math.imul(h, 0x01000193);
+    }
+    return (h >>> 0).toString(36);
+}
+
+function readStored(): Record<string, number> {
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        const data = raw ? (JSON.parse(raw) as unknown) : null;
+        if (!data || typeof data !== 'object') return {};
+        const now = Date.now();
+        return Object.fromEntries(
+            Object.entries(data as Record<string, unknown>).filter(
+                (e): e is [string, number] => typeof e[1] === 'number' && e[1] > now,
+            ),
+        );
+    } catch {
+        return {};
+    }
+}
+
+function lockUntil(key: string): number {
+    const mem = cooldowns.get(key) ?? 0;
+    const stored = readStored()[tag(key)] ?? 0;
+    return Math.max(mem, stored);
+}
+
+function saveLock(key: string, end: number) {
+    cooldowns.set(key, end);
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...readStored(), [tag(key)]: end }));
+    } catch {
+        // Private mode / storage full: the in-memory lock still applies.
+    }
+}
+
+/** Seconds left on a keyed lock (0 = free), e.g. before re-sending from a form. */
+export function cooldownLeft(key: string): number {
+    return Math.max(0, Math.ceil((lockUntil(key) - Date.now()) / 1000));
+}
+
+/** Test helper: simulate a page reload (memory gone, localStorage kept). */
+export function forgetCooldownsInMemory() {
+    cooldowns.clear();
+}
 
 /** Test helper: forget every running cooldown. */
 export function resetCooldowns() {
     cooldowns.clear();
+    try {
+        localStorage.removeItem(STORAGE_KEY);
+    } catch {
+        // ignore
+    }
 }
 
 /**
@@ -77,7 +139,7 @@ export function resetCooldowns() {
  * button using the same key until it runs out (the key is read on mount).
  */
 export function useCooldown(key?: string, seconds = RESEND_COOLDOWN_S) {
-    const [until, setUntil] = useState(() => (key ? cooldowns.get(key) ?? 0 : 0));
+    const [until, setUntil] = useState(() => (key ? lockUntil(key) : 0));
     const [now, setNow] = useState(() => Date.now());
 
     useEffect(() => {
@@ -89,7 +151,7 @@ export function useCooldown(key?: string, seconds = RESEND_COOLDOWN_S) {
     const start = useCallback(() => {
         const t = Date.now();
         const end = t + seconds * 1000;
-        if (key) cooldowns.set(key, end);
+        if (key) saveLock(key, end);
         setNow(t);
         setUntil(end);
     }, [key, seconds]);

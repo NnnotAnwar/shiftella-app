@@ -7,11 +7,11 @@ import { EMAIL_NOT_CONFIRMED } from './authFlows';
 /**
  * Where auth emails (confirm, reset password) link back to. The native app has
  * no web origin of its own, so it uses the public web URL (VITE_PUBLIC_SITE_URL),
- * falling back to the legacy host until the Shiftella domain is live.
+ * falling back to https://shiftella.app.
  */
 function appOrigin(): string {
   if (!Capacitor.isNativePlatform()) return window.location.origin;
-  return import.meta.env.VITE_PUBLIC_SITE_URL || 'https://planuj-smeny.vercel.app';
+  return import.meta.env.VITE_PUBLIC_SITE_URL || 'https://shiftella.app';
 }
 
 /**

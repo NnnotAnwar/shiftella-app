@@ -20,6 +20,8 @@ import {
     isValidEmail,
     resetCooldowns,
     useCooldown,
+    cooldownLeft,
+    forgetCooldownsInMemory,
 } from './authFlows';
 import { authService } from './authService';
 import { ResendButton } from './ResendButton';
@@ -114,9 +116,21 @@ function tick(seconds: number) {
 describe('resend cooldown', () => {
     beforeEach(() => {
         vi.useFakeTimers({ shouldAdvanceTime: true });
+        // Newer Node ships its own (disabled) global localStorage that shadows
+        // jsdom's; give the tests a plain in-memory one either way.
+        const store = new Map<string, string>();
+        vi.stubGlobal('localStorage', {
+            getItem: (k: string) => store.get(k) ?? null,
+            setItem: (k: string, v: string) => void store.set(k, String(v)),
+            removeItem: (k: string) => void store.delete(k),
+            clear: () => store.clear(),
+        });
         resetCooldowns();
     });
-    afterEach(() => vi.useRealTimers());
+    afterEach(() => {
+        vi.useRealTimers();
+        vi.unstubAllGlobals();
+    });
 
     it('counts down from the cooldown to 0', () => {
         const { result } = renderHook(() => useCooldown());
@@ -156,6 +170,19 @@ describe('resend cooldown', () => {
         expect(onSend).toHaveBeenCalledOnce();
         tick(RESEND_COOLDOWN_S);
         expect(screen.getByRole('button')).toBeEnabled();
+    });
+
+    it('a keyed lock survives a page reload (localStorage), without storing the email', () => {
+        const first = renderHook(() => useCooldown('reset:anna@firma.cz'));
+        act(() => first.result.current.start());
+        first.unmount();
+        forgetCooldownsInMemory();
+        expect(cooldownLeft('reset:anna@firma.cz')).toBe(RESEND_COOLDOWN_S);
+        const again = renderHook(() => useCooldown('reset:anna@firma.cz'));
+        expect(again.result.current.left).toBe(RESEND_COOLDOWN_S);
+        expect(localStorage.getItem('auth-cooldowns')).not.toContain('anna');
+        tick(RESEND_COOLDOWN_S);
+        expect(cooldownLeft('reset:anna@firma.cz')).toBe(0);
     });
 
     it('<ResendButton cooledDown> starts locked (an email just went out)', () => {

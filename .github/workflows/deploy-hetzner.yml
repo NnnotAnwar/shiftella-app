@@ -81,7 +81,7 @@ jobs:
 
           # Supabase project refs are public (they are in every built bundle);
           # pinning them here stops a prod build from talking to the preprod DB
-          # and keeps the build in line with the CSP in deploy/hetzner/Caddyfile.
+          # and keeps the build in line with the CSP in deploy/hetzner/shiftella.caddy.
           case "$target" in
             production) site=prod; url=https://shiftella.app;     ref=dcqvipzjqxpbaymaxhxu ;;
             preprod)    site=dev;  url=https://dev.shiftella.app; ref=fusnqxykhdzcvhqbsevb ;;
@@ -172,38 +172,39 @@ jobs:
           printf '%s\n' \
             "Host shiftella" \
             "  HostName $HETZNER_HOST" \
-            "  User deploy" \
+            "  User shiftella-deploy" \
             "  IdentityFile ~/.ssh/deploy_key" \
             "  IdentitiesOnly yes" \
             "  StrictHostKeyChecking yes" \
             "  ConnectTimeout 15" > ~/.ssh/config
 
-      - name: Upload release
-        run: |
-          upload=".upload-${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          echo "UPLOAD=$upload" >> "$GITHUB_ENV"
-          # Release tooling first, so the server always runs the repo's version.
-          rsync -az --chmod=F755 deploy/hetzner/bin/shiftella-release shiftella:/srv/shiftella/bin/shiftella-release
-          rsync -az --delete --chmod=D755,F644 dist/ "shiftella:/srv/shiftella/${SITE}/releases/${upload}/"
-
-      - name: Activate release
-        run: ssh shiftella /srv/shiftella/bin/shiftella-release activate "$SITE" "$UPLOAD" "$GITHUB_SHA"
+      # The CI key is bound to a forced command (/usr/local/bin/shiftella-release,
+      # see deploy/hetzner/setup-shared.sh): the "command" sent here is only its
+      # arguments. The build travels as a gzip'd tar on stdin; the script unpacks
+      # it into releases/<sha> and swaps the `current` symlink atomically.
+      - name: Upload and activate release
+        run: tar -cz -C dist . | ssh shiftella "deploy $SITE $GITHUB_SHA"
 
       - name: Smoke test
         if: ${{ !inputs.skip_smoke_test }}
+        env:
+          DEV_BASIC_AUTH: ${{ secrets.DEV_BASIC_AUTH }}
         run: |
           # The live index.html must be exactly the one just built ...
           sleep 2
-          curl -fsS --retry 3 --retry-delay 3 "$SITE_URL/" -o live-index.html
+          # dev.shiftella.app is behind basic auth: DEV_BASIC_AUTH = "user:password".
+          auth=()
+          [ -n "${DEV_BASIC_AUTH:-}" ] && [ "$SITE" = dev ] && auth=(-u "$DEV_BASIC_AUTH")
+          curl -fsS "${auth[@]}" --retry 3 --retry-delay 3 "$SITE_URL/" -o live-index.html
           if ! cmp -s live-index.html dist/index.html; then
-            echo "::error::$SITE_URL/ does not serve the new build (DNS not pointing at Hetzner yet? Caddyfile not installed?)"
+            echo "::error::$SITE_URL/ does not serve the new build (DNS not pointing at the server yet? shiftella.caddy not installed in the edge?)"
             exit 1
           fi
           # ... its entry chunk must load ...
           asset=$(grep -o '/assets/[^"]*\.js' dist/index.html | head -n1)
-          curl -fsS -o /dev/null "$SITE_URL$asset"
+          curl -fsS "${auth[@]}" -o /dev/null "$SITE_URL$asset"
           # ... and deep links must fall back to the SPA.
-          curl -fsS "$SITE_URL/login" | cmp -s - dist/index.html || { echo "::error::SPA fallback broken"; exit 1; }
+          curl -fsS "${auth[@]}" "$SITE_URL/login" | cmp -s - dist/index.html || { echo "::error::SPA fallback broken"; exit 1; }
           echo "Smoke test passed for $SITE_URL" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Summary
@@ -213,7 +214,7 @@ jobs:
             echo "- commit: \`${GITHUB_SHA}\`"
             echo "- releases on the server:"
             echo '```'
-            ssh shiftella /srv/shiftella/bin/shiftella-release list "$SITE" 2>&1 || true
+            ssh shiftella "list $SITE" 2>&1 || true
             echo '```'
             echo "If this release is bad: Run workflow -> target \`${{ needs.resolve.outputs.target }}\`, action \`rollback\`."
           } >> "$GITHUB_STEP_SUMMARY"
@@ -248,7 +249,7 @@ jobs:
           printf '%s\n' \
             "Host shiftella" \
             "  HostName $HETZNER_HOST" \
-            "  User deploy" \
+            "  User shiftella-deploy" \
             "  IdentityFile ~/.ssh/deploy_key" \
             "  IdentitiesOnly yes" \
             "  StrictHostKeyChecking yes" \
@@ -258,13 +259,13 @@ jobs:
         env:
           ROLLBACK_TO: ${{ inputs.rollback_to }}
         run: |
-          # ssh hands the arguments to a remote shell: only allow sha-like input.
+          # Arguments reach the forced command via SSH_ORIGINAL_COMMAND: only allow sha-like input.
           if [ -n "$ROLLBACK_TO" ] && ! [[ "$ROLLBACK_TO" =~ ^[0-9a-f]{4,40}(-[0-9]{14})?$ ]]; then
             echo "::error::rollback_to must be a (partial) commit sha"; exit 1
           fi
-          ssh shiftella /srv/shiftella/bin/shiftella-release rollback "$SITE" "$ROLLBACK_TO"
+          ssh shiftella "rollback $SITE $ROLLBACK_TO"
           {
             echo '```'
-            ssh shiftella /srv/shiftella/bin/shiftella-release list "$SITE"
+            ssh shiftella "list $SITE"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"

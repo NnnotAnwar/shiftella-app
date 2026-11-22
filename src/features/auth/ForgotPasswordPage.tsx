@@ -7,7 +7,7 @@ import { Input } from '@shared/components/Input';
 import { authService } from './authService';
 import { AuthShell } from './AuthShell';
 import { ResendButton } from './ResendButton';
-import { emailFromState, isValidEmail } from './authFlows';
+import { cooldownLeft, emailFromState, isValidEmail } from './authFlows';
 
 /**
  * --- FORGOT PASSWORD ---
@@ -16,6 +16,8 @@ import { emailFromState, isValidEmail } from './authFlows';
  * can't be used to find out which emails have accounts. Reset is email-only —
  * username sign-in users enter the email their account belongs to.
  */
+const resetKey = (address: string) => `reset:${address.trim().toLowerCase()}`;
+
 export function ForgotPasswordPage() {
     const t = useTranslation();
     const location = useLocation();
@@ -33,8 +35,14 @@ export function ForgotPasswordPage() {
             setTouched(true);
             return;
         }
-        setBusy(true);
         const address = email.trim();
+        // A link already went to this address moments ago (even before a page
+        // reload): don't send again, just show the "sent" screen with the lock.
+        if (cooldownLeft(resetKey(address)) > 0) {
+            setSentTo(address);
+            return;
+        }
+        setBusy(true);
         // Neutral on purpose: errors (unknown email, rate limit) are only logged.
         const { error } = await send(address);
         if (error) console.error(error);
@@ -64,7 +72,7 @@ export function ForgotPasswordPage() {
                     </div>
                     <p className="text-body text-ink dark:text-slate-200">{t('auth.forgot.sentBody', { email: sentTo })}</p>
                     <p className="text-caption text-ink-soft dark:text-slate-400">{t('auth.forgot.sentHint')}</p>
-                    <ResendButton cooledDown cooldownKey={`reset:${sentTo.toLowerCase()}`} onSend={() => send(sentTo)} />
+                    <ResendButton cooledDown cooldownKey={resetKey(sentTo)} onSend={() => send(sentTo)} />
                     <button
                         type="button"
                         onClick={() => setSentTo(null)}

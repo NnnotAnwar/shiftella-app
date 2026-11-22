@@ -9,6 +9,7 @@ import { Input } from '@shared/components/Input';
 import type { Profile } from '@/shared/types';
 import { useTranslation } from '@shared/preferences/PreferencesContext';
 import { useWages } from '@features/wages/useWages';
+import { useEntitlements } from '@features/billing/useBilling';
 
 /**
  * Edit an employee's name, role and (for people below you) hourly rate. The
@@ -29,7 +30,9 @@ export function EmployeeForm({ employee, onClose }: { employee: Profile; onClose
     const [organizationId, setOrganizationId] = useState(employee.organization_id);
     const [managerId, setManagerId] = useState(employee.manager_id ?? '');
     // Hourly rate — admins only, for someone strictly below them (RLS enforces the same).
-    const canSetRate = !!user && canSetWageOf(user, employee);
+    // Wages are a Team+ feature (billing).
+    const wagesOn = useEntitlements().can('wages');
+    const canSetRate = !!user && wagesOn && canSetWageOf(user, employee);
     const wages = useWages(canSetRate ? user : null);
     const currentRate = wages.org.data?.find((w) => w.user_id === employee.id);
     const [rate, setRate] = useState(currentRate ? String(currentRate.hourly_rate) : '');

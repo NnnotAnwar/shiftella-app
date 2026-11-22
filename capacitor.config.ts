@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.planujsmeny.app',
-  appName: 'Planuj Smeny',
+  appId: 'com.shiftella.app',
+  appName: 'Shiftella',
   webDir: 'dist',
   plugins: {
     SplashScreen: {

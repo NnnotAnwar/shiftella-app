@@ -1,12 +1,15 @@
 import { useState, type SyntheticEvent } from 'react';
-import { Link } from 'react-router-dom';
-import { AtIcon, LockIcon, EyeIcon, EyeSlashIcon } from '@phosphor-icons/react';
+import { Link, useLocation } from 'react-router-dom';
+import { AtIcon, EnvelopeSimpleIcon } from '@phosphor-icons/react';
 import { useTranslation } from '@shared/preferences/PreferencesContext';
 import { Button } from '@shared/components/Button';
 import { Input } from '@shared/components/Input';
 import { FormError } from '@shared/components/FormError';
 import { authService } from './authService';
 import { AuthShell } from './AuthShell';
+import { PasswordField } from './PasswordField';
+import { ResendButton } from './ResendButton';
+import { carryEmail, emailFromState, isEmailNotConfirmed } from './authFlows';
 
 /**
  * --- LOGIN PAGE ---
@@ -15,11 +18,15 @@ import { AuthShell } from './AuthShell';
  * <PublicRoute> — this component no longer navigates itself.
  */
 
+/** Why the last attempt failed: wrong credentials, or an email still unconfirmed. */
+type Failure = { kind: 'invalid' } | { kind: 'unconfirmed'; email: string | null };
+
 export function LoginPage() {
-  const [loginInput, setLoginInput] = useState('');
+  const location = useLocation();
+  // An email typed on sign-up / forgot-password comes along in router state.
+  const [loginInput, setLoginInput] = useState(() => emailFromState(location.state));
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [errorMsg, setErrorMsg] = useState('');
+  const [failure, setFailure] = useState<Failure | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const t = useTranslation();
@@ -27,12 +34,12 @@ export function LoginPage() {
   const handleLogin = async (e: SyntheticEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setErrorMsg('');
+    setFailure(null);
 
+    const input = loginInput.trim();
+    const isEmail = input.includes('@');
     try {
-      const input = loginInput.trim();
-
-      if (input.includes('@')) {
+      if (isEmail) {
         // Email + password — Supabase already returns a generic error on failure.
         const { error } = await authService.signIn(input, password);
         if (error) throw error;
@@ -44,12 +51,15 @@ export function LoginPage() {
       // Success: keep the spinner up; PublicRoute redirects to "/" once the
       // session resolves and AuthContext loads the profile.
     } catch (error) {
-      // Single generic message — never reveal whether the account exists.
       console.error(error);
-      setErrorMsg(t('auth.invalidCredentials'));
+      // "Email not confirmed" only comes back after the password matched, so it
+      // is safe to say so; everything else stays one generic message.
+      setFailure(isEmailNotConfirmed(error) ? { kind: 'unconfirmed', email: isEmail ? input : null } : { kind: 'invalid' });
       setIsLoading(false);
     }
   };
+
+  const carried = carryEmail(loginInput);
 
   return (
     <AuthShell
@@ -58,7 +68,7 @@ export function LoginPage() {
       below={
         <p className="mt-4 text-center text-meta text-ink-soft dark:text-slate-400">
           {t('signup.prompt')}{' '}
-          <Link to="/signup" className="font-semibold text-emerald-700 hover:underline dark:text-emerald-300">
+          <Link to="/signup" state={carried} className="font-semibold text-emerald-700 hover:underline dark:text-emerald-300">
             {t('signup.cta')}
           </Link>
         </p>
@@ -86,32 +96,40 @@ export function LoginPage() {
 
             {/* Password */}
             <div>
-              <label htmlFor="password" className="text-eyebrow text-ink-soft dark:text-slate-400 ml-1">{t('auth.password')}</label>
+              <div className="flex items-baseline justify-between gap-2">
+                <label htmlFor="password" className="text-eyebrow text-ink-soft dark:text-slate-400 ml-1">{t('auth.password')}</label>
+                <Link
+                  to="/forgot-password"
+                  state={carried}
+                  className="mr-1 text-caption font-semibold text-emerald-700 hover:underline dark:text-emerald-300"
+                >
+                  {t('auth.forgotLink')}
+                </Link>
+              </div>
               <div className="mt-1.5">
-                <Input
-                  id="password"
-                  icon={LockIcon}
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  trailing={
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword((v) => !v)}
-                      aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
-                      className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
-                    >
-                      {showPassword ? <EyeSlashIcon weight="bold" className="w-4 h-4" /> : <EyeIcon weight="bold" className="w-4 h-4" />}
-                    </button>
-                  }
-                />
+                <PasswordField id="password" value={password} onChange={setPassword} autoComplete="current-password" />
               </div>
             </div>
 
-            <FormError message={errorMsg} />
+            {failure?.kind === 'invalid' && <FormError message={t('auth.invalidCredentials')} />}
+
+            {failure?.kind === 'unconfirmed' && (
+              <div
+                role="alert"
+                className="space-y-2.5 rounded-xl border border-amber-200/70 bg-amber-50 px-3 py-2.5 dark:border-amber-500/20 dark:bg-amber-500/10"
+              >
+                <p className="flex items-start gap-2 text-small-strong text-amber-800 dark:text-amber-200">
+                  <EnvelopeSimpleIcon weight="fill" className="mt-0.5 size-4 shrink-0" />
+                  <span>{failure.email ? t('auth.unconfirmed') : t('auth.unconfirmedUsername')}</span>
+                </p>
+                {failure.email && (
+                  <ResendButton
+                    cooldownKey={`signup:${failure.email.toLowerCase()}`}
+                    onSend={() => authService.resendSignupConfirmation(failure.email!)}
+                  />
+                )}
+              </div>
+            )}
 
             <Button type="submit" size="lg" fullWidth loading={isLoading}>
               {isLoading ? t('auth.signingIn') : t('auth.signIn')}

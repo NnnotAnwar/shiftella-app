@@ -18,6 +18,7 @@
 // =============================================================================
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { syncSeats } from '../_shared/billing.ts';
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -120,6 +121,20 @@ Deno.serve(async (req) => {
             return json({ error: 'You cannot invite someone at or above your own role level.' }, 403);
         }
 
+        //    Plan member limit (Free 5, Team 15). The database refuses the
+        //    profile too (plan_member_limit trigger); this gives a clear message.
+        const [{ data: planName }, { data: memberCount }] = await Promise.all([
+            admin.rpc('org_plan', { p_org: organizationId }),
+            admin.rpc('org_member_count', { p_org: organizationId }),
+        ]);
+        const { data: memberLimit } = await admin.rpc('plan_member_limit', { p_plan: planName ?? 'free' });
+        if (memberLimit != null && Number(memberCount ?? 0) >= Number(memberLimit)) {
+            return json(
+                { error: `Your plan allows up to ${memberLimit} members. Upgrade in Billing to add more.`, code: 'PLAN_LIMIT_MEMBERS', limit: memberLimit },
+                402,
+            );
+        }
+
         // 7. Send the invitation. The trigger reads this metadata to provision
         //    the profile into the right org + role. The invitee lands on the
         //    app's /accept-invite page (must be allowlisted in Auth settings).
@@ -179,6 +194,9 @@ Deno.serve(async (req) => {
                 p_details: { role_name: roleName, email },
             });
         }
+
+        // 9. Business bills per member — keep the Stripe quantity in step (best effort).
+        await syncSeats(admin, organizationId);
 
         return json({ success: true, user_id: invited?.user?.id ?? null }, 200);
     } catch (err) {

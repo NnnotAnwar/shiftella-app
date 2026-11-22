@@ -18,6 +18,8 @@ import { useAuthContext } from '@/features/auth/AuthContext';
 import { AdminProvider, useAdminContext } from './AdminContext';
 import { can, canManageEmployees, canManageLocations } from '@shared/auth/permissions';
 import { RolesPanel } from '@features/roles/RolesPanel';
+import { useEntitlements, useUpgradeNudge } from '@features/billing/useBilling';
+import { UpgradeGate } from '@features/billing/UpgradeGate';
 import { useTranslation } from '@shared/preferences/PreferencesContext';
 import { ConfirmDialog } from './components/Modal';
 import { OrganizationForm } from './components/OrganizationForm';
@@ -133,10 +135,17 @@ function AdminPanel() {
         return all.filter((o) => `${o.name} ${o.slug ?? ''}`.toLowerCase().includes(query));
     }, [adminData, query]);
 
+    // Plan limits (billing): Free 5 members / 1 location, Team 15 / 3. The
+    // database refuses the next one too; here the button explains instead.
+    const ent = useEntitlements();
+    const nudge = useUpgradeNudge();
     const handleAdd = () => {
         if (safeTab === 'organizations') setModal({ kind: 'org-form' });
-        else if (safeTab === 'locations') setModal({ kind: 'loc-form' });
-        else setModal({ kind: 'invite-emp' });
+        else if (safeTab === 'locations') {
+            if (ent.canAdd('locations')) setModal({ kind: 'loc-form' });
+            else nudge('locations');
+        } else if (ent.canAdd('members')) setModal({ kind: 'invite-emp' });
+        else nudge('members');
     };
 
     const confirmDelete = async () => {
@@ -260,10 +269,12 @@ function AdminPanel() {
                                 />
                             )}
                             {safeTab === 'roles' && user && (
-                                <RolesPanel
-                                    organizationId={user.organization_id}
-                                    organizations={isSuperAdmin ? adminData?.map((o) => ({ id: o.id, name: o.name, people: o.profiles.length })) : undefined}
-                                />
+                                <UpgradeGate feature="customRoles">
+                                    <RolesPanel
+                                        organizationId={user.organization_id}
+                                        organizations={isSuperAdmin ? adminData?.map((o) => ({ id: o.id, name: o.name, people: o.profiles.length })) : undefined}
+                                    />
+                                </UpgradeGate>
                             )}
                             {safeTab === 'employees' && (
                                 <EmployeesList

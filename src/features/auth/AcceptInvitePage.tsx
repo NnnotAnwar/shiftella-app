@@ -21,6 +21,7 @@ import { Input } from '@shared/components/Input';
 import { FormError } from '@shared/components/FormError';
 import { authService } from './authService';
 import { getRoleBadgeColor } from '@shared/utils/roleColors';
+import { LanguageToggle } from './AuthShell';
 
 /**
  * --- ACCEPT INVITE PAGE ---
@@ -50,24 +51,27 @@ function PageShell({ children }: { children: ReactNode }) {
             <div className="pointer-events-none absolute -top-24 -left-24 w-80 h-80 rounded-full bg-emerald-500/20 blur-3xl" />
             <div className="pointer-events-none absolute -bottom-32 -right-20 w-96 h-96 rounded-full bg-emerald-400/10 blur-3xl" />
 
-            <button
-                onClick={() => setTheme(isDark ? 'light' : 'dark')}
-                aria-label={t('common.toggleTheme')}
-                className="absolute top-4 right-4 z-10 p-2.5 rounded-xl bg-white/60 dark:bg-white/5 border border-gray-200/60 dark:border-white/10 text-gray-500 dark:text-gray-300 backdrop-blur-md hover:bg-white/80 dark:hover:bg-white/10 active:scale-90 transition-all"
-            >
-                <AnimatePresence mode="wait" initial={false}>
-                    <motion.span
-                        key={resolvedTheme}
-                        initial={{ y: -6, opacity: 0, rotate: -30 }}
-                        animate={{ y: 0, opacity: 1, rotate: 0 }}
-                        exit={{ y: 6, opacity: 0, rotate: 30 }}
-                        transition={{ duration: 0.2 }}
-                        className="block"
-                    >
-                        {isDark ? <SunIcon weight="bold" className="w-5 h-5" /> : <MoonIcon weight="bold" className="w-5 h-5" />}
-                    </motion.span>
-                </AnimatePresence>
-            </button>
+            <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+                <LanguageToggle />
+                <button
+                    onClick={() => setTheme(isDark ? 'light' : 'dark')}
+                    aria-label={t('common.toggleTheme')}
+                    className="p-2 rounded-xl bg-white/60 dark:bg-white/5 border border-gray-200/60 dark:border-white/10 text-gray-500 dark:text-gray-300 backdrop-blur-md hover:bg-white/80 dark:hover:bg-white/10 active:scale-90 transition-all"
+                >
+                    <AnimatePresence mode="wait" initial={false}>
+                        <motion.span
+                            key={resolvedTheme}
+                            initial={{ y: -6, opacity: 0, rotate: -30 }}
+                            animate={{ y: 0, opacity: 1, rotate: 0 }}
+                            exit={{ y: 6, opacity: 0, rotate: 30 }}
+                            transition={{ duration: 0.2 }}
+                            className="block"
+                        >
+                            {isDark ? <SunIcon weight="bold" className="size-4" /> : <MoonIcon weight="bold" className="size-4" />}
+                        </motion.span>
+                    </AnimatePresence>
+                </button>
+            </div>
 
             {children}
         </div>

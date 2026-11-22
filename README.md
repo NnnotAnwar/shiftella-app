@@ -1,31 +1,20 @@
-# Planuj Směny
+# Shiftella
 
 A modern, cross-platform **shift-planning and time-tracking** app for Czech
 teams. An owner signs up and creates their organization; people clock in and out
 by location in real time, confirm and swap their planned shifts; admins plan the
 rota, decide requests and post announcements — each with exactly the rights
 their (custom) role gives them. On the web or as a native Android/iOS app.
+Website: [shiftella.app](https://shiftella.app).
 
 > **Status: active development (beta).** Features and UI change frequently.
-> _Version 1.11.0 — “Cheb” · last updated: November 7, 2026._ · See the [Roadmap](ROADMAP.md).
+> _Version 1.12.0 — “Děčín” · last updated: November 22, 2026._ · See the [Roadmap](ROADMAP.md).
 
 ---
 
 ## 📸 Screenshots
 
-_Czech UI, dark theme with the Amber scheme. Test data from the preprod project._
-
-| Home — live board | Roster grid (location letters, Σ hours) |
-| :--: | :--: |
-| ![Home](docs/screenshots/desktop-dashboard.png) | ![Roster grid](docs/screenshots/schedule-grid.png) |
-
-| My hours — month pace vs last month | Command palette (⌘K) |
-| :--: | :--: |
-| ![My hours](docs/screenshots/my-hours.png) | ![Command palette](docs/screenshots/command-palette.png) |
-
-| Requests inbox | Mobile (home · More) |
-| :--: | :--: |
-| ![Requests](docs/screenshots/requests.png) | <img src="docs/screenshots/mobile-home.png" width="200" /> <img src="docs/screenshots/mobile-more.png" width="200" /> |
+_New screenshots of the Shiftella UI (demo data) are being prepared._
 
 ---
 
@@ -310,7 +299,7 @@ npx cap open android   # or: npx cap open ios
 
 ### Push notifications (native)
 Push requires Firebase (FCM). In short: create a Firebase project, add the
-Android app (`com.planujsmeny.app`), drop `google-services.json` into
+Android app (`com.shiftella.app`), drop `google-services.json` into
 `android/app/` (gitignored), then deploy the function and wire the webhooks:
 ```bash
 supabase secrets set FCM_SERVICE_ACCOUNT="$(cat service-account.json)"
@@ -340,14 +329,18 @@ run it against **preprod** (SQL editor, or `psql -f`).
 
 ## 🚢 Deployment
 
-- **Hosting:** Vercel. `master` → **production**; `dev` / `preview` → preview
-  deployments. SPA rewrites are configured in `vercel.json`.
+- **Hosting:** a Hetzner server shared with anwar.os, behind its edge Caddy
+  (automatic HTTPS). `master` → **https://shiftella.app**, `dev` →
+  **https://dev.shiftella.app** (password-protected), deployed by
+  `.github/workflows/deploy-hetzner.yml` with instant rollback — see
+  [deploy/hetzner/README.md](deploy/hetzner/README.md). The old Vercel URL stays
+  up for a transition period.
 - **Database:** two Supabase projects — **prod** and **preprod** — kept in sync
   via the migrations in `supabase/migrations/`. CI (`verify`) runs lint, tests
   and the build on every PR.
 - **Versioning:** semver tags (`vX.Y.Z`) + GitHub Releases per release. Notable
   releases also carry a **codename** — a Czech town, advancing A→Z
-  (v1.9.0 = _Adamov_, v1.10.0 = _Beroun_, v1.11.0 = _Cheb_).
+  (v1.9.0 = _Adamov_, v1.10.0 = _Beroun_, v1.11.0 = _Cheb_, v1.12.0 = _Děčín_).
 - **Scheduled jobs (pg_cron):** auto-end open shifts at Europe/Prague midnight;
   late-for-shift alerts every 5 minutes.
 

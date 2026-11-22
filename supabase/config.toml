@@ -2,7 +2,7 @@
 # https://supabase.com/docs/guides/local-development/cli/config
 # A string used to distinguish different Supabase projects on the same host. Defaults to the
 # working directory name when running `supabase init`.
-project_id = "planuj-smeny-app"
+project_id = "shiftella"
 
 [api]
 enabled = true
@@ -373,6 +373,20 @@ deno_version = 2
 [functions.invite-employee]
 enabled = true
 verify_jwt = true
+
+# Billing (docs/billing.md). Checkout + Portal need a signed-in Head Admin;
+# Stripe calls the webhook without a JWT — its signature is the auth.
+[functions.billing-checkout]
+enabled = true
+verify_jwt = true
+
+[functions.billing-portal]
+enabled = true
+verify_jwt = true
+
+[functions.stripe-webhook]
+enabled = true
+verify_jwt = false
 
 [analytics]
 enabled = true

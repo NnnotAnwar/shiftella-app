@@ -9,10 +9,12 @@ import {
     ClockCounterClockwiseIcon,
     GearIcon,
     MegaphoneIcon,
+    CreditCardIcon,
     type Icon,
 } from '@phosphor-icons/react';
 
 import { usePermissions } from '@shared/auth/usePermissions';
+import { canManageBilling } from '@features/billing/useBilling';
 import { useTranslation } from '@shared/preferences/PreferencesContext';
 import { useRequestsBadge } from '@features/requests/useRequests';
 import { useUnreadAnnouncementCount } from '@features/announcements/useUnreadAnnouncementCount';
@@ -42,6 +44,7 @@ export interface NavCaps {
     team: boolean; // the Team page (members.view)
     timesheets: boolean; // timesheets.view
     activity: boolean; // activity.view
+    billing: boolean; // the org's Head Admin (and Superadmin)
 }
 
 /** Named live-badge sources, resolved by `useNavItems`. */
@@ -83,6 +86,7 @@ export const NAV_ITEMS: readonly NavItemDef[] = [
     { id: 'admin', labelKey: 'nav.team', icon: ShieldCheckIcon, route: '/admin', section: 'manage', visible: (c) => c.team, mobileSlot: { manager: 4 } },
     
     { id: 'activity', labelKey: 'nav.activity', icon: ClockCounterClockwiseIcon, route: '/activity', section: 'manage', visible: (c) => c.activity },
+    { id: 'billing', labelKey: 'nav.billing', icon: CreditCardIcon, route: '/billing', section: 'system', visible: (c) => c.billing },
     { id: 'settings', labelKey: 'nav.settings', icon: GearIcon, route: '/settings', section: 'system' },
 ];
 
@@ -104,7 +108,8 @@ export interface ResolvedNavItem {
  * and with live badge counts folded in. Consumed by Sidebar and BottomNav.
  */
 export function useNavItems(): ResolvedNavItem[] {
-    const { can } = usePermissions();
+    const { can, user } = usePermissions();
+    const billing = canManageBilling(user);
     const team = can('members.view');
     const timesheets = can('timesheets.view');
     const activity = can('activity.view');
@@ -115,7 +120,7 @@ export function useNavItems(): ResolvedNavItem[] {
     const t = useTranslation();
 
     return useMemo(() => {
-        const caps: NavCaps = { team, timesheets, activity };
+        const caps: NavCaps = { team, timesheets, activity, billing };
         const audience: MobileAudience = observer ? 'manager' : 'staff';
         const badges: Record<BadgeSource, number> = { pendingRequests, unreadAnnouncements };
         return NAV_ITEMS.filter((i) => !i.visible || i.visible(caps)).map((i) => ({
@@ -128,5 +133,5 @@ export function useNavItems(): ResolvedNavItem[] {
             mobileSlot: i.mobileSlot?.[audience] ?? null,
             badgeCount: i.badge ? badges[i.badge] : 0,
         }));
-    }, [team, timesheets, activity, observer, pendingRequests, unreadAnnouncements, t]);
+    }, [team, timesheets, activity, billing, observer, pendingRequests, unreadAnnouncements, t]);
 }

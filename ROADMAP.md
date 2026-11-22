@@ -1,15 +1,23 @@
 # Roadmap
 
-Living plan for **Planuj Směny**. Direction, not commitments — dates and scope
+Living plan for **Shiftella**. Direction, not commitments — dates and scope
 change. Concrete work is tracked as **GitHub Issues** grouped into **Milestones**;
 this file is the high-level story, plus a large **idea backlog** to draw from.
 
-_Last updated: November 7, 2026 · current version 1.11.0 “Cheb”._
+_Last updated: November 22, 2026 · current version 1.12.0 “Děčín”._
 
 ---
 
 ## ✅ Shipped (recent highlights)
 
+- **v1.12.0 “Děčín”** — rebrand to **Shiftella** (new name, S logo, app id
+  `com.shiftella.app`, domain **shiftella.app**); **subscriptions** with Stripe —
+  Free (≤ 5 people, 1 location), Team (flat 449 Kč/month, ≤ 15 people,
+  3 locations), Business (45 Kč per person, from 10), 30-day Business trial,
+  existing organizations grandfathered, plan gifts by the platform owner, limits
+  enforced in the database; **forgot / reset password**, unconfirmed-email resend,
+  CS/EN switch and field hints on the sign-in pages; hosting moved to **Hetzner**
+  (shared edge Caddy, atomic deploys with rollback).
 - **v1.11.0 “Cheb”** — **owner sign-up** (create your organization); **custom
   roles**, Discord-style (view / change / delete per area, order = hierarchy,
   hand out only what you hold, a default Employee role for everyone); **shift
@@ -217,6 +225,6 @@ Opinionated guidance for where to invest next.
 - **Issues** — one per concrete task, labelled by `area:*` and `priority:*`.
 - **Milestones** — group issues into shippable chunks.
 - **Releases** — semver tags (`vX.Y.Z`) + GitHub Releases with changelogs; notable
-  releases carry a Czech-town codename A→Z (v1.9.0 = _Adamov_, v1.10.0 = _Beroun_, v1.11.0 = _Cheb_; next = _D_).
+  releases carry a Czech-town codename A→Z (v1.9.0 = _Adamov_, v1.10.0 = _Beroun_, v1.11.0 = _Cheb_, v1.12.0 = _Děčín_; next = _E_).
 
 Have an idea or found a bug? Open an issue.

@@ -5,6 +5,8 @@ import { Link, useLocation } from 'react-router-dom';
 
 import { formatTime } from '@shared/utils/date';
 import { Clock } from '@shared/components/Clock';
+import { BrandGlyph } from '@shared/components/BrandGlyph';
+import { APP_NAME } from '@shared/brand';
 import { MapPinIcon, SignOutIcon, MagnifyingGlassIcon, SidebarSimpleIcon } from '@phosphor-icons/react';
 
 import { useAuthContext } from '@features/auth/AuthContext';
@@ -480,11 +482,11 @@ export function Sidebar({ onLocationSelect, onOpenSearch }: SidebarProps) {
         <div className={`shrink-0 flex justify-between items-center h-10 md:h-9 relative md:mb-3 ${collapsed ? 'md:justify-center' : ''}`}>
           <div className="flex items-center gap-2 z-10">
             <div className="size-8 bg-linear-to-br from-emerald-400 to-emerald-600 rounded-lg flex items-center justify-center shadow-md shadow-emerald-500/30 ring-1 ring-white/40">
-              <span className="font-display text-white font-black text-sm tracking-[-0.04em]">PS</span>
+              <BrandGlyph className="size-full text-white" />
             </div>
             {/* Hidden in the collapsed rail — a 2-line wrap would overflow the rail width. */}
             <span className={`${collapsed ? 'hidden' : 'hidden lg:block'} font-display font-bold tracking-[-0.02em] text-sm whitespace-nowrap text-ink dark:text-white`}>
-              Planuj Směny
+              {APP_NAME}
             </span>
           </div>
 

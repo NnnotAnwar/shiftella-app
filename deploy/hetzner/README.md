@@ -92,7 +92,7 @@ Before you start, the server is set up by the anwar.os repo (Docker plus the edg
 9. **Automatic deploys:** in `deploy-hetzner.yml`, uncomment the `push:` block (master → production, dev → preprod). In Vercel, disconnect Git, so pushes don't deploy in two places.
 10. **Decommission Vercel**, after 2–4 weeks:
     - uninstall the **Vercel ↔ Supabase integration**, which still overwrites the preprod Site URL on every Vercel deploy;
-    - keep `planuj-smeny.vercel.app` alive as a redirect to `https://shiftella.app` for a while, because old emails, old native builds and installed PWAs point there;
+    - keep the old `*.vercel.app` production URL alive as a redirect to `https://shiftella.app` for a while, because old emails, old native builds and installed PWAs point there;
     - then remove the old URLs from the Supabase allow-lists and delete `vercel.json`.
 
 ## Headers and CSP

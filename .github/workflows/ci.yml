@@ -39,3 +39,20 @@ jobs:
 
       - name: Build (tsc -b + vite build)
         run: yarn build
+
+  # The Shiftella site file for the shared edge Caddy (deploy/hetzner/) must
+  # parse and provision with the server's Caddy version. Installing it on the
+  # server stays a manual step (it needs a Caddy reload).
+  caddy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate deploy/hetzner/shiftella.caddy
+        run: bash deploy/hetzner/ci/validate-caddy.sh
+
+      - name: Lint the release + setup scripts
+        run: |
+          bash -n deploy/hetzner/bin/shiftella-release
+          bash -n deploy/hetzner/setup-shared.sh
+          shellcheck -S warning deploy/hetzner/bin/shiftella-release deploy/hetzner/setup-shared.sh deploy/hetzner/ci/validate-caddy.sh

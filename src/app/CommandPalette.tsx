@@ -251,9 +251,9 @@ export function CommandPalette({ open, onClose, locations, selectedLocationId, o
 
                 {/* Hint */}
                 <div className="flex items-center gap-3 px-4 py-2 border-t border-gray-100 dark:border-white/10 text-micro text-gray-400 normal-case tracking-normal">
-                    <span><kbd className="font-sans">↑↓</kbd> move</span>
-                    <span><kbd className="font-sans">↵</kbd> open</span>
-                    <span><kbd className="font-sans">esc</kbd> close</span>
+                    <span><kbd className="font-sans">↑↓</kbd> {t('cmd.hintMove')}</span>
+                    <span><kbd className="font-sans">↵</kbd> {t('cmd.hintOpen')}</span>
+                    <span><kbd className="font-sans">esc</kbd> {t('cmd.hintClose')}</span>
                 </div>
             </motion.div>
         </div>,

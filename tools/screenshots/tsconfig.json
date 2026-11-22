@@ -1,0 +1,10 @@
+{
+  // Type-check the harness on its own (`corepack yarn tsc -p tools/screenshots`).
+  // Not referenced from the root tsconfig, so the app build never sees it.
+  "extends": "../../tsconfig.node.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "../../node_modules/.tmp/tsconfig.screenshots.tsbuildinfo",
+    "lib": ["ES2023", "DOM"]
+  },
+  "include": ["vite.config.ts", "fake"]
+}

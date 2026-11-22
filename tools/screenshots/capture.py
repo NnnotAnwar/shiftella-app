@@ -1,0 +1,202 @@
+"""
+Capture README screenshots of the real app running on the screenshot harness
+(tools/screenshots/vite.config.ts: fake in-memory Supabase + pinned clock).
+
+    python3 tools/screenshots/capture.py [--base http://127.0.0.1:5199] [--out docs/screenshots] [--only name ...] [--dark]
+
+Every request that is not to the local harness or the web-font hosts is
+aborted, so nothing can reach a real backend.
+"""
+
+from __future__ import annotations
+
+import argparse
+import sys
+from pathlib import Path
+from urllib.parse import urlparse
+
+from playwright.sync_api import Page, sync_playwright
+
+ROOT = Path(__file__).resolve().parents[2]
+ALLOWED_HOSTS = {"127.0.0.1", "localhost", "fonts.googleapis.com", "fonts.gstatic.com", "api.fontshare.com", "cdn.fontshare.com"}
+
+DESKTOP = {"viewport": {"width": 1440, "height": 900}, "device_scale_factor": 2}
+MOBILE = {
+    "viewport": {"width": 390, "height": 844},
+    "device_scale_factor": 3,
+    "is_mobile": True,
+    "has_touch": True,
+    "user_agent": (
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 "
+        "(KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1"
+    ),
+}
+
+# Czech UI, default theme (light) + default colour scheme, via the app's own
+# localStorage preferences (PreferencesContext / ThemeContext).
+PREFS_SCRIPT = """
+(() => {
+  try {
+    localStorage.setItem('language', 'cs');
+    localStorage.setItem('time-format', '24h');
+    localStorage.setItem('theme', '%THEME%');
+    localStorage.setItem('combo-key', 'lilac-indigo');
+    localStorage.setItem('schedule-view', 'grid');
+    // Notifications were already looked at (no stale unread dot).
+    localStorage.setItem('notifications_seen_at:00000000-0000-4000-8001-000000000001', new Date().toISOString());
+  } catch (e) {}
+})();
+"""
+
+
+def settle(page: Page, extra_ms: int = 900) -> None:
+    page.wait_for_load_state("networkidle")
+    # Wait until no skeleton loaders / page loader are left.
+    try:
+        page.wait_for_function(
+            "() => !document.querySelector('span.animate-pulse, p.animate-pulse')",
+            timeout=8000,
+        )
+    except Exception:  # noqa: BLE001 — still take the shot, but say so
+        print(f"  ! loaders still visible on {page.url}")
+    page.wait_for_timeout(extra_ms)
+
+
+def go(page: Page, base: str, path: str) -> None:
+    page.goto(base + path)
+    settle(page)
+
+
+# --- Shots ---------------------------------------------------------------------
+def shot_dashboard(page: Page, base: str, out: Path) -> None:
+    go(page, base, "/")
+    page.screenshot(path=out / "desktop-dashboard.png")
+
+
+def scroll_to_text(page: Page, text: str, offset: int = 24) -> None:
+    el = page.get_by_text(text, exact=False).first
+    top = el.evaluate("e => e.getBoundingClientRect().top + window.scrollY")
+    page.evaluate(f"window.scrollTo(0, {top - offset})")
+    page.wait_for_timeout(500)
+
+
+def shot_schedule(page: Page, base: str, out: Path) -> None:
+    go(page, base, "/schedule")
+    # The roster grid sits under the team / leave / open-shift cards.
+    scroll_to_text(page, "Klepnutím na prázdné políčko")
+    page.screenshot(path=out / "schedule-grid.png")
+
+
+def shot_my_hours(page: Page, base: str, out: Path) -> None:
+    go(page, base, "/overview")
+    page.screenshot(path=out / "my-hours.png")
+
+
+def shot_requests(page: Page, base: str, out: Path) -> None:
+    go(page, base, "/requests")
+    page.screenshot(path=out / "requests.png")
+
+
+def shot_billing(page: Page, base: str, out: Path) -> None:
+    go(page, base, "/billing")
+    page.screenshot(path=out / "billing.png")
+
+
+def shot_palette(page: Page, base: str, out: Path) -> None:
+    go(page, base, "/")
+    page.keyboard.press("Meta+k")
+    page.wait_for_timeout(800)
+    page.screenshot(path=out / "command-palette.png")
+
+
+def shot_mobile_home(page: Page, base: str, out: Path) -> None:
+    go(page, base, "/")
+    page.screenshot(path=out / "mobile-home.png")
+
+
+def shot_mobile_schedule(page: Page, base: str, out: Path) -> None:
+    go(page, base, "/schedule")
+    page.get_by_role("button", name="Moje směny").click()
+    page.wait_for_timeout(800)
+    page.screenshot(path=out / "mobile-schedule.png")
+
+
+def shot_mobile_more(page: Page, base: str, out: Path) -> None:
+    go(page, base, "/")
+    page.get_by_role("button", name="Více").click()
+    page.wait_for_timeout(2500)
+    page.screenshot(path=out / "mobile-more.png")
+
+
+DESKTOP_SHOTS = {
+    "dashboard": shot_dashboard,
+    "schedule": shot_schedule,
+    "my-hours": shot_my_hours,
+    "requests": shot_requests,
+    "billing": shot_billing,
+    "palette": shot_palette,
+}
+MOBILE_SHOTS = {
+    "mobile-home": shot_mobile_home,
+    "mobile-schedule": shot_mobile_schedule,
+    "mobile-more": shot_mobile_more,
+}
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--base", default="http://127.0.0.1:5199")
+    ap.add_argument("--out", default=str(ROOT / "docs/screenshots"))
+    ap.add_argument("--only", nargs="*", default=None)
+    ap.add_argument("--dark", action="store_true", help="dark theme instead of light")
+    args = ap.parse_args()
+
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    theme = "dark" if args.dark else "light"
+    problems: list[str] = []
+
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch()
+
+        def run(shots: dict, ctx_opts: dict) -> None:
+            ctx = browser.new_context(
+                locale="cs-CZ",
+                timezone_id="Europe/Prague",
+                color_scheme=theme,
+                reduced_motion="reduce",
+                service_workers="block",
+                **ctx_opts,
+            )
+            ctx.add_init_script(PREFS_SCRIPT.replace("%THEME%", theme))
+
+            def guard(route):
+                host = urlparse(route.request.url).hostname or ""
+                if host in ALLOWED_HOSTS:
+                    route.continue_()
+                else:
+                    problems.append(f"blocked request: {route.request.url}")
+                    route.abort()
+
+            ctx.route("**/*", guard)
+            page = ctx.new_page()
+            page.on("console", lambda m: problems.append(f"console.{m.type}: {m.text}") if m.type in ("error", "warning") else None)
+            page.on("pageerror", lambda e: problems.append(f"pageerror: {e}"))
+            for name, fn in shots.items():
+                if args.only and name not in args.only:
+                    continue
+                print(f"-> {name}")
+                fn(page, args.base, out)
+            ctx.close()
+
+        run(DESKTOP_SHOTS, DESKTOP)
+        run(MOBILE_SHOTS, MOBILE)
+        browser.close()
+
+    for p in problems:
+        print("  !", p)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

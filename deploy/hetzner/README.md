@@ -75,7 +75,7 @@ Before you start, the server is set up by the anwar.os repo (Docker plus the edg
    docker compose -p edge exec caddy caddy validate --config /etc/caddy/base/Caddyfile --adapter caddyfile
    docker compose -p edge exec caddy caddy reload --config /etc/caddy/base/Caddyfile --adapter caddyfile
    ```
-   The service may not be called `caddy`; use the name in anwar.os `infra/edge`. Do the same after every change to `shiftella.caddy`. CI already validates the file on every PR (`ci.yml` → job `caddy`).
+   Do the same after every change to `shiftella.caddy`. CI already validates the file on every PR (`ci.yml` → job `caddy`).
 6. **Supabase Auth**, in each project → Authentication → URL Configuration:
    - **preprod:** Site URL `https://dev.shiftella.app`; Redirect URLs `https://dev.shiftella.app/**`.
    - **prod:** Redirect URLs `https://shiftella.app/**` now. Site URL `https://shiftella.app` at the cut-over (step 8).

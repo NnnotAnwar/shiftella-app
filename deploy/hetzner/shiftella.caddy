@@ -76,6 +76,7 @@
 
 # --- Production -------------------------------------------------------------
 www.shiftella.app {
+	import security_headers
 	redir https://shiftella.app{uri} permanent
 }
 

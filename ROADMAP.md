@@ -1,6 +1,6 @@
 # Roadmap
 
-Living plan for **Planuj Směny**. Direction, not commitments — dates and scope
+Living plan for **Shiftella**. Direction, not commitments — dates and scope
 change. Concrete work is tracked as **GitHub Issues** grouped into **Milestones**;
 this file is the high-level story, plus a large **idea backlog** to draw from.
 

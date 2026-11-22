@@ -1,10 +1,11 @@
-# Planuj Směny
+# Shiftella
 
 A modern, cross-platform **shift-planning and time-tracking** app for Czech
 teams. An owner signs up and creates their organization; people clock in and out
 by location in real time, confirm and swap their planned shifts; admins plan the
 rota, decide requests and post announcements — each with exactly the rights
 their (custom) role gives them. On the web or as a native Android/iOS app.
+Website: [shiftella.app](https://shiftella.app) (launching with v1.12).
 
 > **Status: active development (beta).** Features and UI change frequently.
 > _Version 1.11.0 — “Cheb” · last updated: November 7, 2026._ · See the [Roadmap](ROADMAP.md).
@@ -310,7 +311,7 @@ npx cap open android   # or: npx cap open ios
 
 ### Push notifications (native)
 Push requires Firebase (FCM). In short: create a Firebase project, add the
-Android app (`com.planujsmeny.app`), drop `google-services.json` into
+Android app (`com.shiftella.app`), drop `google-services.json` into
 `android/app/` (gitignored), then deploy the function and wire the webhooks:
 ```bash
 supabase secrets set FCM_SERVICE_ACCOUNT="$(cat service-account.json)"

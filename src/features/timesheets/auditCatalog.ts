@@ -27,6 +27,7 @@ export const AUDIT_GROUPS = {
     roles: ['role_created', 'role_updated', 'role_moved', 'role_deleted', 'role_permissions'],
     announcements: ['announcement_posted', 'announcement_edited', 'announcement_deleted'],
     places: ['location_created', 'location_updated', 'location_archived', 'location_restored', 'location_hours', 'org_created', 'org_updated'],
+    billing: ['plan_changed', 'plan_granted', 'plan_grant_removed'],
 } as const;
 
 export type AuditGroup = keyof typeof AUDIT_GROUPS;

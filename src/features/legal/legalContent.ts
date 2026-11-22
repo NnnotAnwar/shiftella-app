@@ -1,6 +1,6 @@
 /**
  * --- LEGAL CONTENT ---
- * Draft Privacy Policy & Terms of Service for Planuj Směny, in EN + CS. This is
+ * Draft Privacy Policy & Terms of Service for Shiftella, in EN + CS. This is
  * reasonable boilerplate tailored to what the app actually does (shift tracking,
  * Supabase storage, FCM push) — review with a lawyer before relying on it.
  */
@@ -20,6 +20,7 @@ export interface LegalContent {
 }
 
 const SUPPORT_EMAIL = 'anuarkairulla@gmail.com';
+const SERVICE_URL = 'https://shiftella.app';
 const UPDATED_EN = 'Last updated: 2 July 2026';
 const UPDATED_CS = 'Naposledy aktualizováno: 2. července 2026';
 
@@ -28,7 +29,7 @@ export const LEGAL: Record<LegalDoc, Record<LegalLang, LegalContent>> = {
         en: {
             title: 'Privacy Policy',
             updated: UPDATED_EN,
-            intro: 'This Privacy Policy explains what information Planuj Směny collects, why, and how it is handled.',
+            intro: `This Privacy Policy explains what information Shiftella (${SERVICE_URL}) collects, why, and how it is handled.`,
             sections: [
                 { h: 'Data we collect', p: 'Account details (first/last name, email, username), your organization and role, your shift records (clock-in/out times and the locations you select), and — only if you enable notifications — your device push token.' },
                 { h: 'How we use it', p: 'To operate the shift-tracking service: recording your shifts, showing timesheets to you and your managers, and delivering the notifications you opted into.' },
@@ -44,7 +45,7 @@ export const LEGAL: Record<LegalDoc, Record<LegalLang, LegalContent>> = {
         cs: {
             title: 'Zásady ochrany osobních údajů',
             updated: UPDATED_CS,
-            intro: 'Tyto zásady vysvětlují, jaké údaje aplikace Planuj Směny shromažďuje, proč a jak s nimi nakládá.',
+            intro: `Tyto zásady vysvětlují, jaké údaje aplikace Shiftella (${SERVICE_URL}) shromažďuje, proč a jak s nimi nakládá.`,
             sections: [
                 { h: 'Jaké údaje shromažďujeme', p: 'Údaje účtu (jméno a příjmení, e-mail, uživatelské jméno), vaši organizaci a roli, záznamy o směnách (časy začátku/konce a vybraná místa) a — pouze pokud zapnete oznámení — token vašeho zařízení pro push.' },
                 { h: 'K čemu je používáme', p: 'K provozu služby evidence směn: zaznamenávání směn, zobrazování výkazů vám a vašim vedoucím a doručování oznámení, která jste si zapnuli.' },
@@ -62,9 +63,9 @@ export const LEGAL: Record<LegalDoc, Record<LegalLang, LegalContent>> = {
         en: {
             title: 'Terms of Service',
             updated: UPDATED_EN,
-            intro: 'These Terms govern your use of Planuj Směny. By using the app you agree to them.',
+            intro: 'These Terms govern your use of Shiftella. By using the app you agree to them.',
             sections: [
-                { h: 'The service', p: 'Planuj Směny is a workforce shift-management tool for tracking shifts, locations and timesheets, provided on an "as is" basis.' },
+                { h: 'The service', p: `Shiftella (${SERVICE_URL}) is a workforce shift-management tool for tracking shifts, locations and timesheets, provided on an "as is" basis.` },
                 { h: 'Accounts', p: 'You are responsible for keeping your login credentials secure and for the accuracy of the information you provide. Do not share your account.' },
                 { h: 'Acceptable use', p: 'Do not misuse the service, attempt unauthorized access, disrupt its operation, or use it to break any applicable law or your employer’s policies.' },
                 { h: 'Your data responsibilities', p: 'If you create an organization and invite members, you act as the data controller for their personal data (names, shifts, locations). You are responsible for having a lawful basis to process it, for informing your team how it is used, and for handling their data-subject requests. You must not use the app to process personal data unlawfully.' },
@@ -79,9 +80,9 @@ export const LEGAL: Record<LegalDoc, Record<LegalLang, LegalContent>> = {
         cs: {
             title: 'Podmínky použití',
             updated: UPDATED_CS,
-            intro: 'Tyto podmínky upravují používání aplikace Planuj Směny. Používáním aplikace s nimi souhlasíte.',
+            intro: 'Tyto podmínky upravují používání aplikace Shiftella. Používáním aplikace s nimi souhlasíte.',
             sections: [
-                { h: 'Služba', p: 'Planuj Směny je nástroj pro správu směn — evidenci směn, míst a výkazů — poskytovaný „tak, jak je“.' },
+                { h: 'Služba', p: `Shiftella (${SERVICE_URL}) je nástroj pro správu směn — evidenci směn, míst a výkazů — poskytovaný „tak, jak je“.` },
                 { h: 'Účty', p: 'Odpovídáte za bezpečnost svých přihlašovacích údajů a za správnost zadaných informací. Účet nesdílejte.' },
                 { h: 'Přijatelné použití', p: 'Nezneužívejte službu, nepokoušejte se o neoprávněný přístup, nenarušujte její provoz a nepoužívejte ji v rozporu se zákony či pravidly zaměstnavatele.' },
                 { h: 'Vaše odpovědnost za údaje', p: 'Pokud vytvoříte organizaci a pozvete členy, vystupujete jako správce jejich osobních údajů (jména, směny, místa). Odpovídáte za právní základ jejich zpracování, za informování svého týmu o způsobu použití a za vyřízení žádostí subjektů údajů. Aplikaci nesmíte používat ke zpracování osobních údajů v rozporu se zákonem.' },

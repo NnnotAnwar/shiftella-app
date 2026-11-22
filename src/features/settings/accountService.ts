@@ -36,7 +36,7 @@ export async function buildMyDataExport(userId: string): Promise<string> {
 /** Export the caller's data as a JSON file (native share sheet or web download). */
 export async function exportMyData(userId: string): Promise<void> {
     const json = await buildMyDataExport(userId);
-    const fileName = `planuj-smeny-data-${new Date().toISOString().slice(0, 10)}.json`;
+    const fileName = `shiftella-data-${new Date().toISOString().slice(0, 10)}.json`;
 
     if (Capacitor.isNativePlatform()) {
         const res = await Filesystem.writeFile({

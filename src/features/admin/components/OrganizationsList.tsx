@@ -4,6 +4,8 @@ import { DataTable, type Column } from '@/shared/components/DataTable';
 import { useTranslation } from '@shared/preferences/PreferencesContext';
 import { ActionButtons } from './ActionButtons';
 import { EmptyState } from './AdminStateViews';
+import { OrgPlanBadge } from '@features/billing/OrgPlanAdmin';
+import { useAllOrgPlans } from '@features/billing/useBilling';
 
 function OrgIdentity({ org }: { org: Organization }) {
     return (
@@ -31,8 +33,10 @@ export function OrganizationsList({
     onDelete: (org: Organization) => void;
 }) {
     const t = useTranslation();
+    const { rows: plans } = useAllOrgPlans();
     const columns: Column<Organization>[] = [
         { key: 'org', header: t('profile.field.organization'), render: (org) => <OrgIdentity org={org} /> },
+        { key: 'plan', header: t('billing.planColumn'), width: 'w-32', render: (org) => <OrgPlanBadge row={plans.get(org.id)} /> },
         { key: 'locs', header: t('admin.colLocs'), align: 'right', width: 'w-20', hideOnMobile: true, render: (org) => <span className="text-metric-sm dark:text-white">{org.locations.length}</span> },
         { key: 'users', header: t('admin.colUsers'), align: 'right', width: 'w-16 sm:w-20', render: (org) => <span className="text-metric-sm dark:text-white">{org.profiles.length}</span> },
         { key: 'actions', header: '', align: 'right', width: 'w-20 sm:w-28', render: (org) => <div className="flex justify-end"><ActionButtons onEdit={() => onEdit(org)} onDelete={() => onDelete(org)} /></div> },

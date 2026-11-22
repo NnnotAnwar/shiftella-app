@@ -374,6 +374,20 @@ deno_version = 2
 enabled = true
 verify_jwt = true
 
+# Billing (docs/billing.md). Checkout + Portal need a signed-in Head Admin;
+# Stripe calls the webhook without a JWT — its signature is the auth.
+[functions.billing-checkout]
+enabled = true
+verify_jwt = true
+
+[functions.billing-portal]
+enabled = true
+verify_jwt = true
+
+[functions.stripe-webhook]
+enabled = true
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

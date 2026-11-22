@@ -32,6 +32,7 @@ import { shareOrExport } from '@shared/utils/shareExport';
 import { PageHeader } from '@shared/components/PageHeader';
 import { Button } from '@shared/components/Button';
 import { useWages } from '@features/wages/useWages';
+import { useEntitlements, useUpgradeNudge } from '@features/billing/useBilling';
 import { estimatePay } from '@features/wages/types';
 
 /**
@@ -59,7 +60,11 @@ export default function OverviewPage() {
   });
   const [exportOpen, setExportOpen] = useState(false);
   const { mine: myWage } = useWages(user);
-  const myRate = myWage.data ?? null;
+  // Wages are a Team+ feature (billing): no pay estimate on Free.
+  const ent = useEntitlements();
+  const nudge = useUpgradeNudge();
+  const wagesOn = ent.can('wages');
+  const myRate = wagesOn ? myWage.data ?? null : null;
 
   // A running shift keeps counting: re-derive the stats once a minute while
   // one is open (otherwise the numbers froze at the moment the page loaded).
@@ -344,7 +349,7 @@ export default function OverviewPage() {
             <div className="flex items-center gap-2">
               <div className="relative">
                 <button
-                  onClick={() => setExportOpen((v) => !v)}
+                  onClick={() => (ent.can('exports') ? setExportOpen((v) => !v) : nudge('exports'))}
                   disabled={!stats.hasData}
                   className="glass flex items-center justify-center w-9 h-9 rounded-xl text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 active:scale-90 transition-all disabled:opacity-40"
                   title={t('overview.export')}

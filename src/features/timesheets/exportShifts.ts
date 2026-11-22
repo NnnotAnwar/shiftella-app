@@ -5,6 +5,7 @@ import { type Shift } from '@shared/types';
 import { shiftHours, fmtHours, fmtDuration, shiftGrossHours, shiftBreakHours } from '@features/shifts/shiftStats';
 import { formatClock, monthShort, weekdayShort } from '@shared/utils/date';
 import type { TranslationKey } from '@shared/i18n/translations';
+import { APP_NAME } from '@shared/brand';
 
 /**
  * --- SHIFT EXPORT ---
@@ -169,7 +170,7 @@ function drawTimesheetPDF(doc: jsPDF, ctx: ExportContext) {
 
     doc.setFontSize(20);
     doc.setTextColor(0);
-    doc.text('Planuj Směny', 14, 22);
+    doc.text(APP_NAME, 14, 22);
     doc.setFontSize(11);
     doc.setTextColor(100);
     doc.text(`${L.title} — ${ctx.employeeName}`, 14, 30);

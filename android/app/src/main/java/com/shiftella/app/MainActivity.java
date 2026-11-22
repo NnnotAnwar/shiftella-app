@@ -1,4 +1,4 @@
-package com.planujsmeny.app;
+package com.shiftella.app;
 
 import com.getcapacitor.BridgeActivity;
 

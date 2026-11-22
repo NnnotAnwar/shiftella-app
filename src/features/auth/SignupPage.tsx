@@ -1,12 +1,15 @@
 import { useState, type SyntheticEvent } from 'react';
-import { Link } from 'react-router-dom';
-import { BuildingsIcon, EnvelopeSimpleIcon, EyeIcon, EyeSlashIcon, LockIcon, UserIcon, PaperPlaneTiltIcon } from '@phosphor-icons/react';
+import { Link, useLocation } from 'react-router-dom';
+import { ArrowLeftIcon, BuildingsIcon, EnvelopeSimpleIcon, UserIcon, PaperPlaneTiltIcon } from '@phosphor-icons/react';
 import { usePreferences, useTranslation } from '@shared/preferences/PreferencesContext';
 import { Button } from '@shared/components/Button';
 import { Input } from '@shared/components/Input';
 import { FormError } from '@shared/components/FormError';
 import { authService } from './authService';
 import { AuthShell } from './AuthShell';
+import { PasswordField } from './PasswordField';
+import { ResendButton } from './ResendButton';
+import { MIN_PASSWORD, carryEmail, emailFromState, isValidEmail } from './authFlows';
 
 /**
  * --- CREATE AN ORGANIZATION (owner sign-up) ---
@@ -16,17 +19,17 @@ import { AuthShell } from './AuthShell';
  * comes back right away and <PublicRoute> takes them into the app.
  */
 
-const MIN_PASSWORD = 8;
-
 export function SignupPage() {
     const t = useTranslation();
     const { language } = usePreferences();
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [orgName, setOrgName] = useState('');
-    const [email, setEmail] = useState('');
+    const location = useLocation();
+    // An email typed on the sign-in page comes along in router state.
+    const [email, setEmail] = useState(() => emailFromState(location.state));
+    const [emailTouched, setEmailTouched] = useState(false);
     const [password, setPassword] = useState('');
-    const [showPassword, setShowPassword] = useState(false);
     const [agreed, setAgreed] = useState(false);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
@@ -36,6 +39,10 @@ export function SignupPage() {
         e.preventDefault();
         setError('');
         if (!orgName.trim()) return setError(t('signup.orgRequired'));
+        if (!isValidEmail(email)) {
+            setEmailTouched(true);
+            return document.getElementById('email')?.focus();
+        }
         if (password.length < MIN_PASSWORD) return setError(t('signup.weakPassword', { n: MIN_PASSWORD }));
         if (!agreed) return setError(t('signup.agreeRequired'));
         setBusy(true);
@@ -65,6 +72,9 @@ export function SignupPage() {
         }
     };
 
+    // Inline email check: only once the field was left (or on submit), and live after that.
+    const emailInvalid = emailTouched && !isValidEmail(email);
+
     if (sentTo) {
         return (
             <AuthShell title={t('signup.checkTitle')} eyebrow={t('signup.eyebrow')}>
@@ -74,9 +84,25 @@ export function SignupPage() {
                     </div>
                     <p className="text-body text-ink dark:text-slate-200">{t('signup.checkBody', { email: sentTo })}</p>
                     <p className="text-caption text-ink-soft dark:text-slate-400">{t('signup.checkHint')}</p>
-                    <Link to="/login" className="inline-block text-meta font-semibold text-emerald-700 hover:underline dark:text-emerald-300">
-                        {t('signup.backToLogin')}
-                    </Link>
+                    {/* The sign-up itself just sent an email → start locked. */}
+                    <ResendButton
+                        cooledDown
+                        cooldownKey={`signup:${sentTo.toLowerCase()}`}
+                        onSend={() => authService.resendSignupConfirmation(sentTo)}
+                    />
+                    <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 border-t border-ink/5 pt-3 dark:border-white/5">
+                        <button
+                            type="button"
+                            onClick={() => setSentTo(null)}
+                            className="inline-flex items-center gap-1 text-meta font-semibold text-ink-soft hover:text-ink dark:text-slate-400 dark:hover:text-white"
+                        >
+                            <ArrowLeftIcon weight="bold" className="size-3.5" />
+                            {t('auth.differentEmail')}
+                        </button>
+                        <Link to="/login" state={{ email: sentTo }} className="text-meta font-semibold text-emerald-700 hover:underline dark:text-emerald-300">
+                            {t('signup.backToLogin')}
+                        </Link>
+                    </div>
                 </div>
             </AuthShell>
         );
@@ -97,7 +123,7 @@ export function SignupPage() {
             below={
                 <p className="mt-4 text-center text-meta text-ink-soft dark:text-slate-400">
                     {t('signup.haveAccount')}{' '}
-                    <Link to="/login" className="font-semibold text-emerald-700 hover:underline dark:text-emerald-300">
+                    <Link to="/login" state={carryEmail(email)} className="font-semibold text-emerald-700 hover:underline dark:text-emerald-300">
                         {t('auth.signIn')}
                     </Link>
                 </p>
@@ -138,35 +164,22 @@ export function SignupPage() {
                             autoComplete="email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
+                            onBlur={() => setEmailTouched(email.trim() !== '')}
+                            invalid={emailInvalid}
+                            aria-invalid={emailInvalid || undefined}
+                            aria-describedby={emailInvalid ? 'email-error' : undefined}
                             placeholder={t('signup.email')}
                         />
                     </div>
+                    {emailInvalid && (
+                        <p id="email-error" className="mt-1 px-1 text-caption text-red-600 dark:text-red-400">
+                            {t('auth.emailInvalid')}
+                        </p>
+                    )}
                 </div>
                 <div>
                     {label('pw', t('auth.password'))}
-                    <div>
-                        <Input
-                            id="pw"
-                            icon={LockIcon}
-                            type={showPassword ? 'text' : 'password'}
-                            required
-                            minLength={MIN_PASSWORD}
-                            autoComplete="new-password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            placeholder={t('signup.passwordPh', { n: MIN_PASSWORD })}
-                            trailing={
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword((v) => !v)}
-                                    aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
-                                    className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
-                                >
-                                    {showPassword ? <EyeSlashIcon weight="bold" className="w-4 h-4" /> : <EyeIcon weight="bold" className="w-4 h-4" />}
-                                </button>
-                            }
-                        />
-                    </div>
+                    <PasswordField id="pw" value={password} onChange={setPassword} autoComplete="new-password" placeholder={t('auth.password')} minLength={MIN_PASSWORD} />
                 </div>
 
                 {/* Legal links open in a new tab so the half-filled form survives. */}

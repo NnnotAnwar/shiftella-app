@@ -2,6 +2,17 @@ import { Capacitor } from '@capacitor/core';
 import { supabase } from '@shared/api/supabaseClient';
 import { type User, type NameChangeRequest, type PermissionMap, type PermissionArea } from '@shared/types';
 import { ProfileSchema, NameChangeRequestSchema } from '@shared/types';
+import { EMAIL_NOT_CONFIRMED } from './authFlows';
+
+/**
+ * Where auth emails (confirm, reset password) link back to. The native app has
+ * no web origin of its own, so it uses the public web URL (VITE_PUBLIC_SITE_URL),
+ * falling back to the legacy host until the Shiftella domain is live.
+ */
+function appOrigin(): string {
+  if (!Capacitor.isNativePlatform()) return window.location.origin;
+  return import.meta.env.VITE_PUBLIC_SITE_URL || 'https://planuj-smeny.vercel.app';
+}
 
 /**
  * --- AUTH SERVICE ---
@@ -84,9 +95,14 @@ export const authService = {
     const { data, error } = await supabase.functions.invoke('username-login', {
       body: { username, password },
     });
-    // Any non-2xx (FunctionsHttpError) or missing tokens => generic failure.
+    // Any non-2xx (FunctionsHttpError) or missing tokens => generic failure —
+    // except "email not confirmed", which the function only reports after the
+    // password checked out (so it reveals nothing to someone without it).
     if (error || !data?.access_token || !data?.refresh_token) {
-      throw new Error('Invalid username or password.');
+      const body = await readFunctionErrorBody(error);
+      throw Object.assign(new Error('Invalid username or password.'), {
+        code: body?.code === EMAIL_NOT_CONFIRMED ? EMAIL_NOT_CONFIRMED : undefined,
+      });
     }
     const { error: sessionError } = await supabase.auth.setSession({
       access_token: data.access_token,
@@ -105,8 +121,7 @@ export const authService = {
    * ignored there by design. The confirmation email brings them to /login.
    */
   async signUpOwner(input: { firstName: string; lastName: string; email: string; password: string; organizationName: string; language?: 'en' | 'cs' }) {
-    // The native app has no web origin of its own for the email link.
-    const origin = Capacitor.isNativePlatform() ? 'https://planuj-smeny.vercel.app' : window.location.origin;
+    const origin = appOrigin();
     return await supabase.auth.signUp({
       email: input.email,
       password: input.password,
@@ -128,6 +143,35 @@ export const authService = {
       email,
       password,
     });
+  },
+
+  /** Sends the sign-up confirmation email again (unconfirmed owners). */
+  async resendSignupConfirmation(email: string) {
+    return await supabase.auth.resend({
+      type: 'signup',
+      email,
+      options: { emailRedirectTo: `${appOrigin()}/login` },
+    });
+  },
+
+  /**
+   * Emails a password-reset link. The "Reset password" template links to
+   * `{{ .RedirectTo }}?token_hash=…&type=recovery`, i.e. our /reset-password.
+   */
+  async requestPasswordReset(email: string) {
+    return await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${appOrigin()}/reset-password`,
+    });
+  },
+
+  /** Redeems the one-time recovery token from the reset email → a session. */
+  async verifyRecoveryToken(tokenHash: string) {
+    return await supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'recovery' });
+  },
+
+  /** Sets a new password for the signed-in (recovering) user. */
+  async updatePassword(password: string) {
+    return await supabase.auth.updateUser({ password });
   },
 
   /**
@@ -184,3 +228,15 @@ export const authService = {
     if (error) throw new Error(error.message);
   },
 };
+
+/** The JSON body of a failed Edge Function call (FunctionsHttpError keeps the Response in `context`). */
+async function readFunctionErrorBody(error: unknown): Promise<{ code?: string } | null> {
+  const res = (error as { context?: { json?: () => Promise<unknown> } } | null)?.context;
+  if (!res || typeof res.json !== 'function') return null;
+  try {
+    const body = await res.json();
+    return body && typeof body === 'object' ? (body as { code?: string }) : null;
+  } catch {
+    return null;
+  }
+}

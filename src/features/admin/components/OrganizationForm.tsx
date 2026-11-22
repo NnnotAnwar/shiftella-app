@@ -4,6 +4,7 @@ import { Field, TextInput, FormError, FormActions } from './FormControls';
 import { useAdminContext } from '../AdminContext';
 import type { Organization } from '@/shared/types';
 import { useTranslation } from '@shared/preferences/PreferencesContext';
+import { OrgPlanControl } from '@features/billing/OrgPlanAdmin';
 
 /** Turns a free-text name into a url-safe slug. */
 function slugify(value: string): string {
@@ -84,6 +85,12 @@ export function OrganizationForm({ org, onClose }: { org?: Organization; onClose
                 <FormError message={error} />
                 <FormActions onCancel={onClose} isBusy={isBusy} submitLabel={isEdit ? t('common.save') : t('common.create')} />
             </form>
+            {/* Superadmin: grant this organization a plan for free (billing). */}
+            {isEdit && org && (
+                <div className="mt-4">
+                    <OrgPlanControl orgId={org.id} />
+                </div>
+            )}
         </Modal>
     );
 }

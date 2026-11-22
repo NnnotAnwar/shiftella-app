@@ -24,6 +24,7 @@ import { RoleGuard } from './features/auth/RoleGuards';
 import { ProtectedRoute, PublicRoute } from './app/router/RouteGuards';
 import { ErrorBoundary } from './shared/components/ErrorBoundary';
 import { PageLoader } from './shared/components/PageLoader';
+import { GatedPage } from './features/billing/UpgradeGate';
 
 /**
  * --- MAIN APP COMPONENT ---
@@ -40,6 +41,12 @@ import { PageLoader } from './shared/components/PageLoader';
 const HomePage = lazy(() => import('./app/layout/HomePage').then((m) => ({ default: m.HomePage })));
 const LoginPage = lazy(() => import('./features/auth/LoginPage').then((m) => ({ default: m.LoginPage })));
 const SignupPage = lazy(() => import('./features/auth/SignupPage').then((m) => ({ default: m.SignupPage })));
+const ForgotPasswordPage = lazy(() =>
+  import('./features/auth/ForgotPasswordPage').then((m) => ({ default: m.ForgotPasswordPage })),
+);
+const ResetPasswordPage = lazy(() =>
+  import('./features/auth/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage })),
+);
 const AcceptInvitePage = lazy(() =>
   import('./features/auth/AcceptInvitePage').then((m) => ({ default: m.AcceptInvitePage })),
 );
@@ -53,6 +60,7 @@ const AuditLogPage = lazy(() => import('./features/timesheets/AuditLogPage').the
 const SettingsPage = lazy(() => import('./features/settings/SettingsPage'));
 const ProfilePage = lazy(() => import('./features/profile/ProfilePage'));
 const LegalPage = lazy(() => import('./features/legal/LegalPage').then((m) => ({ default: m.LegalPage })));
+const BillingPage = lazy(() => import('./features/billing/BillingPage').then((m) => ({ default: m.BillingPage })));
 
 /** Handles Android hardware back button: go back in history or exit app. */
 function BackButtonHandler() {
@@ -93,6 +101,8 @@ export default function App() {
                   <Routes>
                     {/* PUBLIC: invite acceptance manages its own session (no guard). */}
                     <Route path="/accept-invite" element={<AcceptInvitePage />} />
+                    {/* PUBLIC: the reset email's recovery session must not bounce it to "/". */}
+                    <Route path="/reset-password" element={<ResetPasswordPage />} />
 
                     {/* PUBLIC: legal pages, linkable from anywhere (incl. app stores). */}
                     <Route path="/privacy" element={<LegalPage doc="privacy" />} />
@@ -103,6 +113,7 @@ export default function App() {
                       <Route path="/login" element={<LoginPage />} />
                       {/* Owners create their organization (store release); staff join by invite. */}
                       <Route path="/signup" element={<SignupPage />} />
+                      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                     </Route>
 
                     {/* PROTECTED: requires a session; redirects to "/login" otherwise. */}
@@ -115,13 +126,15 @@ export default function App() {
                         <Route element={<RoleGuard />}>
                           <Route path="admin" element={<AdminPage />} />
                           {/* Timesheets: managers+ view (rank >= 20); admins edit. */}
-                          <Route path="timesheets" element={<TimesheetsPage />} />
+                          <Route path="timesheets" element={<GatedPage feature="timesheets" titleKey="nav.timesheets"><TimesheetsPage /></GatedPage>} />
                           {/* Activity Log is admin-only (rank >= 30); the page self-guards too. */}
-                          <Route path="activity" element={<AuditLogPage />} />
+                          <Route path="activity" element={<GatedPage feature="activityLog" titleKey="nav.activity"><AuditLogPage /></GatedPage>} />
                         </Route>
                         {/* Requests: everyone files and tracks theirs; admins decide, managers observe. */}
                         <Route path="requests" element={<RequestsPage />} />
                         <Route path="settings" element={<SettingsPage />} />
+                        {/* Billing: the org's Head Admin (page self-guards); plan gates wrap Team/Business pages above. */}
+                        <Route path="billing" element={<BillingPage />} />
                         <Route path="profile" element={<ProfilePage />} />
                         <Route path="profile/:userId" element={<ProfilePage />} />
                       </Route>

@@ -152,7 +152,7 @@ def main() -> int:
     ap.add_argument(
         "--billing",
         default=None,
-        choices=["trial", "trial3", "free", "past_due"],
+        choices=["trial", "trial3", "free", "past_due", "ended", "cancel_scheduled"],
         help="subscription scenario in the demo data (default: paid Business)",
     )
     args = ap.parse_args()

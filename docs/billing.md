@@ -16,6 +16,11 @@ mirrors it into the database. Nothing here is live until you do the steps below.
   Afterwards it falls back to Free: nothing is deleted; whatever is above the
   Free limits stays but becomes read-only (no new members / locations, gated
   pages show an upgrade prompt).
+- **Switch to Free** (Billing page, Free card) cancels a live subscription
+  **at the end of the paid period** (or of the Stripe trial) — nothing is
+  refunded or charged; until then the plan keeps working, and it can be
+  resumed. When a paid subscription has ended, the org is on Free with the
+  same rules as after the trial (see *Plan ended prompt*).
 - **Existing organizations** (at migration time) are **grandfathered**:
   Business, forever, free (`source = 'grandfathered'`).
 - **Gifts:** the Superadmin can grant any org Team or Business for free, until a
@@ -147,6 +152,13 @@ Check it: `psql "$PREPROD_DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/billing_s
   subscription shows Team × 1 in Stripe and a credit on the next invoice;
   *Switch to Business* back → Business × max(10, members), invoiced at once.
   *Manage billing* opens a portal without any plan-switch option.
+- Switch to Free: on a live subscription, Free card → *Switch to Free* →
+  confirm → Stripe shows "Cancels {date}"; the Billing page shows *Ends {date}*,
+  *From {date}* on the Free card and *Resume subscription*. *Resume* → the
+  cancel is gone in Stripe. To see the plan-ended prompt, cancel the
+  subscription immediately in the Stripe Dashboard (or with a test clock
+  advance past the period end): the webhook writes `status = canceled`, the
+  next app open shows *Your subscription has ended* once.
 
 ## How it works (for maintainers)
 
@@ -190,6 +202,45 @@ Check it: `psql "$PREPROD_DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/billing_s
     `PLAN_LIMIT_MEMBERS` (> 15 members) / `PLAN_LIMIT_LOCATIONS` (> 3 active
     locations). Same plan + interval → `{ ok: true, unchanged: true }`.
   - Native apps show no switch buttons (store rules, as for Checkout).
+- **Switch to Free = cancel at period end.** The Free card shows *Switch to
+  Free* for an org with a live Stripe subscription (`trialing` / `active` /
+  `past_due`) that isn't already cancel-scheduled. One confirm says when it
+  ends (`current_period_end`, which is the trial end while trialing), that
+  everything works until then, and that afterwards the Free limits apply
+  (5 people, 1 location) and anything above them becomes read-only — nothing
+  is deleted; when the org is over those limits it lists today's counts.
+  `billing-change-plan` with `{ plan: 'free' }` sets
+  `cancel_at_period_end: true` (no proration, no charge), writes the row
+  (`syncFromStripe`) and returns `{ ok: true, plan: 'free', endsAt }`; toast
+  "Your subscription ends on {date}, then you move to Free." Same refusals as
+  a switch (`GRANTED`, `GRANDFATHERED`, `NO_SUBSCRIPTION`); already scheduled
+  → `{ ok: true, unchanged: true, endsAt }`. The portal's own *Cancel* does
+  the same thing.
+- **Resume.** While `cancel_at_period_end` is set, the status chip reads
+  *Ends {date}*, the current plan shows *Ends on {date} — then you move to
+  Free* with a *Resume subscription* button, and the Free card shows *From
+  {date}* instead of its button. Resume calls `billing-change-plan` with
+  `{ action: 'resume' }` → `cancel_at_period_end: false` (no charge, no
+  confirm, toast "Subscription resumed."). Any plan / interval switch also
+  clears a scheduled cancel (its confirm says so). Request parsing, refusals
+  and the cancel flag are pure helpers in `_shared/billing.ts`
+  (`parseChangeRequest`, `changeRefusal`, `cancelFlagTarget`, `endsAtOf`),
+  tested by `_shared/billing_test.ts` (`deno test`, from a copy of
+  `supabase/functions` outside the repo).
+- **Plan ended prompt.** When a paid Stripe subscription has ended
+  (`status = canceled`, effective plan Free, no active gift, not
+  grandfathered — `planEnded` / `subscriptionEnded()` in `entitlements.ts`),
+  the owner sees, on the web only and never on `/billing`, the same one-time
+  dialog as after the trial (`PlanEndedDialog`, rules in `endedPrompt.ts`)
+  titled *Your subscription has ended*: what Free keeps, what needs a paid
+  plan, *Choose plan* → `/billing`, *Stay on Free*. It is remembered on the
+  device per organization **and per ended subscription id**
+  (`billing-plan-ended-seen:{org}:{sub}`), so a later subscription that ends
+  asks again; opening `/billing` counts as seen. The banner says *Your
+  subscription has ended — you are on Free now.* with *Choose plan*
+  (dismissible for the day), the Billing page shows a *Subscription ended*
+  chip, and the nav pill shows *Choose plan* as on any Free org. Native apps
+  get only the banner, with "manage on the web" and no link.
 - **Trial carry-over:** upgrading with more than 2 days of the trial left sets
   Stripe's `trial_end` to the trial's end, so nothing is charged before it.
 - **Activity log:** `plan_changed` (plan / status / interval / cancel at period

@@ -1,9 +1,11 @@
 // =============================================================================
 // EDGE FUNCTION: billing-change-plan
 // -----------------------------------------------------------------------------
-// Switches the CALLER's organization's live Stripe subscription to another plan
-// and/or billing interval, in place. Body: { plan: 'team' | 'business',
-// interval: 'month' | 'year' }
+// Changes the CALLER's organization's live Stripe subscription in place.
+// Body (parseChangeRequest in _shared/billing.ts):
+//   { plan: 'team' | 'business', interval: 'month' | 'year' } → switch plan / interval
+//   { plan: 'free' }        → cancel at the end of the paid period (or trial)
+//   { action: 'resume' }    → undo a scheduled cancel
 //
 // Authorization (from the JWT, never the body): Superadmin or the org's Head
 // Admin (has_permission('billing', 'write')) — same as billing-checkout.
@@ -19,8 +21,14 @@
 //     PLAN_LIMIT_MEMBERS / PLAN_LIMIT_LOCATIONS.
 //   • Proration (prorationForChange): upgrade (Team → Business, monthly →
 //     yearly) is invoiced now; a downgrade leaves a credit for the next
-//     invoice; while trialing nothing is prorated.
+//     invoice; while trialing nothing is prorated. A switch also clears a
+//     scheduled cancel.
 //   • Same plan + interval → 200 { ok: true, unchanged: true }.
+//   • To Free: cancel_at_period_end = true → 200 { ok: true, plan: 'free',
+//     endsAt }. The plan keeps running until endsAt; then Stripe cancels the
+//     subscription and the webhook drops the org to Free (nothing is deleted).
+//   • Resume: cancel_at_period_end = false → 200 { ok: true, resumed: true }.
+//     Neither charges anything. Already so → { ok: true, unchanged: true }.
 //
 // Deploy: supabase functions deploy billing-change-plan
 // =============================================================================
@@ -29,10 +37,13 @@ import {
     LIVE_STATUSES,
     TEAM_MAX_LOCATIONS,
     TEAM_MAX_MEMBERS,
+    cancelFlagTarget,
+    changeRefusal,
     corsHeaders,
-    hasActiveGrant,
+    endsAtOf,
     json,
     loadSubscription,
+    parseChangeRequest,
     planForPrice,
     priceFor,
     prorationForChange,
@@ -53,17 +64,14 @@ Deno.serve(async (req) => {
         if (caller instanceof Response) return caller;
         const { admin, organizationId } = caller;
 
-        const body = await req.json().catch(() => ({}));
-        const plan = body.plan === 'team' || body.plan === 'business' ? (body.plan as PaidPlan) : null;
-        const interval: Interval | null = body.interval === 'year' ? 'year' : body.interval === 'month' ? 'month' : null;
-        if (!plan || !interval) return json({ error: 'Pick a plan (team / business) and a billing interval (month / year).' }, 400);
+        const request = parseChangeRequest(await req.json().catch(() => ({})));
+        if (!request) {
+            return json({ error: 'Pick a plan (free / team / business) and a billing interval (month / year), or { action: "resume" }.' }, 400);
+        }
 
         const row = await loadSubscription(admin, organizationId);
-        if (hasActiveGrant(row)) return json({ error: 'Your plan was granted by Shiftella — nothing to pay.', code: 'GRANTED' }, 409);
-        if (row?.source === 'grandfathered') return json({ error: 'Your organization already has Business for free.', code: 'GRANDFATHERED' }, 409);
-        if (!row?.stripe_subscription_id || !LIVE_STATUSES.includes(row.status)) {
-            return json({ error: 'There is no active subscription to change — pick a plan first.', code: 'NO_SUBSCRIPTION' }, 409);
-        }
+        const refusal = changeRefusal(row);
+        if (refusal || !row?.stripe_subscription_id) return json(refusal ?? { error: 'No subscription.', code: 'NO_SUBSCRIPTION' }, 409);
 
         // Re-read from Stripe: the row can lag a webhook behind.
         const stripe = await stripeClient();
@@ -72,6 +80,18 @@ Deno.serve(async (req) => {
         if (!item || !LIVE_STATUSES.includes(sub.status)) {
             return json({ error: 'There is no active subscription to change — pick a plan first.', code: 'NO_SUBSCRIPTION' }, 409);
         }
+
+        // To Free / resume: only the cancel flag moves — no charge, no proration.
+        if (request.kind === 'cancel' || request.kind === 'resume') {
+            const target = cancelFlagTarget(request.kind, sub.cancel_at_period_end);
+            const result = request.kind === 'cancel' ? { plan: 'free' as const } : { resumed: true };
+            if (target === null) return json({ ok: true, unchanged: true, ...result, endsAt: sub.cancel_at_period_end ? endsAtOf(sub) : null }, 200);
+            const updated = await stripe.subscriptions.update(sub.id, { cancel_at_period_end: target });
+            await syncFromStripe(admin, sub.id, organizationId);
+            return json({ ok: true, ...result, endsAt: target ? endsAtOf(updated) : null }, 200);
+        }
+
+        const { plan, interval } = request;
         const from = planForPrice(item.price?.id) ?? {
             plan: (row.plan === 'team' ? 'team' : 'business') as PaidPlan,
             interval: (row.interval === 'year' ? 'year' : 'month') as Interval,

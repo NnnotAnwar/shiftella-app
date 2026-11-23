@@ -1,7 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
+import { formatDateInText, formatDateShort } from '@shared/utils/date';
 import type { User } from '@shared/types';
 import type { Subscription } from './entitlements';
 
@@ -40,6 +41,8 @@ vi.mock('./billingService', () => {
             checkoutUrl: vi.fn(() => new Promise<string>(() => {})),
             portalUrl: vi.fn(),
             changePlan: vi.fn(async () => ({ unchanged: false })),
+            switchToFree: vi.fn(async () => ({ unchanged: false, endsAt: null })),
+            resume: vi.fn(async () => ({ unchanged: false })),
         },
     };
 });
@@ -265,5 +268,174 @@ describe('BillingPage — switching a live subscription in place', () => {
         renderPage();
         expect(await screen.findByText('billing.manageOnWeb:Shiftella')).toBeInTheDocument();
         expect(screen.queryByText(/billing\.switchTo/)).toBeNull();
+    });
+});
+
+describe('BillingPage — switch to Free, resume, ended', () => {
+    const periodEnd = new Date(Date.now() + 12 * 86_400_000).toISOString();
+    const live = (over: Partial<Subscription> = {}): Subscription => ({
+        ...base,
+        plan: 'team',
+        interval: 'month',
+        status: 'active',
+        seats: 1,
+        trial_ends_at: null,
+        source: 'stripe',
+        stripe_customer_id: 'cus_1',
+        stripe_subscription_id: 'sub_1',
+        current_period_end: periodEnd,
+        ...over,
+    });
+    const freeButton = () => screen.queryByRole('button', { name: 'billing.switchToFree' });
+
+    beforeEach(() => {
+        native.value = false;
+        usage = { members: 4, locations: 1 };
+        vi.mocked(toast).mockClear();
+        vi.mocked(billingService.switchToFree).mockReset().mockResolvedValue({ unchanged: false, endsAt: periodEnd });
+        vi.mocked(billingService.resume).mockReset().mockResolvedValue({ unchanged: false });
+    });
+
+    it('"Switch to Free" only with a live subscription that is not cancel-scheduled', async () => {
+        for (const status of ['active', 'trialing', 'past_due'] as const) {
+            row = live({ status });
+            const view = renderPage();
+            expect(await screen.findByRole('button', { name: 'billing.switchToFree' })).toBeEnabled();
+            view.unmount();
+        }
+
+        const none: Subscription[] = [
+            { ...base }, // our no-card trial
+            live({ status: 'canceled' }), // ended
+            live({ cancel_at_period_end: true }), // already scheduled
+            live({ manual_plan: 'business' }), // gift
+            { ...base, status: 'active', source: 'grandfathered', trial_ends_at: null },
+        ];
+        for (const r of none) {
+            row = r;
+            const view = renderPage();
+            await screen.findByText('billing.currentPlan');
+            expect(freeButton()).toBeNull();
+            view.unmount();
+        }
+
+        native.value = true;
+        row = live();
+        renderPage();
+        await screen.findByText('billing.currentPlan');
+        expect(freeButton()).toBeNull();
+    });
+
+    it('confirm: cancelled at the period end, works until then, Free limits after — no counts when it fits', async () => {
+        row = live();
+        renderPage();
+        fireEvent.click(await screen.findByRole('button', { name: 'billing.switchToFree' }));
+        expect(screen.getByRole('dialog', { name: 'billing.toFree.title' })).toBeInTheDocument();
+        expect(screen.getByText(`billing.toFree.paid:${formatDateInText(periodEnd)}`)).toBeInTheDocument();
+        expect(screen.getByText('billing.toFree.after:5,1')).toBeInTheDocument();
+    });
+
+    it('confirm during a Stripe trial: ends with the trial, nothing charged', async () => {
+        row = live({ status: 'trialing' });
+        renderPage();
+        fireEvent.click(await screen.findByRole('button', { name: 'billing.switchToFree' }));
+        expect(screen.getByText(`billing.toFree.trial:${formatDateInText(periodEnd)}`)).toBeInTheDocument();
+    });
+
+    it('confirm over the Free limits lists the current counts (Czech few / many for locations)', async () => {
+        row = live({ plan: 'business', seats: 12 });
+        usage = { members: 12, locations: 3 };
+        const view = renderPage();
+        fireEvent.click(await screen.findByRole('button', { name: 'billing.switchToFree' }));
+        expect(
+            screen.getByText(
+                'billing.toFree.after:5,1 billing.toFree.over:billing.toFree.overMembers:12billing.toFree.andbilling.toFree.overLocationsFew:3',
+            ),
+        ).toBeInTheDocument();
+        view.unmount();
+
+        usage = { members: 5, locations: 7 };
+        renderPage();
+        fireEvent.click(await screen.findByRole('button', { name: 'billing.switchToFree' }));
+        expect(screen.getByText('billing.toFree.after:5,1 billing.toFree.over:billing.toFree.overLocationsMany:7')).toBeInTheDocument();
+    });
+
+    it('confirming cancels at period end: toast with the date, refetch, no stuck spinner', async () => {
+        row = live();
+        renderPage();
+        const button = await screen.findByRole('button', { name: 'billing.switchToFree' });
+        fireEvent.click(button);
+        const fetches = vi.mocked(billingService.getSubscription).mock.calls.length;
+        row = live({ cancel_at_period_end: true });
+        await act(async () => void fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'billing.switchToFree' })));
+        expect(billingService.switchToFree).toHaveBeenCalledTimes(1);
+        expect(toast).toHaveBeenCalledWith(`billing.toFreeDone:${formatDateInText(periodEnd)}`, 'success');
+        expect(vi.mocked(billingService.getSubscription).mock.calls.length).toBeGreaterThan(fetches);
+        await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+        // Now scheduled: the Free card says from when, the current plan offers Resume.
+        expect(await screen.findByText(`billing.fromDate:${formatDateInText(periodEnd)}`)).toBeInTheDocument();
+        expect(freeButton()).toBeNull();
+        expect(screen.getByRole('button', { name: 'billing.resume' })).toBeEnabled();
+    });
+
+    it('a failure shows the error and leaves the button usable', async () => {
+        row = live();
+        vi.mocked(billingService.switchToFree).mockRejectedValue(new BillingError('Stripe is down'));
+        renderPage();
+        const button = await screen.findByRole('button', { name: 'billing.switchToFree' });
+        fireEvent.click(button);
+        await act(async () => void fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'billing.switchToFree' })));
+        expect(toast).toHaveBeenCalledWith('Stripe is down', 'error');
+        expect(button).not.toHaveAttribute('aria-busy');
+        expect(button).toBeEnabled();
+    });
+
+    it('cancel scheduled: "Ends {date}" chip, end date line, "From {date}" on Free, Resume', async () => {
+        row = live({ cancel_at_period_end: true });
+        renderPage();
+        expect(await screen.findByText(`billing.status.endsOn:${formatDateShort(periodEnd)}`)).toBeInTheDocument();
+        expect(screen.getByText(`billing.endsOn:${formatDateInText(periodEnd)}`)).toBeInTheDocument();
+        expect(screen.getByText(`billing.fromDate:${formatDateInText(periodEnd)}`)).toBeInTheDocument();
+        expect(freeButton()).toBeNull();
+    });
+
+    it('resume: no confirm, toast, refetch, no stuck spinner', async () => {
+        row = live({ cancel_at_period_end: true });
+        renderPage();
+        const button = await screen.findByRole('button', { name: 'billing.resume' });
+        const fetches = vi.mocked(billingService.getSubscription).mock.calls.length;
+        row = live();
+        await act(async () => void fireEvent.click(button));
+        expect(screen.queryByRole('dialog')).toBeNull();
+        expect(billingService.resume).toHaveBeenCalledTimes(1);
+        expect(toast).toHaveBeenCalledWith('billing.resumed', 'success');
+        expect(vi.mocked(billingService.getSubscription).mock.calls.length).toBeGreaterThan(fetches);
+        expect(await screen.findByRole('button', { name: 'billing.switchToFree' })).toBeEnabled();
+        expect(screen.queryByRole('button', { name: 'billing.resume' })).toBeNull();
+    });
+
+    it('a plan switch while a cancel is scheduled says it resumes the subscription', async () => {
+        row = live({ cancel_at_period_end: true });
+        renderPage();
+        fireEvent.click(await screen.findByRole('button', { name: 'billing.switchTo:billing.plan.business' }));
+        expect(screen.getByText('billing.switchChargeNow billing.switchMinNote:10 billing.switchResumes')).toBeInTheDocument();
+    });
+
+    it('native: no Resume, no Free button, even when cancel-scheduled', async () => {
+        native.value = true;
+        row = live({ cancel_at_period_end: true });
+        renderPage();
+        expect(await screen.findByText(`billing.endsOn:${formatDateInText(periodEnd)}`)).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'billing.resume' })).toBeNull();
+        expect(screen.queryByText(/billing\.fromDate/)).toBeNull();
+    });
+
+    it('a subscription that ended: "Subscription ended" chip + hint, Checkout buttons again', async () => {
+        row = live({ status: 'canceled', current_period_end: new Date(Date.now() - 2 * 86_400_000).toISOString() });
+        renderPage();
+        expect(await screen.findByText('billing.status.planEnded')).toBeInTheDocument();
+        expect(screen.getByText('billing.planEndedHint')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'billing.choose:billing.plan.team' })).toBeEnabled();
+        expect(freeButton()).toBeNull();
     });
 });

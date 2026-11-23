@@ -31,6 +31,12 @@ describe('billingNavPill', () => {
         expect(pill(null)?.text).toBe('nav.pill.choosePlan');
     });
 
+    it('a paid subscription ended: the same "Choose plan" (native: muted "Free")', () => {
+        const ended = { ...base, ...stripe, status: 'canceled' as const, plan: 'team' as const };
+        expect(pill(ended)).toEqual({ text: 'nav.pill.choosePlan', tone: 'accent', urgent: false });
+        expect(pill(ended, { native: true })).toEqual({ text: 'billing.plan.free', tone: 'muted', urgent: false });
+    });
+
     it('native: no call to buy — just a muted "Free"', () => {
         expect(pill(null, { native: true })).toEqual({ text: 'billing.plan.free', tone: 'muted', urgent: false });
     });

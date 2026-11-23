@@ -102,6 +102,19 @@ export function formatDateLong(isoString: string | null | undefined): string {
   }
 }
 
+/**
+ * Localised "3 January 2027" / "3. ledna 2027" — a date inside a sentence
+ * (no weekday: Czech "ne" for Sunday reads as "not").
+ */
+export function formatDateInText(isoString: string | null | undefined): string {
+  if (!isoString) return '';
+  try {
+    return new Date(isoString).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' });
+  } catch {
+    return '';
+  }
+}
+
 /** Localised "Tuesday 3 Nov" / "úterý 3. lis" — the dashboard greeting's date line. */
 export function formatWeekdayDate(date: Date): string {
   return date.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'short' });

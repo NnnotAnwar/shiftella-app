@@ -16,8 +16,10 @@ corepack yarn screenshots --billing free --only dashboard billing --out /tmp/sho
 ```
 
 `--billing` swaps the demo subscription: `trial` (20 days left), `trial3` (3 days
-left), `free` (the trial ended → Free) or `past_due`; without it the org pays for
-Business (the README shots). By hand: set `localStorage['demo-billing']` and reload.
+left), `free` (the trial ended → Free), `past_due`, `ended` (the paid Stripe
+subscription was canceled → Free; the dashboard shows the one-time "ended"
+dialog) or `cancel_scheduled` (switched to Free, ends at the period end);
+without it the org pays for Business (the README shots). By hand: set `localStorage['demo-billing']` and reload.
 
 Needs Python 3 with `playwright` (`pip install playwright && playwright install chromium`)
 and Pillow. `pngquant` is used for optimisation when installed; otherwise Pillow

@@ -247,9 +247,14 @@ export async function syncSeats(admin: SupabaseClient, orgId: string | null | un
         const item = sub.items.data[0];
         if (!item) return;
         if (item.quantity !== qty) {
+            // Monthly: prorations ride on the next invoice (at most a month away).
+            // Yearly: extra seats are invoiced right away (the next invoice could
+            // be months off); fewer seats leave a credit for the next invoice.
+            // At renewal (prorate: false) the count is simply corrected.
+            const yearlyIncrease = row.interval === 'year' && qty > (item.quantity ?? 0);
             await stripe.subscriptions.update(sub.id, {
                 items: [{ id: item.id, quantity: qty }],
-                proration_behavior: opts.prorate === false ? 'none' : 'create_prorations',
+                proration_behavior: opts.prorate === false ? 'none' : yearlyIncrease ? 'always_invoice' : 'create_prorations',
             });
         }
         if (row.seats !== qty) await admin.from('subscriptions').update({ seats: qty }).eq('organization_id', orgId);

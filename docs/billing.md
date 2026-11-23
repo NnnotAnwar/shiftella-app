@@ -151,6 +151,8 @@ Check it: `psql "$PREPROD_DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/billing_s
   `invoice.upcoming`. It skips orgs without a live Stripe subscription (trial,
   grandfathered, gifts) and never fails the member action. Invited people
   count from the invite (their profile exists from then).
+  Proration: monthly plans put the difference on the next invoice; **yearly plans invoice extra seats immediately** (`always_invoice`) and leave a credit for fewer seats; at renewal (`invoice.upcoming`) the count is corrected without proration.
+
 - **Trial carry-over:** upgrading with more than 2 days of the trial left sets
   Stripe's `trial_end` to the trial's end, so nothing is charged before it.
 - **Activity log:** `plan_changed` (plan / status / interval / cancel at period

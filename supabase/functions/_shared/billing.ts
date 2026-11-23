@@ -1,7 +1,8 @@
 // =============================================================================
 // SHARED: billing helpers for the Edge Functions (Stripe + subscriptions).
 // -----------------------------------------------------------------------------
-// Used by billing-checkout, billing-portal, stripe-webhook and — for keeping the
+// Used by billing-checkout, billing-change-plan, billing-portal, stripe-webhook
+// and — for keeping the
 // Business seat count in step — invite-employee, delete-employee and
 // delete-account. Stripe is loaded lazily (dynamic import) so the member
 // functions don't pay its cold-start cost unless an org actually has a paid
@@ -22,6 +23,13 @@ export type SubStatus = 'trialing' | 'active' | 'past_due' | 'canceled' | 'incom
 
 /** Business bills per member with this minimum; Team is a flat price (quantity 1). */
 export const BUSINESS_MIN_SEATS = 10;
+
+/** Team's hard limits (mirrors LIMITS.team in src/features/billing/plans.ts and plan_*_limit in SQL). */
+export const TEAM_MAX_MEMBERS = 15;
+export const TEAM_MAX_LOCATIONS = 3;
+
+/** Stripe statuses that still bill (and so can be changed in place). */
+export const LIVE_STATUSES: readonly string[] = ['trialing', 'active', 'past_due'];
 
 export const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -93,6 +101,96 @@ export function quantityFor(plan: PaidPlan, members: number): number {
     return plan === 'business' ? Math.max(BUSINESS_MIN_SEATS, members) : 1;
 }
 
+// --- Plan changes ------------------------------------------------------------------
+
+export type ProrationBehavior = 'always_invoice' | 'create_prorations' | 'none';
+
+const PLAN_RANK: Record<PaidPlan, number> = { team: 1, business: 2 };
+
+/**
+ * An upgrade is a higher plan (Team → Business) or a longer interval (monthly →
+ * yearly); everything else is a downgrade. Mirrors `changeKind()` in
+ * src/features/billing/plans.ts — keep them in step.
+ */
+export function isUpgrade(from: { plan: PaidPlan; interval: Interval }, to: { plan: PaidPlan; interval: Interval }): boolean {
+    return PLAN_RANK[to.plan] > PLAN_RANK[from.plan] || (from.interval === 'month' && to.interval === 'year');
+}
+
+/**
+ * How Stripe settles a plan / interval change (billing-change-plan):
+ *   • trialing  → 'none' (nothing has been paid; the trial just continues)
+ *   • upgrade   → 'always_invoice' (the prorated difference is charged now)
+ *   • downgrade → 'create_prorations' (the unused part is a credit on the next invoice)
+ */
+export function prorationForChange(
+    from: { plan: PaidPlan; interval: Interval },
+    to: { plan: PaidPlan; interval: Interval },
+    status: string,
+): ProrationBehavior {
+    if (status === 'trialing') return 'none';
+    return isUpgrade(from, to) ? 'always_invoice' : 'create_prorations';
+}
+
+// --- billing-change-plan requests -------------------------------------------------
+
+/**
+ * What a billing-change-plan body asks for:
+ *   { plan: 'team' | 'business', interval: 'month' | 'year' } → switch in place
+ *   { plan: 'free' }                                         → cancel at period end
+ *   { action: 'resume' }                                     → undo a scheduled cancel
+ * null = a body we don't understand (400).
+ */
+export type ChangeRequest =
+    | { kind: 'switch'; plan: PaidPlan; interval: Interval }
+    | { kind: 'cancel' }
+    | { kind: 'resume' };
+
+export function parseChangeRequest(body: unknown): ChangeRequest | null {
+    const b = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>;
+    if (b.action === 'resume') return { kind: 'resume' };
+    if (b.action !== undefined) return null;
+    if (b.plan === 'free') return { kind: 'cancel' };
+    const plan = b.plan === 'team' || b.plan === 'business' ? b.plan : null;
+    const interval = b.interval === 'month' || b.interval === 'year' ? b.interval : null;
+    return plan && interval ? { kind: 'switch', plan, interval } : null;
+}
+
+export type ChangeRefusalCode = 'GRANTED' | 'GRANDFATHERED' | 'NO_SUBSCRIPTION';
+
+/**
+ * Why the org's row can't be changed in place (409), or null when it can:
+ * a Superadmin gift (GRANTED), grandfathered (GRANDFATHERED), or no live
+ * Stripe subscription (NO_SUBSCRIPTION — the client starts Checkout instead).
+ * The same for switch, cancel (→ Free) and resume.
+ */
+export function changeRefusal(
+    row: Pick<SubscriptionRow, 'manual_plan' | 'manual_until' | 'source' | 'status' | 'stripe_subscription_id'> | null,
+    now = Date.now(),
+): { error: string; code: ChangeRefusalCode } | null {
+    if (hasActiveGrant(row, now)) return { error: 'Your plan was granted by Shiftella — nothing to pay.', code: 'GRANTED' };
+    if (row?.source === 'grandfathered') return { error: 'Your organization already has Business for free.', code: 'GRANDFATHERED' };
+    if (!row?.stripe_subscription_id || !LIVE_STATUSES.includes(row.status)) {
+        return { error: 'There is no active subscription to change — pick a plan first.', code: 'NO_SUBSCRIPTION' };
+    }
+    return null;
+}
+
+/**
+ * The `cancel_at_period_end` a cancel (→ Free) / resume sets, or null when
+ * Stripe already has it (→ `{ ok: true, unchanged: true }`). Only this flag
+ * moves: no charge, no proration, the plan runs until the period (or the
+ * Stripe trial) ends.
+ */
+export function cancelFlagTarget(kind: 'cancel' | 'resume', scheduled: boolean): boolean | null {
+    const target = kind === 'cancel';
+    return target === !!scheduled ? null : target;
+}
+
+/** When a cancel-scheduled subscription ends (ISO): Stripe's `cancel_at`, else the period end (= trial end while trialing). */
+export function endsAtOf(sub: { cancel_at?: number | null; current_period_end?: number | null }): string | null {
+    return iso(sub.cancel_at ?? sub.current_period_end ?? null);
+}
+
 /** Stripe's subscription status → ours. Lapsed/paused/unpaid lose access (free). */
 export function mapStatus(s: Stripe.Subscription.Status): SubStatus {
     switch (s) {
@@ -162,8 +260,8 @@ export async function loadSubscription(admin: SupabaseClient, orgId: string): Pr
     return (data as SubscriptionRow | null) ?? null;
 }
 
-export function hasActiveGrant(row: Pick<SubscriptionRow, 'manual_plan' | 'manual_until'> | null): boolean {
-    return !!row?.manual_plan && (!row.manual_until || new Date(row.manual_until).getTime() > Date.now());
+export function hasActiveGrant(row: Pick<SubscriptionRow, 'manual_plan' | 'manual_until'> | null, now = Date.now()): boolean {
+    return !!row?.manual_plan && (!row.manual_until || new Date(row.manual_until).getTime() > now);
 }
 
 const iso = (unix: number | null | undefined) => (unix ? new Date(unix * 1000).toISOString() : null);
@@ -222,8 +320,8 @@ export async function syncFromStripe(admin: SupabaseClient, subscriptionId: stri
 
 /**
  * Keep a Business subscription's quantity equal to the member count (min. 10).
- * Team is flat: its quantity is held at 1 (this also fixes a Business → Team
- * switch in the Portal, which would otherwise keep the old member quantity).
+ * Team is flat: its quantity is held at 1 (a safety net — plan switches go
+ * through billing-change-plan, which already sets the right quantity).
  * Orgs without a live Stripe subscription (trial, grandfathered, gifts) are
  * skipped. Best effort: never throws.
  */
@@ -247,15 +345,56 @@ export async function syncSeats(admin: SupabaseClient, orgId: string | null | un
         const item = sub.items.data[0];
         if (!item) return;
         if (item.quantity !== qty) {
+            // Monthly: prorations ride on the next invoice (at most a month away).
+            // Yearly: extra seats are invoiced right away (the next invoice could
+            // be months off); fewer seats leave a credit for the next invoice.
+            // At renewal (prorate: false) the count is simply corrected.
+            const yearlyIncrease = row.interval === 'year' && qty > (item.quantity ?? 0);
             await stripe.subscriptions.update(sub.id, {
                 items: [{ id: item.id, quantity: qty }],
-                proration_behavior: opts.prorate === false ? 'none' : 'create_prorations',
+                proration_behavior: opts.prorate === false ? 'none' : yearlyIncrease ? 'always_invoice' : 'create_prorations',
             });
         }
         if (row.seats !== qty) await admin.from('subscriptions').update({ seats: qty }).eq('organization_id', orgId);
     } catch (err) {
         console.error('[billing] seat sync failed', orgId, err);
     }
+}
+
+// --- Customer Portal configuration ----------------------------------------------------
+
+const PORTAL_CONFIG_TAG = 'v2';
+let portalConfigId: string | null = null;
+
+/**
+ * The Customer Portal configuration billing-portal opens: card, invoices,
+ * billing details and cancel (at period end) — but **no plan switching**.
+ * Stripe would carry the Business quantity over to Team (10 × 449 Kč); plan and
+ * interval changes go through billing-change-plan instead. Found by
+ * `metadata.shiftella = 'v2'` (created on first use, so live mode configures
+ * itself) and cached per instance.
+ */
+export async function ensurePortalConfiguration(stripe: Stripe): Promise<string> {
+    if (portalConfigId) return portalConfigId;
+    const list = await stripe.billingPortal.configurations.list({ active: true, limit: 100 });
+    const found = list.data.find((c) => c.metadata?.shiftella === PORTAL_CONFIG_TAG);
+    if (found) {
+        portalConfigId = found.id;
+        return found.id;
+    }
+    const created = await stripe.billingPortal.configurations.create({
+        business_profile: { headline: 'Shiftella – manage your subscription' },
+        features: {
+            customer_update: { enabled: true, allowed_updates: ['email', 'address', 'name', 'tax_id'] },
+            invoice_history: { enabled: true },
+            payment_method_update: { enabled: true },
+            subscription_cancel: { enabled: true, mode: 'at_period_end' },
+            subscription_update: { enabled: false },
+        },
+        metadata: { shiftella: PORTAL_CONFIG_TAG },
+    });
+    portalConfigId = created.id;
+    return created.id;
 }
 
 /** Where Checkout / the Portal send people back to. */

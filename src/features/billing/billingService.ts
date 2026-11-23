@@ -6,23 +6,42 @@ import type { OrgUsage, Subscription } from './entitlements';
  * --- BILLING SERVICE ---
  * Reads the organization's subscription row (RLS: own org, Superadmin all) and
  * talks to the billing Edge Functions. Clients never write `subscriptions` —
- * Checkout / Portal run on Stripe, the webhook writes the row, and a
- * Superadmin's free grant goes through the admin_* RPCs.
+ * Checkout / Portal run on Stripe; plan switches, "switch to Free" (cancel at
+ * period end) and resume go through billing-change-plan; the webhook writes
+ * the row; a Superadmin's free grant goes through the admin_* RPCs.
  */
 
-/** Read a function's `{ error }` body on a non-2xx (supabase-js hides it on `error.context`). */
-async function invokeError(error: { message: string }): Promise<Error> {
+/** A billing function's error, with its machine-readable `code` (e.g. PLAN_LIMIT_MEMBERS) when it sent one. */
+export class BillingError extends Error {
+    code?: string;
+    limit?: number;
+    count?: number;
+    constructor(message: string, extra: { code?: string; limit?: number; count?: number } = {}) {
+        super(message);
+        this.name = 'BillingError';
+        Object.assign(this, extra);
+    }
+}
+
+/** Read a function's `{ error, code }` body on a non-2xx (supabase-js hides it on `error.context`). */
+async function invokeError(error: { message: string }): Promise<BillingError> {
     let message = error.message;
+    let extra: { code?: string; limit?: number; count?: number } = {};
     const resp = (error as { context?: Response }).context;
     if (resp && typeof resp.json === 'function') {
         try {
             const body = await resp.json();
             if (body?.error) message = body.error;
+            extra = {
+                code: typeof body?.code === 'string' ? body.code : undefined,
+                limit: typeof body?.limit === 'number' ? body.limit : undefined,
+                count: typeof body?.count === 'number' ? body.count : undefined,
+            };
         } catch {
             /* keep the default message */
         }
     }
-    return new Error(message);
+    return new BillingError(message, extra);
 }
 
 async function invokeForUrl(fn: 'billing-checkout' | 'billing-portal', body: Record<string, unknown>): Promise<string> {
@@ -31,6 +50,15 @@ async function invokeForUrl(fn: 'billing-checkout' | 'billing-portal', body: Rec
     const url = (data as { url?: string; error?: string })?.url;
     if (!url) throw new Error((data as { error?: string })?.error ?? 'No billing link was returned.');
     return url;
+}
+
+/** billing-change-plan: switch, cancel (→ Free) or resume; throws a BillingError with the server's `code`. */
+async function invokeChange(body: Record<string, unknown>, fallback: string): Promise<{ unchanged?: boolean; endsAt?: string | null }> {
+    const { data, error } = await supabase.functions.invoke('billing-change-plan', { body });
+    if (error) throw await invokeError(error);
+    const d = (data ?? {}) as { ok?: boolean; unchanged?: boolean; endsAt?: string | null; error?: string; code?: string };
+    if (!d.ok) throw new BillingError(d.error ?? fallback, { code: d.code });
+    return d;
 }
 
 /** The subset a Superadmin's organizations list needs. */
@@ -67,7 +95,32 @@ export const billingService = {
         return invokeForUrl('billing-checkout', { plan, interval, language });
     },
 
-    /** Stripe Customer Portal URL for the caller's organization. */
+    /**
+     * Switch the live Stripe subscription to another plan / interval in place
+     * (billing-change-plan). Throws a BillingError with `code` NO_SUBSCRIPTION
+     * (use Checkout), PLAN_LIMIT_MEMBERS / PLAN_LIMIT_LOCATIONS (doesn't fit Team).
+     */
+    async changePlan(plan: PaidPlan, interval: BillingInterval): Promise<{ unchanged: boolean }> {
+        const d = await invokeChange({ plan, interval }, 'The plan could not be changed.');
+        return { unchanged: !!d.unchanged };
+    },
+
+    /**
+     * "Switch to Free": cancel the live subscription at the end of the paid
+     * period (or the Stripe trial). `endsAt` = when it ends. Nothing is charged.
+     */
+    async switchToFree(): Promise<{ unchanged: boolean; endsAt: string | null }> {
+        const d = await invokeChange({ plan: 'free' }, 'The subscription could not be cancelled.');
+        return { unchanged: !!d.unchanged, endsAt: d.endsAt ?? null };
+    },
+
+    /** Undo a scheduled cancel (cancel_at_period_end → false). Nothing is charged. */
+    async resume(): Promise<{ unchanged: boolean }> {
+        const d = await invokeChange({ action: 'resume' }, 'The subscription could not be resumed.');
+        return { unchanged: !!d.unchanged };
+    },
+
+    /** Stripe Customer Portal URL for the caller's organization (card, invoices, billing details, cancel). */
     portalUrl(language: string): Promise<string> {
         return invokeForUrl('billing-portal', { language });
     },

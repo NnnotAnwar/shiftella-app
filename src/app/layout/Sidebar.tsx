@@ -15,6 +15,7 @@ import { useTranslation } from '@shared/preferences/PreferencesContext';
 import { getFullInitials } from '@shared/utils/getInitials';
 import { roleLabel } from '@shared/auth/permissions';
 import { useNavItems, NAV_SECTIONS, SECTION_LABEL_KEYS, type ResolvedNavItem } from '../navigation';
+import { NAV_PILL_CLASS, NAV_PILL_DOT } from '@features/billing/navPill';
 import { useRecentLocations } from '@features/locations/useRecentLocations';
 import { LocationPicker } from '@features/locations/components/LocationPicker';
 
@@ -140,6 +141,15 @@ function SidebarNavSection({
             >
               <item.icon weight={active ? 'fill' : 'regular'} className="size-4 shrink-0" />
               <span className="flex-1 truncate">{item.label}</span>
+              {item.pill && (
+                <span
+                  className={`shrink-0 whitespace-nowrap rounded-full px-1.5 py-px text-caption font-semibold ${
+                    active ? 'bg-white/25 text-white' : NAV_PILL_CLASS[item.pill.tone]
+                  }`}
+                >
+                  {item.pill.text}
+                </span>
+              )}
               {item.badgeCount > 0 && (
                 <span
                   className={`ml-auto min-w-4 h-4 px-1 rounded-full text-[10px] font-bold flex items-center justify-center ${
@@ -396,8 +406,10 @@ function CollapsedRail({
             {gi > 0 && divider}
             {items.map((item) => {
               const active = currentPath === item.route;
+              const pillDot = item.pill ? NAV_PILL_DOT[item.pill.tone] : null;
+              const tip = [item.label, item.badgeCount > 0 ? item.badgeCount : null, item.pill?.text].filter((x) => x != null).join(' · ');
               return (
-                <RailTip key={item.route} label={item.badgeCount > 0 ? `${item.label} · ${item.badgeCount}` : item.label}>
+                <RailTip key={item.route} label={tip}>
                   <Link
                     to={item.route}
                     aria-label={item.label}
@@ -405,8 +417,12 @@ function CollapsedRail({
                     className={`${RAIL_BTN} ${active ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/25' : RAIL_IDLE}`}
                   >
                     <item.icon weight={active ? 'fill' : 'regular'} className="size-4.5" />
-                    {item.badgeCount > 0 && (
+                    {item.badgeCount > 0 ? (
                       <span className="absolute top-1 right-1 size-2 rounded-full bg-rose-500 ring-2 ring-white dark:ring-slate-900" />
+                    ) : (
+                      pillDot && !active && (
+                        <span className={`absolute top-1 right-1 size-2 rounded-full ring-2 ring-white dark:ring-slate-900 ${pillDot}`} />
+                      )
                     )}
                   </Link>
                 </RailTip>

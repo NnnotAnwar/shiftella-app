@@ -1,7 +1,7 @@
 /**
  * --- PLANS ---
  * The plan catalog (decided 2026-11-21, hybrid pricing): what each plan
- * unlocks, its hard limits and its list prices. Prices are excl. VAT — Stripe
+ * unlocks, its hard limits and its list prices. Prices are final (not VAT-registered, STRIPE_AUTOMATIC_TAX=false) — Stripe
  * adds it at checkout. Limits are mirrored in the database
  * (`plan_member_limit` / `plan_location_limit` in the billing migration) and
  * in the Edge Functions (`BUSINESS_MIN_SEATS`) — keep them in step.
@@ -68,7 +68,7 @@ export const BUSINESS_MIN_SEATS = 10;
 /** Length of the no-card Business trial every new organization gets. */
 export const TRIAL_DAYS = 30;
 
-/** List prices per month, excl. VAT. Yearly is the per-month price billed annually. */
+/** List prices per month (final, no VAT added). Yearly is the per-month price billed annually. */
 export const PRICES: Record<PaidPlan, { unit: 'org' | 'member'; month: { czk: number; eur: number }; year: { czk: number; eur: number } }> = {
     team: { unit: 'org', month: { czk: 449, eur: 17.9 }, year: { czk: 359, eur: 14.3 } },
     business: { unit: 'member', month: { czk: 45, eur: 1.8 }, year: { czk: 36, eur: 1.45 } },
@@ -79,9 +79,36 @@ export function billedQuantity(plan: PaidPlan, members: number): number {
     return plan === 'business' ? Math.max(BUSINESS_MIN_SEATS, members) : 1;
 }
 
-/** Monthly price estimate in CZK (excl. VAT) for the organization. */
+/** Monthly price estimate in CZK (final, no VAT) for the organization. */
 export function monthlyEstimateCzk(plan: PaidPlan, interval: BillingInterval, members: number): number {
     return PRICES[plan][interval].czk * billedQuantity(plan, members);
+}
+
+/**
+ * What the organization is billed per billing period (CZK, final): Team one
+ * flat price (quantity 1), Business `quantity × unit` with quantity = members,
+ * minimum 10. Yearly is the per-month price × 12 (4 308 Kč, 432 Kč / person).
+ */
+export function billedPrice(plan: PaidPlan, interval: BillingInterval, members: number): { quantity: number; unitCzk: number; totalCzk: number } {
+    const quantity = billedQuantity(plan, members);
+    const unitCzk = PRICES[plan][interval].czk * (interval === 'year' ? 12 : 1);
+    return { quantity, unitCzk, totalCzk: unitCzk * quantity };
+}
+
+/**
+ * How Stripe settles an in-place plan change: an upgrade (Team → Business or
+ * monthly → yearly) is charged now (prorated), a downgrade is credited to the
+ * next invoice, and nothing is charged while trialing. Mirrors
+ * `prorationForChange()` in supabase/functions/_shared/billing.ts.
+ */
+export function changeKind(
+    from: { plan: PaidPlan; interval: BillingInterval },
+    to: { plan: PaidPlan; interval: BillingInterval },
+    trialing: boolean,
+): 'trial' | 'upgrade' | 'downgrade' {
+    if (trialing) return 'trial';
+    const rank = (p: PaidPlan) => (p === 'business' ? 2 : 1);
+    return rank(to.plan) > rank(from.plan) || (from.interval === 'month' && to.interval === 'year') ? 'upgrade' : 'downgrade';
 }
 
 /** Yearly saving vs monthly, in whole percent (the "save 20 %" badge). */

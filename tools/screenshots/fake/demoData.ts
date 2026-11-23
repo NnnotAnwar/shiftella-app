@@ -46,6 +46,21 @@ const R = {
     cook: id(3, 7),
 };
 
+/**
+ * Billing scenario for the subscription row: `localStorage['demo-billing']` =
+ * 'trial' (20 days left) | 'trial3' (3 days left) | 'free' (trial ended) |
+ * 'past_due' | 'ended' (the paid Stripe subscription was canceled → Free) |
+ * 'cancel_scheduled' (switched to Free: ends at the period end); anything
+ * else = a paid Business plan (the README shots).
+ */
+function billingScenario(): string | null {
+    try {
+        return localStorage.getItem('demo-billing');
+    } catch {
+        return null;
+    }
+}
+
 // --- Date helpers (local time = Europe/Prague in the harness) ----------------------
 const pad = (n: number) => String(n).padStart(2, '0');
 const ymd = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -388,23 +403,49 @@ export function buildDemoData(): Tables {
         audit(3, 'schedule_published', 60 * 24 * 4, { actor_name: 'Petra Nováková', count: scheduled_shifts.length, month_start: md(1) }),
     ];
 
+    const paid: Row = {
+        organization_id: ORG,
+        plan: 'business',
+        status: 'active',
+        interval: 'month',
+        seats: profiles.length,
+        trial_ends_at: null,
+        current_period_end: at(new Date(today.getFullYear(), today.getMonth() + 1, 3), '00:00'),
+        cancel_at_period_end: false,
+        stripe_customer_id: 'cus_demo',
+        stripe_subscription_id: 'sub_demo',
+        source: 'stripe',
+        manual_plan: null,
+        manual_until: null,
+        manual_note: null,
+    };
+    // Our own no-card Business trial (no Stripe ids), ending `days` from now.
+    const trial = (days: number): Row => ({
+        ...paid,
+        status: 'trialing',
+        interval: null,
+        seats: null,
+        current_period_end: null,
+        stripe_customer_id: null,
+        stripe_subscription_id: null,
+        source: 'trial',
+        trial_ends_at: new Date(now.getTime() + days * 86400000).toISOString(),
+    });
+    const scenario = billingScenario();
     const subscriptions: Row[] = [
-        {
-            organization_id: ORG,
-            plan: 'business',
-            status: 'active',
-            interval: 'month',
-            seats: profiles.length,
-            trial_ends_at: null,
-            current_period_end: at(new Date(today.getFullYear(), today.getMonth() + 1, 3), '00:00'),
-            cancel_at_period_end: false,
-            stripe_customer_id: 'cus_demo',
-            stripe_subscription_id: 'sub_demo',
-            source: 'stripe',
-            manual_plan: null,
-            manual_until: null,
-            manual_note: null,
-        },
+        scenario === 'trial'
+            ? trial(20)
+            : scenario === 'trial3'
+              ? trial(2.5)
+              : scenario === 'free'
+                ? trial(-2)
+                : scenario === 'past_due'
+                  ? { ...paid, status: 'past_due' }
+                  : scenario === 'ended'
+                    ? { ...paid, status: 'canceled', current_period_end: new Date(now.getTime() - 2 * 86400000).toISOString() }
+                    : scenario === 'cancel_scheduled'
+                      ? { ...paid, cancel_at_period_end: true }
+                      : paid,
     ];
 
     const notification_preferences: Row[] = [

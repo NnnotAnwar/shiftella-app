@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { XIcon, WarningIcon } from '@phosphor-icons/react';
+import { CreditCardIcon, XIcon, WarningIcon } from '@phosphor-icons/react';
 import { useState, useEffect, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from '@shared/preferences/PreferencesContext';
@@ -151,17 +151,24 @@ export function Modal({
  * --- CONFIRM DIALOG ---
  * Destructive-action confirmation. Runs the async `onConfirm`, surfaces any
  * error inline, and keeps itself open until the action resolves.
+ * `tone="primary"` is for a non-destructive but weighty action (e.g. a plan
+ * change that moves money): accent icon + primary button. `detail` adds a
+ * smaller second line under the message.
  */
 export function ConfirmDialog({
     title,
     message,
+    detail,
     confirmLabel,
+    tone = 'danger',
     onConfirm,
     onClose,
 }: {
     title: string;
     message: string;
+    detail?: string;
     confirmLabel?: string;
+    tone?: 'danger' | 'primary';
     onConfirm: () => Promise<void>;
     onClose: () => void;
 }) {
@@ -185,10 +192,19 @@ export function ConfirmDialog({
         <Modal title={title} onClose={onClose}>
             <div className="space-y-4">
                 <div className="flex gap-3">
-                    <div className="shrink-0 size-9 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center">
-                        <WarningIcon weight="fill" className="size-4.5" />
+                    {tone === 'danger' ? (
+                        <div className="shrink-0 size-9 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+                            <WarningIcon weight="fill" className="size-4.5" />
+                        </div>
+                    ) : (
+                        <div className="shrink-0 size-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 flex items-center justify-center">
+                            <CreditCardIcon weight="fill" className="size-4.5" />
+                        </div>
+                    )}
+                    <div className="min-w-0 space-y-1">
+                        <p className="text-body text-ink-soft dark:text-slate-300 leading-relaxed">{message}</p>
+                        {detail && <p className="text-meta text-ink-soft dark:text-slate-400">{detail}</p>}
                     </div>
-                    <p className="text-body text-ink-soft dark:text-slate-300 leading-relaxed">{message}</p>
                 </div>
 
                 <FormError message={error} />
@@ -197,7 +213,7 @@ export function ConfirmDialog({
                     <Button variant="secondary" fullWidth onClick={onClose} disabled={isBusy}>
                         {t('common.cancel')}
                     </Button>
-                    <Button variant="danger" fullWidth loading={isBusy} onClick={handleConfirm}>
+                    <Button variant={tone} fullWidth loading={isBusy} onClick={handleConfirm}>
                         {isBusy ? t('common.working') : (confirmLabel ?? t('common.delete'))}
                     </Button>
                 </div>

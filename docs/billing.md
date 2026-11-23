@@ -16,6 +16,11 @@ mirrors it into the database. Nothing here is live until you do the steps below.
   Afterwards it falls back to Free: nothing is deleted; whatever is above the
   Free limits stays but becomes read-only (no new members / locations, gated
   pages show an upgrade prompt).
+- **Switch to Free** (Billing page, Free card) cancels a live subscription
+  **at the end of the paid period** (or of the Stripe trial) — nothing is
+  refunded or charged; until then the plan keeps working, and it can be
+  resumed. When a paid subscription has ended, the org is on Free with the
+  same rules as after the trial (see *Plan ended prompt*).
 - **Existing organizations** (at migration time) are **grandfathered**:
   Business, forever, free (`source = 'grandfathered'`).
 - **Gifts:** the Superadmin can grant any org Team or Business for free, until a
@@ -52,6 +57,8 @@ the team automatically (see *Seat sync*).
 
 ## 2. Tax / VAT
 
+> **VAT:** the operator is **not VAT-registered** (neplátce DPH). Prices are final; keep `STRIPE_AUTOMATIC_TAX=false` and the UI says no VAT is added. If that changes, turn on Stripe Tax, set the secret to `true` (or remove it) and bring back the "excl. VAT" wording.
+
 Turn on **Stripe Tax** (Settings → Tax), register your Czech VAT, and set the
 origin address. Checkout runs with `automatic_tax` and collects the customer's
 address and VAT id (`tax_id_collection`). Until Stripe Tax is set up you can
@@ -59,15 +66,23 @@ start Checkout without it by setting the secret `STRIPE_AUTOMATIC_TAX=false`.
 
 ## 3. Customer Portal
 
-Settings → Billing → **Customer portal**:
+**Nothing to set up by hand.** `billing-portal` opens the portal with its own
+configuration, which `ensurePortalConfiguration()` in
+`supabase/functions/_shared/billing.ts` finds (an active configuration with
+`metadata.shiftella = v2`) or creates on first use, so live mode configures
+itself. It allows:
 
-- Allow: update payment method, view invoices, update billing info / tax id,
-  **cancel** (at period end).
-- **Switch plans:** allow switching between the 4 prices above (Team ⇄
-  Business, monthly ⇄ yearly). **Do not allow customers to change the
-  quantity** — the app keeps it right (Team 1, Business = members, min. 10) and
-  fixes it after any switch.
-- Set the default return URL to `https://<your-app>/billing`.
+- update payment method, invoice history, billing details (email, address,
+  name, tax id), **cancel** at period end;
+- **no plan switching** (`subscription_update` disabled). Stripe carries the
+  quantity over on a portal switch, so Business with 10 seats → Team offered
+  "10 × 449 Kč". Plan and interval changes happen in the app instead (see
+  *Plan changes* below).
+
+The return URL is passed per session (`APP_URL/billing`). The Dashboard's
+*default* portal configuration is no longer used; leave it as it is. To change
+the portal's settings, bump the tag (`v2` → `v3`) in the helper so a fresh
+configuration is created.
 
 ## 4. Webhook
 
@@ -108,8 +123,9 @@ preprod URL on preprod. Never commit any of these values.
 # grandfathering backfill, gifts (admin_set_org_plan / admin_clear_org_plan)
 supabase db push --project-ref <project-ref>        # or apply 20261121120000_billing_subscriptions.sql
 
-supabase functions deploy billing-checkout --project-ref <project-ref>
-supabase functions deploy billing-portal   --project-ref <project-ref>
+supabase functions deploy billing-checkout    --project-ref <project-ref>
+supabase functions deploy billing-change-plan --project-ref <project-ref>
+supabase functions deploy billing-portal      --project-ref <project-ref>
 supabase functions deploy stripe-webhook   --project-ref <project-ref> --no-verify-jwt
 # these changed too (limit check, seat sync, push gated to Team+):
 supabase functions deploy invite-employee delete-employee delete-account --project-ref <project-ref>
@@ -134,6 +150,17 @@ Check it: `psql "$PREPROD_DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/billing_s
   http://127.0.0.1:54321/functions/v1/stripe-webhook` and use the `whsec_` it
   prints as `STRIPE_WEBHOOK_SECRET` (`supabase functions serve --env-file …`).
 - Trigger a renewal/seat check: `stripe trigger invoice.upcoming`.
+- Plan switch: on a live Business subscription, *Switch to Team* → the
+  subscription shows Team × 1 in Stripe and a credit on the next invoice;
+  *Switch to Business* back → Business × max(10, members), invoiced at once.
+  *Manage billing* opens a portal without any plan-switch option.
+- Switch to Free: on a live subscription, Free card → *Switch to Free* →
+  confirm → Stripe shows "Cancels {date}"; the Billing page shows *Ends {date}*,
+  *From {date}* on the Free card and *Resume subscription*. *Resume* → the
+  cancel is gone in Stripe. To see the plan-ended prompt, cancel the
+  subscription immediately in the Stripe Dashboard (or with a test clock
+  advance past the period end): the webhook writes `status = canceled`, the
+  next app open shows *Your subscription has ended* once.
 
 ## How it works (for maintainers)
 
@@ -147,10 +174,75 @@ Check it: `psql "$PREPROD_DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/billing_s
 - **Seat sync** (Business only, Team is held at 1): `syncSeats()` in
   `supabase/functions/_shared/billing.ts` runs after `invite-employee`,
   `delete-employee` and `delete-account`, after every subscription
-  created/updated event (fixes the quantity after a Portal plan switch) and on
-  `invoice.upcoming`. It skips orgs without a live Stripe subscription (trial,
+  created/updated event (a safety net; plan switches already set the right
+  quantity) and on `invoice.upcoming`. It skips orgs without a live Stripe subscription (trial,
   grandfathered, gifts) and never fails the member action. Invited people
   count from the invite (their profile exists from then).
+  Proration: monthly plans put the difference on the next invoice; **yearly plans invoice extra seats immediately** (`always_invoice`) and leave a credit for fewer seats; at renewal (`invoice.upcoming`) the count is corrected without proration.
+
+- **Plan changes** (Team ⇄ Business, monthly ⇄ yearly) for an org with a live
+  Stripe subscription (`trialing` / `active` / `past_due`) happen **on the
+  Billing page**, never in the portal: the other plan's card shows *Switch to
+  {plan}*, the current plan's card shows *Switch to yearly / monthly* when the
+  toggle differs, and one confirm shows the new price (Team flat; Business
+  N × unit, min. 10) and whether it's charged now, credited, or free during
+  the trial. The `billing-change-plan` function then updates the subscription
+  item in place with the new price and the right quantity (Team 1, Business
+  max(10, members)), clears `cancel_at_period_end`, sets
+  `metadata.plan`, and writes the row (`syncFromStripe`).
+  - **Proration** (`prorationForChange()` in `_shared/billing.ts`, mirrored by
+    `changeKind()` in `src/features/billing/plans.ts`): an **upgrade**
+    (Team → Business, or monthly → yearly) uses `always_invoice`, so the
+    prorated difference is charged right away; a **downgrade** uses
+    `create_prorations`, a credit on the next invoice; while **trialing**,
+    `none`. Stripe resets the billing cycle on any interval change and
+    invoices it at once; on yearly → monthly the unused year exceeds the new
+    month, and the rest is kept as a customer credit balance.
+  - **Refused:** no live subscription → 409 `NO_SUBSCRIPTION` (the app falls
+    back to Checkout); gifts (`GRANTED`) and grandfathered orgs
+    (`GRANDFATHERED`); to Team when the org doesn't fit, 409
+    `PLAN_LIMIT_MEMBERS` (> 15 members) / `PLAN_LIMIT_LOCATIONS` (> 3 active
+    locations). Same plan + interval → `{ ok: true, unchanged: true }`.
+  - Native apps show no switch buttons (store rules, as for Checkout).
+- **Switch to Free = cancel at period end.** The Free card shows *Switch to
+  Free* for an org with a live Stripe subscription (`trialing` / `active` /
+  `past_due`) that isn't already cancel-scheduled. One confirm says when it
+  ends (`current_period_end`, which is the trial end while trialing), that
+  everything works until then, and that afterwards the Free limits apply
+  (5 people, 1 location) and anything above them becomes read-only — nothing
+  is deleted; when the org is over those limits it lists today's counts.
+  `billing-change-plan` with `{ plan: 'free' }` sets
+  `cancel_at_period_end: true` (no proration, no charge), writes the row
+  (`syncFromStripe`) and returns `{ ok: true, plan: 'free', endsAt }`; toast
+  "Your subscription ends on {date}, then you move to Free." Same refusals as
+  a switch (`GRANTED`, `GRANDFATHERED`, `NO_SUBSCRIPTION`); already scheduled
+  → `{ ok: true, unchanged: true, endsAt }`. The portal's own *Cancel* does
+  the same thing.
+- **Resume.** While `cancel_at_period_end` is set, the status chip reads
+  *Ends {date}*, the current plan shows *Ends on {date} — then you move to
+  Free* with a *Resume subscription* button, and the Free card shows *From
+  {date}* instead of its button. Resume calls `billing-change-plan` with
+  `{ action: 'resume' }` → `cancel_at_period_end: false` (no charge, no
+  confirm, toast "Subscription resumed."). Any plan / interval switch also
+  clears a scheduled cancel (its confirm says so). Request parsing, refusals
+  and the cancel flag are pure helpers in `_shared/billing.ts`
+  (`parseChangeRequest`, `changeRefusal`, `cancelFlagTarget`, `endsAtOf`),
+  tested by `_shared/billing_test.ts` (`deno test`, from a copy of
+  `supabase/functions` outside the repo).
+- **Plan ended prompt.** When a paid Stripe subscription has ended
+  (`status = canceled`, effective plan Free, no active gift, not
+  grandfathered — `planEnded` / `subscriptionEnded()` in `entitlements.ts`),
+  the owner sees, on the web only and never on `/billing`, the same one-time
+  dialog as after the trial (`PlanEndedDialog`, rules in `endedPrompt.ts`)
+  titled *Your subscription has ended*: what Free keeps, what needs a paid
+  plan, *Choose plan* → `/billing`, *Stay on Free*. It is remembered on the
+  device per organization **and per ended subscription id**
+  (`billing-plan-ended-seen:{org}:{sub}`), so a later subscription that ends
+  asks again; opening `/billing` counts as seen. The banner says *Your
+  subscription has ended — you are on Free now.* with *Choose plan*
+  (dismissible for the day), the Billing page shows a *Subscription ended*
+  chip, and the nav pill shows *Choose plan* as on any Free org. Native apps
+  get only the banner, with "manage on the web" and no link.
 - **Trial carry-over:** upgrading with more than 2 days of the trial left sets
   Stripe's `trial_end` to the trial's end, so nothing is charged before it.
 - **Activity log:** `plan_changed` (plan / status / interval / cancel at period

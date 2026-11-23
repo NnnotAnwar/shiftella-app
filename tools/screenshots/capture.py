@@ -149,6 +149,12 @@ def main() -> int:
     ap.add_argument("--out", default=str(ROOT / "docs/screenshots"))
     ap.add_argument("--only", nargs="*", default=None)
     ap.add_argument("--dark", action="store_true", help="dark theme instead of light")
+    ap.add_argument(
+        "--billing",
+        default=None,
+        choices=["trial", "trial3", "free", "past_due", "ended", "cancel_scheduled"],
+        help="subscription scenario in the demo data (default: paid Business)",
+    )
     args = ap.parse_args()
 
     out = Path(args.out)
@@ -169,6 +175,8 @@ def main() -> int:
                 **ctx_opts,
             )
             ctx.add_init_script(PREFS_SCRIPT.replace("%THEME%", theme))
+            if args.billing:
+                ctx.add_init_script(f"try {{ localStorage.setItem('demo-billing', '{args.billing}'); }} catch (e) {{}}")
 
             def guard(route):
                 host = urlparse(route.request.url).hostname or ""

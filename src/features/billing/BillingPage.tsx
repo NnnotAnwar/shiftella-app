@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Navigate, useSearchParams } from 'react-router-dom';
 
 import { AnimatePresence } from 'framer-motion';
-import { CheckIcon, CircleNotchIcon, CreditCardIcon, GiftIcon, SparkleIcon, WarningIcon } from '@phosphor-icons/react';
+import { ArrowCounterClockwiseIcon, CheckIcon, CircleNotchIcon, CreditCardIcon, GiftIcon, SparkleIcon, WarningIcon } from '@phosphor-icons/react';
 import { useAuthContext } from '@features/auth/AuthContext';
 import { ConfirmDialog } from '@features/admin/components/Modal';
 import { usePreferences } from '@shared/preferences/PreferencesContext';
@@ -10,7 +10,7 @@ import { PageHeader } from '@shared/components/PageHeader';
 import { Button } from '@shared/components/Button';
 import { Skeleton } from '@shared/components/Skeleton';
 import { toast } from '@shared/toast/toastStore';
-import { formatDateLong } from '@shared/utils/date';
+import { formatDateInText, formatDateShort } from '@shared/utils/date';
 import { APP_NAME } from '@shared/brand';
 import type { TranslationKey } from '@shared/i18n/translations';
 import { BillingError, billingService } from './billingService';
@@ -47,8 +47,12 @@ const CARD_FEATURES: Record<Plan, Feature[]> = {
  * Portal (card, invoices, billing details, cancel — never plan changes).
  * With a live subscription, switching plan or interval happens here: one
  * confirm with the new price, then billing-change-plan (Stripe's portal would
- * carry the Business quantity over to Team). Native apps show the plan status
- * only (store rules): no prices, no purchase buttons, no links out.
+ * carry the Business quantity over to Team). "Switch to Free" on the Free card
+ * cancels the live subscription at the end of the paid period (or trial) after
+ * one confirm; while that cancel is scheduled the card shows "From {date}" and
+ * the current plan offers "Resume subscription" (no charge, no confirm).
+ * Native apps show the plan status only (store rules): no prices, no purchase
+ * or switch buttons, no links out.
  *
  * Leaving for Stripe never leaves a stuck button behind: `useRedirectAction`
  * clears the spinner when the page comes back (Back button / bfcache, tab
@@ -139,7 +143,12 @@ function BillingInner() {
     // In-place plan / interval switch (never in the Stripe portal): confirm once, then billing-change-plan.
     // `id` keys each opening, so a dialog reopened during the exit animation starts fresh.
     const [pending, setPending] = useState<{ plan: PaidPlan; interval: BillingInterval; id: number } | null>(null);
-    const switchKey = (plan: PaidPlan) => `switch:${plan}`;
+    const switchKey = (plan: PaidPlan | 'free') => `switch:${plan}`;
+    // "Switch to Free" confirm (keyed per opening, like `pending`).
+    const [freeConfirm, setFreeConfirm] = useState<number | null>(null);
+    // A cancel at period end is scheduled on the live subscription.
+    const cancelScheduled = liveStripe && !!sub?.cancel_at_period_end;
+    const periodEnd = sub?.current_period_end ?? null;
 
     const num = (n: number) => n.toLocaleString(language === 'cs' ? 'cs-CZ' : 'en-GB');
     const czk = (n: number) => `${num(n)} Kč`;
@@ -169,6 +178,42 @@ function BillingInner() {
         }
     };
 
+    // To Free = cancel at period end; resume = undo it. Neither charges anything.
+    // If the subscription ended meanwhile the server says NO_SUBSCRIPTION: refetch, show it.
+    const switchToFree = () =>
+        perform(switchKey('free'), async () => {
+            try {
+                const { endsAt } = await billingService.switchToFree();
+                toast(t('billing.toFreeDone', { date: formatDateInText(endsAt ?? periodEnd) }), 'success');
+            } finally {
+                refetchAll();
+            }
+        });
+    const resume = () =>
+        perform('resume', async () => {
+            try {
+                await billingService.resume();
+                toast(t('billing.resumed'), 'success');
+            } finally {
+                refetchAll();
+            }
+        });
+
+    const toFreeCopy = () => {
+        const over: string[] = [];
+        if (LIMITS.free.members !== null && members > LIMITS.free.members) over.push(t('billing.toFree.overMembers', { n: num(members) }));
+        if (LIMITS.free.locations !== null && locations > LIMITS.free.locations) {
+            // Czech: 2–4 "pobočky", 5+ "poboček".
+            over.push(t(locations <= 4 ? 'billing.toFree.overLocationsFew' : 'billing.toFree.overLocationsMany', { n: num(locations) }));
+        }
+        const after = t('billing.toFree.after', { members: LIMITS.free.members ?? 0, locations: LIMITS.free.locations ?? 0 });
+        return {
+            title: t('billing.toFree.title'),
+            message: t(sub?.status === 'trialing' ? 'billing.toFree.trial' : 'billing.toFree.paid', { date: formatDateInText(periodEnd) }),
+            detail: over.length ? `${after} ${t('billing.toFree.over', { list: over.join(t('billing.toFree.and')) })}` : after,
+        };
+    };
+
     const confirmCopy = (target: { plan: PaidPlan; interval: BillingInterval }) => {
         const price = billedPrice(target.plan, target.interval, members);
         const per = t(target.interval === 'year' ? 'billing.perYearShort' : 'billing.perMonthShort');
@@ -179,10 +224,12 @@ function BillingInner() {
         const kind = livePlan ? changeKind({ plan: livePlan, interval: liveInterval }, target, sub?.status === 'trialing') : 'upgrade';
         const settle = t(kind === 'trial' ? 'billing.switchTrial' : kind === 'upgrade' ? 'billing.switchChargeNow' : 'billing.switchCredit');
         const minNote = target.plan === 'business' && price.quantity > members ? ` ${t('billing.switchMinNote', { min: BUSINESS_MIN_SEATS })}` : '';
+        // billing-change-plan clears a scheduled cancel on any switch.
+        const resumes = cancelScheduled ? ` ${t('billing.switchResumes')}` : '';
         return {
             title: t('billing.switchTitle', { plan: planName(target.plan), interval: intervalWord(target.interval) }),
             message,
-            detail: `${settle}${minNote}`,
+            detail: `${settle}${minNote}${resumes}`,
         };
     };
 
@@ -205,13 +252,15 @@ function BillingInner() {
             ? { label: t('billing.trialDaysLeft', { n: ent.trialDaysLeft ?? 0 }), tone: 'amber' }
             : ent.trialExpired
               ? { label: t('billing.status.trialEnded'), tone: 'gray' }
-              : sub?.status === 'past_due'
-                ? { label: t('billing.status.pastDue'), tone: 'rose' }
-                : sub?.cancel_at_period_end
-                  ? { label: t('billing.status.ending'), tone: 'amber' }
-                  : ent.plan !== 'free'
-                    ? { label: t('billing.status.active'), tone: 'emerald' }
-                    : null;
+              : ent.planEnded
+                ? { label: t('billing.status.planEnded'), tone: 'gray' }
+                : sub?.status === 'past_due'
+                  ? { label: t('billing.status.pastDue'), tone: 'rose' }
+                  : cancelScheduled && periodEnd
+                    ? { label: t('billing.status.endsOn', { date: formatDateShort(periodEnd) }), tone: 'amber' }
+                    : ent.plan !== 'free'
+                      ? { label: t('billing.status.active'), tone: 'emerald' }
+                      : null;
     const toneClass: Record<string, string> = {
         emerald: 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-300',
         amber: 'bg-amber-500/12 text-amber-700 dark:text-amber-300',
@@ -264,25 +313,42 @@ function BillingInner() {
                         <GiftIcon weight="bold" className="size-4 text-emerald-600 dark:text-emerald-300" />
                         {t('billing.grantedBy', { app: APP_NAME })}
                         <span className="text-ink-soft dark:text-slate-400">
-                            · {ent.grantUntil ? t('billing.until', { date: formatDateLong(ent.grantUntil) }) : t('billing.noEndDate')}
+                            · {ent.grantUntil ? t('billing.until', { date: formatDateInText(ent.grantUntil) }) : t('billing.noEndDate')}
                         </span>
                     </p>
                 )}
                 {grandfathered && <p className="text-meta text-ink-soft dark:text-slate-400">{t('billing.grandfatheredHint')}</p>}
                 {ent.isTrial && sub?.trial_ends_at && (
-                    <p className="text-meta text-ink-soft dark:text-slate-400">{t('billing.trialEnds', { date: formatDateLong(sub.trial_ends_at) })}</p>
+                    <p className="text-meta text-ink-soft dark:text-slate-400">{t('billing.trialEnds', { date: formatDateInText(sub.trial_ends_at) })}</p>
                 )}
                 {ent.trialExpired && <p className="text-meta text-ink-soft dark:text-slate-400">{t('billing.trialEndedHint')}</p>}
+                {ent.planEnded && <p className="text-meta text-ink-soft dark:text-slate-400">{t('billing.planEndedHint')}</p>}
                 {sub?.status === 'past_due' && !granted && (
                     <p className="flex items-center gap-1.5 text-meta text-rose-600 dark:text-rose-400">
                         <WarningIcon weight="bold" className="size-4" />
                         {t('billing.pastDueHint')}
                     </p>
                 )}
-                {liveStripe && !granted && sub?.current_period_end && (
-                    <p className="text-meta text-ink-soft dark:text-slate-400">
-                        {t(sub.cancel_at_period_end ? 'billing.endsOn' : 'billing.renewsOn', { date: formatDateLong(sub.current_period_end) })}
-                    </p>
+                {liveStripe && !granted && (periodEnd || cancelScheduled) && (
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                        {periodEnd && (
+                            <p className="text-meta text-ink-soft dark:text-slate-400">
+                                {t(cancelScheduled ? 'billing.endsOn' : 'billing.renewsOn', { date: formatDateInText(periodEnd) })}
+                            </p>
+                        )}
+                        {cancelScheduled && !native && canBuy && (
+                            <Button
+                                size="sm"
+                                variant="tonal"
+                                icon={ArrowCounterClockwiseIcon}
+                                loading={busy === 'resume'}
+                                disabled={!!busy && busy !== 'resume'}
+                                onClick={() => void resume()}
+                            >
+                                {t('billing.resume')}
+                            </Button>
+                        )}
+                    </div>
                 )}
 
                 <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -396,6 +462,28 @@ function BillingInner() {
                                         ))}
                                     </ul>
 
+                                    {p === 'free' &&
+                                        canBuy &&
+                                        liveStripe &&
+                                        (cancelScheduled ? (
+                                            periodEnd && (
+                                                <p className="rounded-lg bg-ink/4 px-2.5 py-1.5 text-center text-caption font-semibold text-ink-soft dark:bg-white/5 dark:text-slate-300">
+                                                    {t('billing.fromDate', { date: formatDateInText(periodEnd) })}
+                                                </p>
+                                            )
+                                        ) : (
+                                            <Button
+                                                size="sm"
+                                                variant="secondary"
+                                                loading={busy === switchKey('free')}
+                                                disabled={!!busy && busy !== switchKey('free')}
+                                                onClick={() => setFreeConfirm(Date.now())}
+                                                fullWidth
+                                            >
+                                                {t('billing.switchToFree')}
+                                            </Button>
+                                        ))}
+
                                     {p !== 'free' && canBuy && (
                                         liveStripe ? (
                                             switchTarget && (
@@ -446,6 +534,16 @@ function BillingInner() {
                         confirmLabel={t('billing.switchConfirm')}
                         onClose={() => setPending(null)}
                         onConfirm={() => changePlan(pending)}
+                    />
+                )}
+                {freeConfirm !== null && !native && (
+                    <ConfirmDialog
+                        key={freeConfirm}
+                        tone="danger"
+                        {...toFreeCopy()}
+                        confirmLabel={t('billing.switchToFree')}
+                        onClose={() => setFreeConfirm(null)}
+                        onConfirm={switchToFree}
                     />
                 )}
             </AnimatePresence>

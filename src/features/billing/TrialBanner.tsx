@@ -22,7 +22,8 @@ function readDismissed(): string | null {
 /**
  * --- TRIAL BANNER ---
  * One slim line for the organization's owner: the Business trial countdown,
- * or that the trial ended and the org is on Free now. Dismissible for the day.
+ * or that the trial / the paid subscription ended and the org is on Free now.
+ * Dismissible for the day.
  * In the trial's last 3 days it turns amber with a clear "Choose plan" button.
  * Hidden on the Billing page itself; native apps get no link out.
  */
@@ -35,7 +36,8 @@ export function TrialBanner() {
     const [dismissed, setDismissed] = useState(() => readDismissed() === today());
 
     if (!canManageBilling(user) || ent.bypass || ent.isLoading || dismissed || pathname === '/billing') return null;
-    if (!ent.isTrial && !ent.trialExpired) return null;
+    const ended = ent.trialExpired || ent.planEnded;
+    if (!ent.isTrial && !ended) return null;
 
     const native = isNativeApp();
     const days = ent.trialDaysLeft ?? 0;
@@ -44,7 +46,9 @@ export function TrialBanner() {
         ? t('billing.trialBannerSoon', { n: days })
         : ent.isTrial
           ? t('billing.trialBanner', { n: days })
-          : t('billing.trialEndedBanner');
+          : ent.trialExpired
+            ? t('billing.trialEndedBanner')
+            : t('billing.planEndedBanner');
 
     const dismiss = () => {
         setDismissed(true);
@@ -76,7 +80,7 @@ export function TrialBanner() {
                     </Button>
                 ) : (
                     <Link to="/billing" className="shrink-0 text-meta font-semibold text-emerald-700 hover:underline dark:text-emerald-300">
-                        {ent.trialExpired ? t('billing.choosePlan') : t('billing.seePlans')}
+                        {ended ? t('billing.choosePlan') : t('billing.seePlans')}
                     </Link>
                 ))}
             <button

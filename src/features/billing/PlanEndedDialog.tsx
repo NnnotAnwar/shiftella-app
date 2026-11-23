@@ -7,50 +7,55 @@ import { Button } from '@shared/components/Button';
 import { useTranslation } from '@shared/preferences/PreferencesContext';
 import type { TranslationKey } from '@shared/i18n/translations';
 import { canManageBilling, isNativeApp, useEntitlements } from './useBilling';
-import { markTrialEndedSeen, shouldShowTrialEnded, trialEndedSeen } from './trialEnded';
+import { endedPrompt, endedSeen, markEndedSeen, shouldShowEnded } from './endedPrompt';
 import { LIMITS, type Feature } from './plans';
 
 /** What a Free org gives up — the Team features people notice first. */
 const LOST_FEATURES: Feature[] = ['timesheets', 'swaps', 'templates', 'push'];
 
 /**
- * --- TRIAL ENDED DIALOG ---
- * The only billing popup: shown once per organization (remembered on the
- * device as soon as it opens, so a reload doesn't bring it back) on the next
- * app open after the trial ran out. Says what Free keeps and what needs a paid
- * plan; "Choose plan" → /billing, "Stay on Free" closes.
+ * --- PLAN ENDED DIALOG ---
+ * The only billing popup besides the money confirms: shown once on the next
+ * app open after the no-card trial ran out ("Your trial has ended", once per
+ * organization) or a paid subscription ended ("Your subscription has ended",
+ * once per organization and ended subscription). Remembered on the device as
+ * soon as it opens, so a reload doesn't bring it back. Says what Free keeps
+ * and what needs a paid plan; "Choose plan" → /billing, "Stay on Free" closes.
  */
-export function TrialEndedDialog() {
+export function PlanEndedDialog() {
     const t = useTranslation();
     const { user } = useAuthContext();
     const { pathname } = useLocation();
     const navigate = useNavigate();
     const ent = useEntitlements();
     const orgId = user?.organization_id ?? '';
-    const [closed, setClosed] = useState(false);
+    const prompt = endedPrompt(ent, orgId);
+    const seenKey = prompt?.seenKey ?? null;
+    // Closed in this session (by key: another subscription ending later asks again).
+    const [closedKey, setClosedKey] = useState<string | null>(null);
     // Re-read per page, not per render: marking it seen below must not hide it
     // while it is open (the backdrop blocks navigation until it closes).
-    const seen = useMemo(() => (orgId ? trialEndedSeen(orgId) : true), [orgId, pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+    const seen = useMemo(() => (seenKey ? endedSeen(seenKey) : true), [seenKey, pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const rules = { ent, canManage: canManageBilling(user), native: isNativeApp(), seen };
-    const show = !closed && shouldShowTrialEnded({ ...rules, pathname });
+    const show = !!prompt && closedKey !== seenKey && shouldShowEnded({ ...rules, pathname });
     // Already looking at the plans on /billing counts as seen, too.
-    const seenOnBilling = pathname === '/billing' && shouldShowTrialEnded({ ...rules, pathname: '/' });
+    const seenOnBilling = !!prompt && pathname === '/billing' && shouldShowEnded({ ...rules, pathname: '/' });
 
     useEffect(() => {
-        if (show || seenOnBilling) markTrialEndedSeen(orgId);
-    }, [show, seenOnBilling, orgId]);
+        if (seenKey && (show || seenOnBilling)) markEndedSeen(seenKey);
+    }, [show, seenOnBilling, seenKey]);
 
-    if (!show) return null;
+    if (!show || !prompt) return null;
 
-    const close = () => setClosed(true);
+    const close = () => setClosedKey(seenKey);
     const choose = () => {
         close();
         navigate('/billing');
     };
 
     return (
-        <Modal title={t('billing.trialEnded.title')} onClose={close}>
+        <Modal title={t(prompt.kind === 'trial' ? 'billing.trialEnded.title' : 'billing.planEnded.title')} onClose={close}>
             <div className="space-y-3">
                 <p className="text-meta text-ink-soft dark:text-slate-300">{t('billing.trialEnded.body')}</p>
 

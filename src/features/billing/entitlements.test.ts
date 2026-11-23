@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildEntitlements, effectivePlan, effectiveSource, fitsLimit, hasActiveGrant, isTrialActive, trialDaysLeft, trialExpired, type Subscription } from './entitlements';
+import { buildEntitlements, effectivePlan, effectiveSource, fitsLimit, hasActiveGrant, isTrialActive, subscriptionEnded, trialDaysLeft, trialExpired, type Subscription } from './entitlements';
 import { BUSINESS_MIN_SEATS, LIMITS, TRIAL_DAYS, billedQuantity, monthlyEstimateCzk, requiredPlan, yearlySavingPct } from './plans';
 
 const NOW = new Date('2026-11-22T12:00:00Z').getTime();
@@ -99,6 +99,49 @@ describe('manual grants (Superadmin gifts)', () => {
         expect(e.source).toBe('manual');
         expect(e.grantUntil).toBe(until);
         expect(e.isTrial).toBe(false);
+    });
+});
+
+describe('a paid subscription ended (planEnded)', () => {
+    const stripeSub = (over: Partial<Subscription> = {}) =>
+        sub({
+            plan: 'team',
+            status: 'active',
+            interval: 'month',
+            seats: 1,
+            trial_ends_at: null,
+            current_period_end: at(NOW - 2 * DAY),
+            stripe_customer_id: 'cus_1',
+            stripe_subscription_id: 'sub_1',
+            source: 'stripe',
+            ...over,
+        });
+
+    it('canceled Stripe subscription → Free, planEnded, with the ended subscription id', () => {
+        const s = stripeSub({ status: 'canceled' });
+        expect(effectivePlan(s, NOW)).toBe('free');
+        expect(subscriptionEnded(s, NOW)).toBe(true);
+        const e = buildEntitlements({ subscription: s, now: NOW });
+        expect(e.planEnded).toBe(true);
+        expect(e.endedSubscriptionId).toBe('sub_1');
+        expect(e.trialExpired).toBe(false);
+    });
+
+    it('not while it still runs (active, trialing, past_due, cancel scheduled)', () => {
+        for (const status of ['active', 'trialing', 'past_due'] as const) {
+            expect(subscriptionEnded(stripeSub({ status }), NOW)).toBe(false);
+        }
+        expect(subscriptionEnded(stripeSub({ cancel_at_period_end: true, current_period_end: at(NOW + 5 * DAY) }), NOW)).toBe(false);
+        expect(buildEntitlements({ subscription: stripeSub(), now: NOW }).endedSubscriptionId).toBeNull();
+    });
+
+    it('not for an active gift, grandfathered orgs, our no-card trial, or no row', () => {
+        expect(subscriptionEnded(stripeSub({ status: 'canceled', manual_plan: 'business' }), NOW)).toBe(false);
+        expect(subscriptionEnded(stripeSub({ status: 'canceled', manual_plan: 'business', manual_until: at(NOW - DAY) }), NOW)).toBe(true);
+        expect(subscriptionEnded(stripeSub({ status: 'canceled', source: 'grandfathered' }), NOW)).toBe(false);
+        expect(subscriptionEnded(sub({ trial_ends_at: at(NOW - DAY) }), NOW)).toBe(false);
+        expect(subscriptionEnded(sub({ status: 'canceled' }), NOW)).toBe(false); // never had a Stripe subscription
+        expect(subscriptionEnded(null, NOW)).toBe(false);
     });
 });
 

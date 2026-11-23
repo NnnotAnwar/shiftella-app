@@ -79,6 +79,22 @@ export function trialExpired(sub: Subscription | null | undefined, now = Date.no
     return !!sub && sub.status === 'trialing' && !sub.stripe_subscription_id && !hasActiveGrant(sub, now) && effectivePlan(sub, now) === 'free';
 }
 
+/**
+ * A paid Stripe subscription ended (canceled — by the customer, or Stripe gave
+ * up on payment) and nothing replaced it: no active gift, not grandfathered,
+ * the org sits on Free. Our no-card trial running out is `trialExpired` instead.
+ */
+export function subscriptionEnded(sub: Subscription | null | undefined, now = Date.now()): boolean {
+    return (
+        !!sub &&
+        sub.status === 'canceled' &&
+        !!sub.stripe_subscription_id &&
+        sub.source !== 'grandfathered' &&
+        !hasActiveGrant(sub, now) &&
+        effectivePlan(sub, now) === 'free'
+    );
+}
+
 /** Where today's plan comes from ('manual' while a grant is active). */
 export function effectiveSource(sub: Subscription | null | undefined, now = Date.now()): SubscriptionSource | 'none' {
     if (!sub) return 'none';
@@ -97,6 +113,10 @@ export interface Entitlements {
     isTrial: boolean;
     trialDaysLeft: number | null;
     trialExpired: boolean;
+    /** A paid (Stripe) subscription ended and the org is on Free — see `subscriptionEnded()`. */
+    planEnded: boolean;
+    /** The Stripe subscription that ended (while `planEnded`), so a later one that ends asks again. */
+    endedSubscriptionId: string | null;
     /** Stripe's last charge failed and it is retrying (the plan still runs) — not while a grant overrides it. */
     pastDue: boolean;
     source: SubscriptionSource | 'none';
@@ -127,11 +147,14 @@ export function buildEntitlements({
     const plan = effectivePlan(subscription, now);
     const limits = LIMITS[plan];
     const grant = hasActiveGrant(subscription, now);
+    const ended = subscriptionEnded(subscription, now);
     return {
         plan,
         isTrial: isTrialActive(subscription, now),
         trialDaysLeft: trialDaysLeft(subscription, now),
         trialExpired: trialExpired(subscription, now),
+        planEnded: ended,
+        endedSubscriptionId: ended ? subscription?.stripe_subscription_id ?? null : null,
         pastDue: !grant && subscription?.status === 'past_due',
         source: effectiveSource(subscription, now),
         grantUntil: grant ? subscription?.manual_until ?? null : null,

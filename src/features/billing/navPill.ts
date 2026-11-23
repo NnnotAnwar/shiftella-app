@@ -19,10 +19,10 @@ type T = (key: TranslationKey, vars?: Record<string, string | number>) => string
  * The Subscription nav item's status, so the owner can always find it:
  *   past_due              → "Payment"        rose
  *   trial running         → "Trial · N d"    amber (urgent in the last 3 days)
- *   trial ended / on Free → "Choose plan"    accent (native: just "Free", muted —
- *                                            store rules, no call to buy). Not
+ *   trial or paid plan    → "Choose plan"    accent (native: just "Free", muted —
+ *   ended / on Free                          store rules, no call to buy). Not
  *                                            urgent: staying on Free is fine, and
- *                                            the trial-ended dialog asks once.
+ *                                            the plan-ended dialog asks once.
  *   paid, gift, early     → the plan name    muted
  * Nothing while loading or for the Superadmin (every gate is open anyway).
  */

@@ -3,13 +3,17 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type { User } from '@shared/types';
 import type { Plan } from './plans';
-import { shouldShowTrialEnded, trialEndedSeen } from './trialEnded';
+import { endedPrompt, endedSeen, shouldShowEnded } from './endedPrompt';
 
 const owner: User = {
     id: 'me', username: 'boss', first_name: 'Boss', last_name: null, email: 'b@x.io', organization_id: 'org1',
     role: { name: 'Head Admin', is_admin: true, rank: 40 },
 };
-const state = { user: owner as User, native: false, ent: { trialExpired: true, plan: 'free' as Plan, bypass: false, isLoading: false } };
+
+type Ent = { trialExpired: boolean; planEnded: boolean; endedSubscriptionId: string | null; plan: Plan; bypass: boolean; isLoading: boolean };
+const trialEnt: Ent = { trialExpired: true, planEnded: false, endedSubscriptionId: null, plan: 'free', bypass: false, isLoading: false };
+const subEnt = (id = 'sub_1'): Ent => ({ ...trialEnt, trialExpired: false, planEnded: true, endedSubscriptionId: id });
+const state = { user: owner as User, native: false, ent: trialEnt };
 
 vi.mock('@shared/api/supabaseClient', () => ({ supabase: {} }));
 vi.mock('@features/auth/AuthContext', () => ({ useAuthContext: () => ({ user: state.user }) }));
@@ -23,15 +27,14 @@ vi.mock('./useBilling', async (orig) => ({
     useEntitlements: () => state.ent,
 }));
 
-import { TrialEndedDialog } from './TrialEndedDialog';
+import { PlanEndedDialog } from './PlanEndedDialog';
 
-const ent = { trialExpired: true, plan: 'free' as Plan, bypass: false, isLoading: false };
-const rules = { ent, canManage: true, native: false, pathname: '/', seen: false };
+const rules = { ent: trialEnt, canManage: true, native: false, pathname: '/', seen: false };
 
 function renderAt(path: string) {
     return render(
         <MemoryRouter initialEntries={[path]}>
-            <TrialEndedDialog />
+            <PlanEndedDialog />
             <Routes>
                 <Route path="/billing" element={<p>billing page</p>} />
                 <Route path="*" element={<p>somewhere</p>} />
@@ -40,27 +43,49 @@ function renderAt(path: string) {
     );
 }
 
-describe('shouldShowTrialEnded', () => {
-    it('owner on the web, trial ended, on Free → yes', () => {
-        expect(shouldShowTrialEnded(rules)).toBe(true);
+describe('endedPrompt', () => {
+    it('trial: remembered per organization', () => {
+        expect(endedPrompt(trialEnt, 'org1')).toEqual({ kind: 'trial', seenKey: 'billing-trial-ended-seen:org1' });
     });
 
-    it('never for non-owners, on native, once seen, while loading or for the Superadmin', () => {
-        expect(shouldShowTrialEnded({ ...rules, canManage: false })).toBe(false);
-        expect(shouldShowTrialEnded({ ...rules, native: true })).toBe(false);
-        expect(shouldShowTrialEnded({ ...rules, seen: true })).toBe(false);
-        expect(shouldShowTrialEnded({ ...rules, ent: { ...ent, isLoading: true } })).toBe(false);
-        expect(shouldShowTrialEnded({ ...rules, ent: { ...ent, bypass: true } })).toBe(false);
+    it('subscription: remembered per organization and per ended subscription', () => {
+        expect(endedPrompt(subEnt('sub_1'), 'org1')).toEqual({ kind: 'subscription', seenKey: 'billing-plan-ended-seen:org1:sub_1' });
+        expect(endedPrompt(subEnt('sub_2'), 'org1')?.seenKey).toBe('billing-plan-ended-seen:org1:sub_2');
     });
 
-    it('not on /billing itself, nor while the trial runs or once they paid', () => {
-        expect(shouldShowTrialEnded({ ...rules, pathname: '/billing' })).toBe(false);
-        expect(shouldShowTrialEnded({ ...rules, ent: { ...ent, trialExpired: false } })).toBe(false);
-        expect(shouldShowTrialEnded({ ...rules, ent: { ...ent, plan: 'team' } })).toBe(false);
+    it('nothing ended, or no organization → null', () => {
+        expect(endedPrompt({ ...trialEnt, trialExpired: false }, 'org1')).toBeNull();
+        expect(endedPrompt(trialEnt, '')).toBeNull();
+        expect(endedPrompt({ ...subEnt(), endedSubscriptionId: null }, 'org1')).toBeNull();
     });
 });
 
-describe('TrialEndedDialog', () => {
+describe('shouldShowEnded', () => {
+    it('owner on the web, trial or paid plan ended, on Free → yes', () => {
+        expect(shouldShowEnded(rules)).toBe(true);
+        expect(shouldShowEnded({ ...rules, ent: subEnt() })).toBe(true);
+    });
+
+    it('never for non-owners, on native, once seen, while loading or for the Superadmin', () => {
+        for (const ent of [trialEnt, subEnt()]) {
+            const r = { ...rules, ent };
+            expect(shouldShowEnded({ ...r, canManage: false })).toBe(false);
+            expect(shouldShowEnded({ ...r, native: true })).toBe(false);
+            expect(shouldShowEnded({ ...r, seen: true })).toBe(false);
+            expect(shouldShowEnded({ ...r, ent: { ...ent, isLoading: true } })).toBe(false);
+            expect(shouldShowEnded({ ...r, ent: { ...ent, bypass: true } })).toBe(false);
+        }
+    });
+
+    it('not on /billing itself, nor while the plan runs or once they paid again', () => {
+        expect(shouldShowEnded({ ...rules, pathname: '/billing' })).toBe(false);
+        expect(shouldShowEnded({ ...rules, ent: { ...trialEnt, trialExpired: false } })).toBe(false);
+        expect(shouldShowEnded({ ...rules, ent: { ...trialEnt, plan: 'team' } })).toBe(false);
+        expect(shouldShowEnded({ ...rules, ent: { ...subEnt(), plan: 'business' } })).toBe(false);
+    });
+});
+
+describe('PlanEndedDialog', () => {
     beforeEach(() => {
         // Newer Node ships its own (disabled) global localStorage that shadows
         // jsdom's; give the tests a plain in-memory one either way.
@@ -73,14 +98,14 @@ describe('TrialEndedDialog', () => {
         });
         state.user = owner;
         state.native = false;
-        state.ent = { ...ent };
+        state.ent = { ...trialEnt };
     });
     afterEach(() => vi.unstubAllGlobals());
 
-    it('shows once; "Stay on Free" closes it and it never comes back for this org', () => {
+    it('trial: shows once; "Stay on Free" closes it and it never comes back for this org', () => {
         const first = renderAt('/');
         expect(screen.getByRole('dialog', { name: 'billing.trialEnded.title' })).toBeInTheDocument();
-        expect(trialEndedSeen('org1')).toBe(true);
+        expect(endedSeen('billing-trial-ended-seen:org1')).toBe(true);
         fireEvent.click(screen.getByText('billing.trialEnded.stay'));
         expect(screen.queryByRole('dialog')).toBeNull();
         first.unmount();
@@ -102,21 +127,75 @@ describe('TrialEndedDialog', () => {
         expect(screen.getByRole('dialog')).toBeInTheDocument();
     });
 
-    it('not on /billing (that counts as seen), not for non-owners, not on native', () => {
-        const onBilling = renderAt('/billing');
-        expect(screen.queryByRole('dialog')).toBeNull();
-        expect(trialEndedSeen('org1')).toBe(true);
-        onBilling.unmount();
-        localStorage.clear();
+    it('subscription ended: its own title, the same keep / lose content and buttons', () => {
+        state.ent = subEnt('sub_1');
+        renderAt('/');
+        expect(screen.getByRole('dialog', { name: 'billing.planEnded.title' })).toBeInTheDocument();
+        expect(screen.getByText('billing.trialEnded.keeps')).toBeInTheDocument();
+        expect(screen.getByText('billing.trialEnded.loses')).toBeInTheDocument();
+        expect(screen.getByText('billing.trialEnded.stay')).toBeInTheDocument();
+        expect(screen.getByText('billing.choosePlan')).toBeInTheDocument();
+    });
 
-        state.user = { ...owner, role: { name: 'Manager', is_admin: true, rank: 30 } };
-        const manager = renderAt('/');
-        expect(screen.queryByRole('dialog')).toBeNull();
-        manager.unmount();
+    it('subscription ended: once per ended subscription — a later one that ends asks again', () => {
+        state.ent = subEnt('sub_1');
+        const first = renderAt('/');
+        fireEvent.click(screen.getByText('billing.trialEnded.stay'));
+        first.unmount();
 
-        state.user = owner;
-        state.native = true;
+        const again = renderAt('/');
+        expect(screen.queryByRole('dialog')).toBeNull();
+        again.unmount();
+
+        // A dismissed trial doesn't hide it either.
+        localStorage.setItem('billing-trial-ended-seen:org1', '1');
+        state.ent = subEnt('sub_2');
+        const next = renderAt('/');
+        expect(screen.getByRole('dialog', { name: 'billing.planEnded.title' })).toBeInTheDocument();
+        expect(endedSeen('billing-plan-ended-seen:org1:sub_2')).toBe(true);
+        fireEvent.click(screen.getByText('billing.trialEnded.stay'));
+        next.unmount();
+
         renderAt('/');
         expect(screen.queryByRole('dialog')).toBeNull();
+    });
+
+    it('a new subscription ending while the app stays open asks again', () => {
+        state.ent = subEnt('sub_1');
+        const view = renderAt('/');
+        fireEvent.click(screen.getByText('billing.trialEnded.stay'));
+        expect(screen.queryByRole('dialog')).toBeNull();
+        state.ent = subEnt('sub_2');
+        view.rerender(
+            <MemoryRouter initialEntries={['/']}>
+                <PlanEndedDialog />
+            </MemoryRouter>,
+        );
+        expect(screen.getByRole('dialog', { name: 'billing.planEnded.title' })).toBeInTheDocument();
+    });
+
+    it('not on /billing (that counts as seen), not for non-owners, not on native', () => {
+        for (const ent of [trialEnt, subEnt()]) {
+            localStorage.clear();
+            state.ent = ent;
+            state.user = owner;
+            state.native = false;
+            const onBilling = renderAt('/billing');
+            expect(screen.queryByRole('dialog')).toBeNull();
+            expect(endedSeen(endedPrompt(ent, 'org1')!.seenKey)).toBe(true);
+            onBilling.unmount();
+            localStorage.clear();
+
+            state.user = { ...owner, role: { name: 'Manager', is_admin: true, rank: 30 } };
+            const manager = renderAt('/');
+            expect(screen.queryByRole('dialog')).toBeNull();
+            manager.unmount();
+
+            state.user = owner;
+            state.native = true;
+            const nativeView = renderAt('/');
+            expect(screen.queryByRole('dialog')).toBeNull();
+            nativeView.unmount();
+        }
     });
 });

@@ -1,5 +1,5 @@
 # CI-ONLY stand-in for the anwar.os edge base Caddyfile
-# (NnnotAnwar/anwarnnnot → infra/edge, mounted on the server at
+# (NnnotAnwar/anwar-os → infra/edge, mounted on the server at
 # /etc/caddy/base/Caddyfile). It mirrors the contract shiftella.caddy relies on:
 # global email + the `security_headers` snippet + importing the site files.
 # If the real file changes its snippet name or import path, update this copy.

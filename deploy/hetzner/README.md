@@ -2,7 +2,7 @@
 
 Shiftella's web app is a static Vite SPA. There is no server-side code: the backend is hosted Supabase and stays there. It runs on the **anwar.os Hetzner server**: CAX21, arm64, Ubuntu 24.04, Docker.
 
-On that server one **edge Caddy** container (compose project `edge`, owned by the anwar.os repo `NnnotAnwar/anwarnnnot` → `infra/edge`) holds ports 80/443 and gets HTTPS certificates for every domain on its own. Shiftella adds:
+On that server one **edge Caddy** container (compose project `edge`, owned by the anwar.os repo `NnnotAnwar/anwar-os` → `infra/edge`) holds ports 80/443 and gets HTTPS certificates for every domain on its own. Shiftella adds:
 
 | Piece | In this repo | On the server |
 |---|---|---|

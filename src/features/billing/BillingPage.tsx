@@ -430,7 +430,7 @@ function BillingInner() {
                                         </p>
                                         {paid && (
                                             <p className="text-caption text-ink-soft dark:text-slate-400">
-                                                ≈ {eur(paid[interval].eur)} · {t('billing.exclVat')}
+                                                ≈ {eur(paid[interval].eur)}
                                                 {interval === 'year' && ` · ${t(p === 'team' ? 'billing.billedYearly' : 'billing.billedYearlyPerMember', { amount: czk(paid.year.czk * 12) })}`}
                                             </p>
                                         )}

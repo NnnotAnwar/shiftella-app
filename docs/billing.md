@@ -57,6 +57,8 @@ the team automatically (see *Seat sync*).
 
 ## 2. Tax / VAT
 
+> **VAT:** the operator is **not VAT-registered** (neplátce DPH). Prices are final; keep `STRIPE_AUTOMATIC_TAX=false` and the UI says no VAT is added. If that changes, turn on Stripe Tax, set the secret to `true` (or remove it) and bring back the "excl. VAT" wording.
+
 Turn on **Stripe Tax** (Settings → Tax), register your Czech VAT, and set the
 origin address. Checkout runs with `automatic_tax` and collects the customer's
 address and VAT id (`tax_id_collection`). Until Stripe Tax is set up you can

@@ -49,7 +49,9 @@ const R = {
 /**
  * Billing scenario for the subscription row: `localStorage['demo-billing']` =
  * 'trial' (20 days left) | 'trial3' (3 days left) | 'free' (trial ended) |
- * 'past_due'; anything else = a paid Business plan (the README shots).
+ * 'past_due' | 'ended' (the paid Stripe subscription was canceled → Free) |
+ * 'cancel_scheduled' (switched to Free: ends at the period end); anything
+ * else = a paid Business plan (the README shots).
  */
 function billingScenario(): string | null {
     try {
@@ -439,7 +441,11 @@ export function buildDemoData(): Tables {
                 ? trial(-2)
                 : scenario === 'past_due'
                   ? { ...paid, status: 'past_due' }
-                  : paid,
+                  : scenario === 'ended'
+                    ? { ...paid, status: 'canceled', current_period_end: new Date(now.getTime() - 2 * 86400000).toISOString() }
+                    : scenario === 'cancel_scheduled'
+                      ? { ...paid, cancel_at_period_end: true }
+                      : paid,
     ];
 
     const notification_preferences: Row[] = [

@@ -14,7 +14,8 @@ import {
 } from '@phosphor-icons/react';
 
 import { usePermissions } from '@shared/auth/usePermissions';
-import { canManageBilling } from '@features/billing/useBilling';
+import { canManageBilling, isNativeApp, useEntitlements } from '@features/billing/useBilling';
+import { billingNavPill, type NavPill } from '@features/billing/navPill';
 import { useTranslation } from '@shared/preferences/PreferencesContext';
 import { useRequestsBadge } from '@features/requests/useRequests';
 import { useUnreadAnnouncementCount } from '@features/announcements/useUnreadAnnouncementCount';
@@ -50,6 +51,9 @@ export interface NavCaps {
 /** Named live-badge sources, resolved by `useNavItems`. */
 type BadgeSource = 'pendingRequests' | 'unreadAnnouncements';
 
+/** Named status-pill sources, resolved by `useNavItems`. */
+type PillSource = 'billing';
+
 /**
  * Who the mobile tab bar is laid out for. Staff (rank < 20) live in their own
  * schedule and hours; managers and up live in the rota, timesheets and team.
@@ -74,6 +78,8 @@ export interface NavItemDef {
      */
     mobileSlot?: Partial<Record<MobileAudience, number>>;
     badge?: BadgeSource;
+    /** A small status pill after the label (e.g. the subscription's state). */
+    pill?: PillSource;
 }
 
 export const NAV_ITEMS: readonly NavItemDef[] = [
@@ -84,9 +90,9 @@ export const NAV_ITEMS: readonly NavItemDef[] = [
     { id: 'requests', labelKey: 'nav.requests', icon: UserCircleGearIcon, route: '/requests', section: 'work', badge: 'pendingRequests' },
     { id: 'timesheets', labelKey: 'nav.timesheets', icon: ClockUserIcon, route: '/timesheets', section: 'manage', visible: (c) => c.timesheets, mobileSlot: { manager: 3 } },
     { id: 'admin', labelKey: 'nav.team', icon: ShieldCheckIcon, route: '/admin', section: 'manage', visible: (c) => c.team, mobileSlot: { manager: 4 } },
-    
     { id: 'activity', labelKey: 'nav.activity', icon: ClockCounterClockwiseIcon, route: '/activity', section: 'manage', visible: (c) => c.activity },
-    { id: 'billing', labelKey: 'nav.billing', icon: CreditCardIcon, route: '/billing', section: 'system', visible: (c) => c.billing },
+    // First in System, with a status pill, so the owner never has to hunt for it.
+    { id: 'billing', labelKey: 'nav.billing', icon: CreditCardIcon, route: '/billing', section: 'system', visible: (c) => c.billing, pill: 'billing' },
     { id: 'settings', labelKey: 'nav.settings', icon: GearIcon, route: '/settings', section: 'system' },
 ];
 
@@ -101,6 +107,8 @@ export interface ResolvedNavItem {
     /** Tab-bar slot for the current user's audience, or null = "More" sheet. */
     mobileSlot: number | null;
     badgeCount: number;
+    /** Status pill (text + tone), or null. */
+    pill: NavPill | null;
 }
 
 /**
@@ -117,12 +125,14 @@ export function useNavItems(): ResolvedNavItem[] {
     // Deciders: requests waiting for them; everyone else: unseen decisions on their own.
     const pendingRequests = useRequestsBadge();
     const unreadAnnouncements = useUnreadAnnouncementCount();
+    const ent = useEntitlements();
     const t = useTranslation();
 
     return useMemo(() => {
         const caps: NavCaps = { team, timesheets, activity, billing };
         const audience: MobileAudience = observer ? 'manager' : 'staff';
         const badges: Record<BadgeSource, number> = { pendingRequests, unreadAnnouncements };
+        const pills: Record<PillSource, NavPill | null> = { billing: billing ? billingNavPill(ent, { t, native: isNativeApp() }) : null };
         return NAV_ITEMS.filter((i) => !i.visible || i.visible(caps)).map((i) => ({
             id: i.id,
             label: t(i.labelKey),
@@ -132,6 +142,7 @@ export function useNavItems(): ResolvedNavItem[] {
             section: i.section,
             mobileSlot: i.mobileSlot?.[audience] ?? null,
             badgeCount: i.badge ? badges[i.badge] : 0,
+            pill: i.pill ? pills[i.pill] : null,
         }));
-    }, [team, timesheets, activity, billing, observer, pendingRequests, unreadAnnouncements, t]);
+    }, [team, timesheets, activity, billing, observer, pendingRequests, unreadAnnouncements, ent, t]);
 }

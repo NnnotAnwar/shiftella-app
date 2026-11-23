@@ -14,6 +14,7 @@ import { getFullInitials } from '@shared/utils/getInitials';
 import { useBackHandler } from '@shared/hooks/useBackHandler';
 import { useNavItems, NAV_SECTIONS, SECTION_LABEL_KEYS } from '../navigation';
 import { LANGUAGES } from '@shared/i18n/translations';
+import { NAV_PILL_CLASS, NAV_PILL_DOT } from '@features/billing/navPill';
 import { APP_NAME } from '@shared/brand';
 
 /**
@@ -95,6 +96,9 @@ export function BottomNav() {
     // When the sheet is open only "More" is lit; otherwise it's lit on its routes.
     const moreActive = menuOpen || moreItems.some((i) => i.route === pathname);
     const moreBadge = moreItems.reduce((sum, i) => sum + i.badgeCount, 0);
+    // A sheet item that needs attention (e.g. a failed payment) dots the More tab.
+    const urgentPill = moreItems.find((i) => i.pill?.urgent)?.pill ?? null;
+    const moreDot = urgentPill ? NAV_PILL_DOT[urgentPill.tone] : null;
 
     // Hardware back / Esc closes the sheet instead of navigating.
     useBackHandler(menuOpen, () => setMenuOpen(false));
@@ -171,6 +175,11 @@ export function BottomNav() {
                                                         <item.icon weight="bold" className="w-4 h-4" />
                                                     </div>
                                                     <span className="flex-1 text-body-strong text-gray-900 dark:text-white">{item.label}</span>
+                                                    {item.pill && (
+                                                        <span className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-caption font-semibold ${NAV_PILL_CLASS[item.pill.tone]}`}>
+                                                            {item.pill.text}
+                                                        </span>
+                                                    )}
                                                     {item.badgeCount > 0 && (
                                                         <span className="min-w-5 h-5 px-1.5 rounded-full bg-emerald-600 text-white text-micro flex items-center justify-center">{item.badgeCount}</span>
                                                     )}
@@ -273,6 +282,9 @@ export function BottomNav() {
                                 <span className="absolute top-0 right-2 min-w-4 h-4 px-1 rounded-full bg-emerald-600 text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-white dark:ring-slate-950">
                                     {moreBadge}
                                 </span>
+                            )}
+                            {!menuOpen && moreBadge === 0 && moreDot && (
+                                <span className={`absolute top-0.5 right-3 size-2 rounded-full ring-2 ring-white dark:ring-slate-950 ${moreDot}`} />
                             )}
                         </span>
                         <span className={`text-caption ${moreActive ? 'font-semibold' : ''}`}>{t('nav.more')}</span>

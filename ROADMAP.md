@@ -58,23 +58,69 @@ _Last updated: November 22, 2026 · current version 1.12.0 “Děčín”._
 
 ---
 
-## 🔭 Next — v1.12 “D”
+## 🔭 Next — approved plan (owner, 24 November 2026)
 
-- **E2E tests** — Playwright happy paths in CI (sign up, clock in, publish,
-  request and approve time off, a role request).
-- **#99 Lock down RLS helper functions** — needs a schema move (a naive revoke
-  breaks RLS); a dedicated, tested change. **#98** unused-index review with it.
-- **Targeted announcements** (per location) with read receipts for admins.
-- **Calendar sync** — your rota as an ICS feed.
-- **Store release** — polish sign-up and onboarding for the App Store / Google
-  Play listing.
+Approved by the owner after v1.12.0 “Děčín” shipped. **Not started yet.**
+Deliberately left out: DPP/DPČ hour-cap tracking, because it could put off
+customers.
 
-## ⏳ Later / blocked
+### 1. Legal & money (first)
+- **Czech-compliant Stripe invoices** — “Nejsem plátce DPH”, IČO and address in
+  the invoice template (the operator is not VAT-registered).
+- **Data processing agreement (DPA / zpracovatelská smlouva)** for business
+  customers, plus terms for the paid service (payment, refunds, cancellation).
+- **Stricter failed payments** — an upgrade takes effect only after the payment
+  succeeds (`payment_behavior: pending_if_incomplete`).
+- **Trial & billing emails** — trial day 1 / 20 / 27, “trial ended”, failed-payment
+  (dunning) emails.
 
-- **#89 iOS push (APNs)** — blocked on the Apple Developer account + Firebase iOS
-  setup; guide in [`docs/ios-push.md`](docs/ios-push.md).
-- Czech payroll export + DPP/DPČ hour caps · QR/geofenced clock-in · manager
-  home · Sentry · self-serve organizations.
+### 2. Fixes & tech debt
+- **Server-side plan gates** — templates, swaps, wages and coverage are gated in
+  the UI only; enforce them in RLS / the server, too.
+- **Live-board role badges** show the base role in English (MANAGER, EMPLOYEE) in
+  the Czech UI → show the organization's role name.
+- **Translate server errors** (e.g. “There is no active subscription…”).
+- **Superadmin can't invite into an org at its member limit** — allow it.
+- **Redeploy the remaining functions** with billing (`delete-account`, plan-aware
+  `send-push`; push currently reaches Free orgs too).
+- **Database security** — #99 lock down SECURITY DEFINER helpers, #98 unused
+  indexes, stop `org_plan()` revealing other orgs' plans.
+- **E2E tests** (Playwright): sign-in, sign-up, invite, checkout.
+- **Infrastructure** — enforce the prod CSP, deploy on push, retire Vercel (and
+  the Vercel↔Supabase integration), Node 20 → 22, fix the local Supabase CLI.
+
+### 3. Features
+- **Auto-scheduling** — suggest a rota from availability, 11 h rest, hour
+  targets and coverage needs; the manager edits and publishes.
+- **Calendar sync** — your shifts as an ICS feed (Google / Apple Calendar).
+- **Reminders** — push an hour before a shift, “you haven't clocked in”, a
+  manager digest.
+- **Trusted clock-in** — kiosk mode (tablet + PIN / QR), geofence check, breaks.
+- **Rota cost** — wages and overtime visible in the grid before publishing.
+- **Payroll exports** for Czech accounting — Pohoda, Money S3.
+- **Employee documents** — contracts, health certificates with expiry reminders.
+- **Shift notes & handover** for the next person.
+- **Targeted announcements** (per location / role) with read receipts.
+- **More languages** — Slovak, Ukrainian, later Polish.
+- **Import employees** from Excel / CSV.
+- **Owner analytics** — labour cost share, absences, lateness, busy days.
+
+### 4. Growth
+- **Landing page on shiftella.app** — product, pricing, FAQ, Czech SEO
+  (“plánování směn”, “docházka zaměstnanců”).
+- **Demo organization on sign-up** (reuse the `tools/screenshots` demo data).
+- **Promo video** redone on the real UI (screenshot harness + the existing voice-over).
+- **Store release** — Firebase for `com.shiftella.app`, #89 iOS push, Google /
+  Apple sign-in, store listings.
+- **Promo codes & referrals** (“bring a friend — a month free”; Stripe promotion
+  codes are already enabled).
+- **Discounts** — non-profits, yearly plans with 30+ people.
+- **In-app feedback**, a status page, a help centre.
+
+### 5. Reliability
+- **Error tracking** (e.g. Sentry) and an uptime check on shiftella.app with
+  phone alerts.
+- **Backup restore drill** for the Supabase database once a quarter.
 
 ---
 

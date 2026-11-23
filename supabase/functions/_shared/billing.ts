@@ -131,6 +131,66 @@ export function prorationForChange(
     return isUpgrade(from, to) ? 'always_invoice' : 'create_prorations';
 }
 
+// --- billing-change-plan requests -------------------------------------------------
+
+/**
+ * What a billing-change-plan body asks for:
+ *   { plan: 'team' | 'business', interval: 'month' | 'year' } → switch in place
+ *   { plan: 'free' }                                         → cancel at period end
+ *   { action: 'resume' }                                     → undo a scheduled cancel
+ * null = a body we don't understand (400).
+ */
+export type ChangeRequest =
+    | { kind: 'switch'; plan: PaidPlan; interval: Interval }
+    | { kind: 'cancel' }
+    | { kind: 'resume' };
+
+export function parseChangeRequest(body: unknown): ChangeRequest | null {
+    const b = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>;
+    if (b.action === 'resume') return { kind: 'resume' };
+    if (b.action !== undefined) return null;
+    if (b.plan === 'free') return { kind: 'cancel' };
+    const plan = b.plan === 'team' || b.plan === 'business' ? b.plan : null;
+    const interval = b.interval === 'month' || b.interval === 'year' ? b.interval : null;
+    return plan && interval ? { kind: 'switch', plan, interval } : null;
+}
+
+export type ChangeRefusalCode = 'GRANTED' | 'GRANDFATHERED' | 'NO_SUBSCRIPTION';
+
+/**
+ * Why the org's row can't be changed in place (409), or null when it can:
+ * a Superadmin gift (GRANTED), grandfathered (GRANDFATHERED), or no live
+ * Stripe subscription (NO_SUBSCRIPTION — the client starts Checkout instead).
+ * The same for switch, cancel (→ Free) and resume.
+ */
+export function changeRefusal(
+    row: Pick<SubscriptionRow, 'manual_plan' | 'manual_until' | 'source' | 'status' | 'stripe_subscription_id'> | null,
+    now = Date.now(),
+): { error: string; code: ChangeRefusalCode } | null {
+    if (hasActiveGrant(row, now)) return { error: 'Your plan was granted by Shiftella — nothing to pay.', code: 'GRANTED' };
+    if (row?.source === 'grandfathered') return { error: 'Your organization already has Business for free.', code: 'GRANDFATHERED' };
+    if (!row?.stripe_subscription_id || !LIVE_STATUSES.includes(row.status)) {
+        return { error: 'There is no active subscription to change — pick a plan first.', code: 'NO_SUBSCRIPTION' };
+    }
+    return null;
+}
+
+/**
+ * The `cancel_at_period_end` a cancel (→ Free) / resume sets, or null when
+ * Stripe already has it (→ `{ ok: true, unchanged: true }`). Only this flag
+ * moves: no charge, no proration, the plan runs until the period (or the
+ * Stripe trial) ends.
+ */
+export function cancelFlagTarget(kind: 'cancel' | 'resume', scheduled: boolean): boolean | null {
+    const target = kind === 'cancel';
+    return target === !!scheduled ? null : target;
+}
+
+/** When a cancel-scheduled subscription ends (ISO): Stripe's `cancel_at`, else the period end (= trial end while trialing). */
+export function endsAtOf(sub: { cancel_at?: number | null; current_period_end?: number | null }): string | null {
+    return iso(sub.cancel_at ?? sub.current_period_end ?? null);
+}
+
 /** Stripe's subscription status → ours. Lapsed/paused/unpaid lose access (free). */
 export function mapStatus(s: Stripe.Subscription.Status): SubStatus {
     switch (s) {
@@ -200,8 +260,8 @@ export async function loadSubscription(admin: SupabaseClient, orgId: string): Pr
     return (data as SubscriptionRow | null) ?? null;
 }
 
-export function hasActiveGrant(row: Pick<SubscriptionRow, 'manual_plan' | 'manual_until'> | null): boolean {
-    return !!row?.manual_plan && (!row.manual_until || new Date(row.manual_until).getTime() > Date.now());
+export function hasActiveGrant(row: Pick<SubscriptionRow, 'manual_plan' | 'manual_until'> | null, now = Date.now()): boolean {
+    return !!row?.manual_plan && (!row.manual_until || new Date(row.manual_until).getTime() > now);
 }
 
 const iso = (unix: number | null | undefined) => (unix ? new Date(unix * 1000).toISOString() : null);

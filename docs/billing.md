@@ -59,15 +59,23 @@ start Checkout without it by setting the secret `STRIPE_AUTOMATIC_TAX=false`.
 
 ## 3. Customer Portal
 
-Settings → Billing → **Customer portal**:
+**Nothing to set up by hand.** `billing-portal` opens the portal with its own
+configuration, which `ensurePortalConfiguration()` in
+`supabase/functions/_shared/billing.ts` finds (an active configuration with
+`metadata.shiftella = v2`) or creates on first use, so live mode configures
+itself. It allows:
 
-- Allow: update payment method, view invoices, update billing info / tax id,
-  **cancel** (at period end).
-- **Switch plans:** allow switching between the 4 prices above (Team ⇄
-  Business, monthly ⇄ yearly). **Do not allow customers to change the
-  quantity** — the app keeps it right (Team 1, Business = members, min. 10) and
-  fixes it after any switch.
-- Set the default return URL to `https://<your-app>/billing`.
+- update payment method, invoice history, billing details (email, address,
+  name, tax id), **cancel** at period end;
+- **no plan switching** (`subscription_update` disabled). Stripe carries the
+  quantity over on a portal switch, so Business with 10 seats → Team offered
+  "10 × 449 Kč". Plan and interval changes happen in the app instead (see
+  *Plan changes* below).
+
+The return URL is passed per session (`APP_URL/billing`). The Dashboard's
+*default* portal configuration is no longer used; leave it as it is. To change
+the portal's settings, bump the tag (`v2` → `v3`) in the helper so a fresh
+configuration is created.
 
 ## 4. Webhook
 
@@ -108,8 +116,9 @@ preprod URL on preprod. Never commit any of these values.
 # grandfathering backfill, gifts (admin_set_org_plan / admin_clear_org_plan)
 supabase db push --project-ref <project-ref>        # or apply 20261121120000_billing_subscriptions.sql
 
-supabase functions deploy billing-checkout --project-ref <project-ref>
-supabase functions deploy billing-portal   --project-ref <project-ref>
+supabase functions deploy billing-checkout    --project-ref <project-ref>
+supabase functions deploy billing-change-plan --project-ref <project-ref>
+supabase functions deploy billing-portal      --project-ref <project-ref>
 supabase functions deploy stripe-webhook   --project-ref <project-ref> --no-verify-jwt
 # these changed too (limit check, seat sync, push gated to Team+):
 supabase functions deploy invite-employee delete-employee delete-account --project-ref <project-ref>
@@ -134,6 +143,10 @@ Check it: `psql "$PREPROD_DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/billing_s
   http://127.0.0.1:54321/functions/v1/stripe-webhook` and use the `whsec_` it
   prints as `STRIPE_WEBHOOK_SECRET` (`supabase functions serve --env-file …`).
 - Trigger a renewal/seat check: `stripe trigger invoice.upcoming`.
+- Plan switch: on a live Business subscription, *Switch to Team* → the
+  subscription shows Team × 1 in Stripe and a credit on the next invoice;
+  *Switch to Business* back → Business × max(10, members), invoiced at once.
+  *Manage billing* opens a portal without any plan-switch option.
 
 ## How it works (for maintainers)
 
@@ -147,12 +160,36 @@ Check it: `psql "$PREPROD_DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/billing_s
 - **Seat sync** (Business only, Team is held at 1): `syncSeats()` in
   `supabase/functions/_shared/billing.ts` runs after `invite-employee`,
   `delete-employee` and `delete-account`, after every subscription
-  created/updated event (fixes the quantity after a Portal plan switch) and on
-  `invoice.upcoming`. It skips orgs without a live Stripe subscription (trial,
+  created/updated event (a safety net; plan switches already set the right
+  quantity) and on `invoice.upcoming`. It skips orgs without a live Stripe subscription (trial,
   grandfathered, gifts) and never fails the member action. Invited people
   count from the invite (their profile exists from then).
   Proration: monthly plans put the difference on the next invoice; **yearly plans invoice extra seats immediately** (`always_invoice`) and leave a credit for fewer seats; at renewal (`invoice.upcoming`) the count is corrected without proration.
 
+- **Plan changes** (Team ⇄ Business, monthly ⇄ yearly) for an org with a live
+  Stripe subscription (`trialing` / `active` / `past_due`) happen **on the
+  Billing page**, never in the portal: the other plan's card shows *Switch to
+  {plan}*, the current plan's card shows *Switch to yearly / monthly* when the
+  toggle differs, and one confirm shows the new price (Team flat; Business
+  N × unit, min. 10) and whether it's charged now, credited, or free during
+  the trial. The `billing-change-plan` function then updates the subscription
+  item in place with the new price and the right quantity (Team 1, Business
+  max(10, members)), clears `cancel_at_period_end`, sets
+  `metadata.plan`, and writes the row (`syncFromStripe`).
+  - **Proration** (`prorationForChange()` in `_shared/billing.ts`, mirrored by
+    `changeKind()` in `src/features/billing/plans.ts`): an **upgrade**
+    (Team → Business, or monthly → yearly) uses `always_invoice`, so the
+    prorated difference is charged right away; a **downgrade** uses
+    `create_prorations`, a credit on the next invoice; while **trialing**,
+    `none`. Stripe resets the billing cycle on any interval change and
+    invoices it at once; on yearly → monthly the unused year exceeds the new
+    month, and the rest is kept as a customer credit balance.
+  - **Refused:** no live subscription → 409 `NO_SUBSCRIPTION` (the app falls
+    back to Checkout); gifts (`GRANTED`) and grandfathered orgs
+    (`GRANDFATHERED`); to Team when the org doesn't fit, 409
+    `PLAN_LIMIT_MEMBERS` (> 15 members) / `PLAN_LIMIT_LOCATIONS` (> 3 active
+    locations). Same plan + interval → `{ ok: true, unchanged: true }`.
+  - Native apps show no switch buttons (store rules, as for Checkout).
 - **Trial carry-over:** upgrading with more than 2 days of the trial left sets
   Stripe's `trial_end` to the trial's end, so nothing is charged before it.
 - **Activity log:** `plan_changed` (plan / status / interval / cancel at period

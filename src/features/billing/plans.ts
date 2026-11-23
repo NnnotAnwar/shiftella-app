@@ -84,6 +84,33 @@ export function monthlyEstimateCzk(plan: PaidPlan, interval: BillingInterval, me
     return PRICES[plan][interval].czk * billedQuantity(plan, members);
 }
 
+/**
+ * What the organization is billed per billing period (CZK excl. VAT): Team one
+ * flat price (quantity 1), Business `quantity × unit` with quantity = members,
+ * minimum 10. Yearly is the per-month price × 12 (4 308 Kč, 432 Kč / person).
+ */
+export function billedPrice(plan: PaidPlan, interval: BillingInterval, members: number): { quantity: number; unitCzk: number; totalCzk: number } {
+    const quantity = billedQuantity(plan, members);
+    const unitCzk = PRICES[plan][interval].czk * (interval === 'year' ? 12 : 1);
+    return { quantity, unitCzk, totalCzk: unitCzk * quantity };
+}
+
+/**
+ * How Stripe settles an in-place plan change: an upgrade (Team → Business or
+ * monthly → yearly) is charged now (prorated), a downgrade is credited to the
+ * next invoice, and nothing is charged while trialing. Mirrors
+ * `prorationForChange()` in supabase/functions/_shared/billing.ts.
+ */
+export function changeKind(
+    from: { plan: PaidPlan; interval: BillingInterval },
+    to: { plan: PaidPlan; interval: BillingInterval },
+    trialing: boolean,
+): 'trial' | 'upgrade' | 'downgrade' {
+    if (trialing) return 'trial';
+    const rank = (p: PaidPlan) => (p === 'business' ? 2 : 1);
+    return rank(to.plan) > rank(from.plan) || (from.interval === 'month' && to.interval === 'year') ? 'upgrade' : 'downgrade';
+}
+
 /** Yearly saving vs monthly, in whole percent (the "save 20 %" badge). */
 export function yearlySavingPct(plan: PaidPlan): number {
     const p = PRICES[plan];

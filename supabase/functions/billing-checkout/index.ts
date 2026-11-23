@@ -12,7 +12,7 @@
 //   • Days left on the no-card trial carry over (Stripe trial_end) when more
 //     than 2 days remain, so upgrading early never costs trial days.
 //   • Refused (409) when the org already has a live Stripe subscription (plan
-//     changes go through the Customer Portal), is grandfathered, or has an
+//     changes go through billing-change-plan), is grandfathered, or has an
 //     active Superadmin grant.
 //
 // Deploy: supabase functions deploy billing-checkout
@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
         if (hasActiveGrant(row)) return json({ error: 'Your plan was granted by Shiftella — nothing to pay.', code: 'GRANTED' }, 409);
         if (row?.source === 'grandfathered') return json({ error: 'Your organization already has Business for free.', code: 'GRANDFATHERED' }, 409);
         if (row?.stripe_subscription_id && ['trialing', 'active', 'past_due'].includes(row.status)) {
-            return json({ error: 'You already have a subscription — change it under Manage billing.', code: 'HAS_SUBSCRIPTION' }, 409);
+            return json({ error: 'You already have a subscription — switch plans on the Billing page.', code: 'HAS_SUBSCRIPTION' }, 409);
         }
 
         const stripe = await stripeClient();

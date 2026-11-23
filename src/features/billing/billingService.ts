@@ -6,23 +6,42 @@ import type { OrgUsage, Subscription } from './entitlements';
  * --- BILLING SERVICE ---
  * Reads the organization's subscription row (RLS: own org, Superadmin all) and
  * talks to the billing Edge Functions. Clients never write `subscriptions` —
- * Checkout / Portal run on Stripe, the webhook writes the row, and a
+ * Checkout / Portal run on Stripe, plan switches go through
+ * billing-change-plan, the webhook writes the row, and a
  * Superadmin's free grant goes through the admin_* RPCs.
  */
 
-/** Read a function's `{ error }` body on a non-2xx (supabase-js hides it on `error.context`). */
-async function invokeError(error: { message: string }): Promise<Error> {
+/** A billing function's error, with its machine-readable `code` (e.g. PLAN_LIMIT_MEMBERS) when it sent one. */
+export class BillingError extends Error {
+    code?: string;
+    limit?: number;
+    count?: number;
+    constructor(message: string, extra: { code?: string; limit?: number; count?: number } = {}) {
+        super(message);
+        this.name = 'BillingError';
+        Object.assign(this, extra);
+    }
+}
+
+/** Read a function's `{ error, code }` body on a non-2xx (supabase-js hides it on `error.context`). */
+async function invokeError(error: { message: string }): Promise<BillingError> {
     let message = error.message;
+    let extra: { code?: string; limit?: number; count?: number } = {};
     const resp = (error as { context?: Response }).context;
     if (resp && typeof resp.json === 'function') {
         try {
             const body = await resp.json();
             if (body?.error) message = body.error;
+            extra = {
+                code: typeof body?.code === 'string' ? body.code : undefined,
+                limit: typeof body?.limit === 'number' ? body.limit : undefined,
+                count: typeof body?.count === 'number' ? body.count : undefined,
+            };
         } catch {
             /* keep the default message */
         }
     }
-    return new Error(message);
+    return new BillingError(message, extra);
 }
 
 async function invokeForUrl(fn: 'billing-checkout' | 'billing-portal', body: Record<string, unknown>): Promise<string> {
@@ -67,7 +86,20 @@ export const billingService = {
         return invokeForUrl('billing-checkout', { plan, interval, language });
     },
 
-    /** Stripe Customer Portal URL for the caller's organization. */
+    /**
+     * Switch the live Stripe subscription to another plan / interval in place
+     * (billing-change-plan). Throws a BillingError with `code` NO_SUBSCRIPTION
+     * (use Checkout), PLAN_LIMIT_MEMBERS / PLAN_LIMIT_LOCATIONS (doesn't fit Team).
+     */
+    async changePlan(plan: PaidPlan, interval: BillingInterval): Promise<{ unchanged: boolean }> {
+        const { data, error } = await supabase.functions.invoke('billing-change-plan', { body: { plan, interval } });
+        if (error) throw await invokeError(error);
+        const d = (data ?? {}) as { ok?: boolean; unchanged?: boolean; error?: string; code?: string };
+        if (!d.ok) throw new BillingError(d.error ?? 'The plan could not be changed.', { code: d.code });
+        return { unchanged: !!d.unchanged };
+    },
+
+    /** Stripe Customer Portal URL for the caller's organization (card, invoices, billing details, cancel). */
     portalUrl(language: string): Promise<string> {
         return invokeForUrl('billing-portal', { language });
     },

@@ -75,5 +75,21 @@ export function useRedirectAction({
         }
     }, []);
 
-    return { busy, run };
+    /**
+     * The same busy key for an action that stays on the page (an in-place plan
+     * change): `key` spins while `task` runs and always clears afterwards; a
+     * failure goes to `onError`.
+     */
+    const perform = useCallback(async (key: string, task: () => Promise<void>) => {
+        setBusy(key);
+        try {
+            await task();
+        } catch (err) {
+            latest.current.onError?.(err);
+        } finally {
+            setBusy(null);
+        }
+    }, []);
+
+    return { busy, run, perform };
 }

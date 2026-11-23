@@ -1,14 +1,18 @@
 // =============================================================================
 // EDGE FUNCTION: billing-portal
 // -----------------------------------------------------------------------------
-// Opens the Stripe Customer Portal for the CALLER's organization (change plan
-// or interval, update the card, invoices, cancel). Same authorization as
-// billing-checkout: Superadmin or the org's Head Admin.
+// Opens the Stripe Customer Portal for the CALLER's organization: update the
+// card, invoices, billing details / VAT id, cancel at period end. Plan and
+// interval changes are NOT offered there (Stripe would carry the Business
+// quantity over to Team) — they go through billing-change-plan. The portal
+// configuration comes from ensurePortalConfiguration (metadata shiftella=v2,
+// created on first use). Same authorization as billing-checkout: Superadmin
+// or the org's Head Admin.
 //
 // Deploy: supabase functions deploy billing-portal
 // =============================================================================
 
-import { appUrl, corsHeaders, json, loadSubscription, requireBillingCaller, stripeClient } from '../_shared/billing.ts';
+import { appUrl, corsHeaders, ensurePortalConfiguration, json, loadSubscription, requireBillingCaller, stripeClient } from '../_shared/billing.ts';
 
 Deno.serve(async (req) => {
     if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -25,6 +29,7 @@ Deno.serve(async (req) => {
         const stripe = await stripeClient();
         const session = await stripe.billingPortal.sessions.create({
             customer: row.stripe_customer_id,
+            configuration: await ensurePortalConfiguration(stripe),
             return_url: `${appUrl()}/billing`,
             locale: body.language === 'cs' ? 'cs' : 'en',
         });

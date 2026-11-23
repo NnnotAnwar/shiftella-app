@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import type { User } from '@shared/types';
@@ -24,12 +24,14 @@ vi.mock('./billingService', () => ({
     billingService: {
         getSubscription: vi.fn(async () => row),
         getUsage: vi.fn(async () => ({ members: 23, locations: 2 })),
-        checkoutUrl: vi.fn(),
+        // Never resolves: the redirect stays "on its way" (jsdom can't navigate).
+        checkoutUrl: vi.fn(() => new Promise<string>(() => {})),
         portalUrl: vi.fn(),
     },
 }));
 
 import { BillingPage } from './BillingPage';
+import { billingService } from './billingService';
 
 const base: Subscription = {
     organization_id: 'org1', plan: 'business', status: 'trialing', interval: null, seats: null,
@@ -37,11 +39,11 @@ const base: Subscription = {
     stripe_customer_id: null, stripe_subscription_id: null, source: 'trial', manual_plan: null, manual_until: null, manual_note: null,
 };
 
-function renderPage() {
+function renderPage(path = '/billing') {
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     return render(
         <QueryClientProvider client={qc}>
-            <MemoryRouter>
+            <MemoryRouter initialEntries={[path]}>
                 <BillingPage />
             </MemoryRouter>
         </QueryClientProvider>,
@@ -70,6 +72,37 @@ describe('BillingPage', () => {
         expect(screen.queryByText(/billing\.choose/)).toBeNull();
         expect(screen.queryByText(/Kč/)).toBeNull();
         expect(screen.getByText('billing.manageOnWeb:Shiftella')).toBeInTheDocument();
+    });
+
+    it('back from a canceled Checkout: everything idle and usable', async () => {
+        renderPage('/billing?checkout=canceled');
+        const team = await screen.findByRole('button', { name: 'billing.choose:billing.plan.team' });
+        const business = screen.getByRole('button', { name: 'billing.choose:billing.plan.business' });
+        expect(team).toBeEnabled();
+        expect(business).toBeEnabled();
+        expect(screen.queryByText('billing.activating')).toBeNull();
+    });
+
+    it('back from a successful Checkout: a calm "activating" line, plan buttons stay enabled', async () => {
+        renderPage('/billing?checkout=success');
+        expect(await screen.findByText('billing.activating')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'billing.choose:billing.plan.team' })).toBeEnabled();
+    });
+
+    it('Browser Back to a bfcached page clears the spinner and refetches the plan', async () => {
+        renderPage();
+        const team = await screen.findByRole('button', { name: 'billing.choose:billing.plan.team' });
+        const business = screen.getByRole('button', { name: 'billing.choose:billing.plan.business' });
+        fireEvent.click(team);
+        expect(team).toHaveAttribute('aria-busy', 'true');
+        expect(business).toBeDisabled();
+
+        const fetches = vi.mocked(billingService.getSubscription).mock.calls.length;
+        await act(async () => void window.dispatchEvent(Object.assign(new Event('pageshow'), { persisted: true })));
+        expect(team).not.toHaveAttribute('aria-busy');
+        expect(team).toBeEnabled();
+        expect(business).toBeEnabled();
+        expect(vi.mocked(billingService.getSubscription).mock.calls.length).toBeGreaterThan(fetches);
     });
 
     it('a Superadmin gift hides checkout and says who granted it', async () => {

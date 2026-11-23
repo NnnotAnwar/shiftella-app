@@ -97,6 +97,8 @@ export interface Entitlements {
     isTrial: boolean;
     trialDaysLeft: number | null;
     trialExpired: boolean;
+    /** Stripe's last charge failed and it is retrying (the plan still runs) — not while a grant overrides it. */
+    pastDue: boolean;
     source: SubscriptionSource | 'none';
     /** Active grant's end (null = forever, or no grant). */
     grantUntil: string | null;
@@ -130,6 +132,7 @@ export function buildEntitlements({
         isTrial: isTrialActive(subscription, now),
         trialDaysLeft: trialDaysLeft(subscription, now),
         trialExpired: trialExpired(subscription, now),
+        pastDue: !grant && subscription?.status === 'past_due',
         source: effectiveSource(subscription, now),
         grantUntil: grant ? subscription?.manual_until ?? null : null,
         limits,

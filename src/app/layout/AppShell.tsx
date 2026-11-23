@@ -18,6 +18,7 @@ import { BiometricLock } from '@features/auth/BiometricLock';
 import { useBiometricEnabled } from '@features/auth/biometricSetting';
 import { CommandPalette } from '../CommandPalette';
 import { TrialBanner } from '@features/billing/TrialBanner';
+import { TrialEndedDialog } from '@features/billing/TrialEndedDialog';
 import { LocationPopup, type LocationPopupVariant } from '@features/locations/components/LocationPopup';
 import { type User, type Shift, type Location } from '@shared/types';
 
@@ -185,6 +186,8 @@ export function AppShell() {
         {/* One reading width for every page, so titles and cards line up as you navigate. */}
         <div className="mx-auto w-full max-w-6xl">
           <TrialBanner />
+          {/* One-time "trial ended" dialog for the owner (portalled). */}
+          <TrialEndedDialog />
           <Outlet context={contextValue} />
         </div>
       </main>

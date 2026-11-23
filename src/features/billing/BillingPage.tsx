@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Navigate, useSearchParams } from 'react-router-dom';
 
-import { CheckIcon, CreditCardIcon, GiftIcon, SparkleIcon, WarningIcon } from '@phosphor-icons/react';
+import { CheckIcon, CircleNotchIcon, CreditCardIcon, GiftIcon, SparkleIcon, WarningIcon } from '@phosphor-icons/react';
 import { useAuthContext } from '@features/auth/AuthContext';
 import { usePreferences } from '@shared/preferences/PreferencesContext';
 import { PageHeader } from '@shared/components/PageHeader';
@@ -13,6 +13,7 @@ import { APP_NAME } from '@shared/brand';
 import type { TranslationKey } from '@shared/i18n/translations';
 import { billingService } from './billingService';
 import { canManageBilling, isNativeApp, useEntitlements, useOrgUsage, useSubscription } from './useBilling';
+import { useRedirectAction } from './useRedirectAction';
 import {
     BUSINESS_MIN_SEATS,
     LIMITS,
@@ -41,6 +42,10 @@ const CARD_FEATURES: Record<Plan, Feature[]> = {
  * monthly / yearly switch, Upgrade → Stripe Checkout, Manage → Customer
  * Portal. Native apps show the plan status only (store rules): no prices, no
  * purchase buttons, no links out.
+ *
+ * Leaving for Stripe never leaves a stuck button behind: `useRedirectAction`
+ * clears the spinner when the page comes back (Back button / bfcache, tab
+ * switch, focus, or a 15 s safety net) and refetches the plan and usage.
  */
 export function BillingPage() {
     const { user } = useAuthContext();
@@ -79,8 +84,18 @@ function BillingInner() {
         return () => clearTimeout(stop);
     }, [polling]);
 
-    const [interval, setBillingInterval] = useState<BillingInterval>(() => (sub?.interval === 'year' ? 'year' : 'month'));
-    const [busy, setBusy] = useState<string | null>(null);
+    // Monthly / yearly switch: follows the live subscription (the row isn't there
+    // on the first render) until the user picks one.
+    const [chosenInterval, setBillingInterval] = useState<BillingInterval | null>(null);
+    const interval: BillingInterval = chosenInterval ?? (sub?.interval === 'year' ? 'year' : 'month');
+
+    const { busy, run } = useRedirectAction({
+        onReturn: () => {
+            void subQ.refetch();
+            void usageQ.refetch();
+        },
+        onError: (err) => toast(err instanceof Error ? err.message : t('common.actionFailed'), 'error'),
+    });
 
     const members = usageQ.data?.members ?? 0;
     const locations = usageQ.data?.locations ?? 0;
@@ -89,17 +104,12 @@ function BillingInner() {
     const liveStripe = !!sub?.stripe_subscription_id && ['trialing', 'active', 'past_due'].includes(sub.status);
     const canBuy = !granted && !grandfathered;
 
-    const go = async (key: string, getUrl: () => Promise<string>) => {
-        setBusy(key);
-        try {
-            window.location.assign(await getUrl());
-        } catch (err) {
-            toast(err instanceof Error ? err.message : t('common.actionFailed'), 'error');
-            setBusy(null);
-        }
-    };
-    const checkout = (plan: PaidPlan) => go(plan, () => billingService.checkoutUrl(plan, interval, language));
-    const portal = () => go('portal', () => billingService.portalUrl(language));
+    // Each button has its own key, so only the tapped one spins; the other plan
+    // buttons wait only while a redirect is genuinely on its way.
+    const checkout = (plan: PaidPlan) => run(plan, () => billingService.checkoutUrl(plan, interval, language));
+    const portal = (key = 'portal') => run(key, () => billingService.portalUrl(language));
+    // Back from a successful Checkout, until the webhook has written the Stripe row.
+    const activating = polling && !(sub?.source === 'stripe' && sub.status !== 'incomplete');
 
     const num = (n: number) => n.toLocaleString(language === 'cs' ? 'cs-CZ' : 'en-GB');
     const czk = (n: number) => `${num(n)} Kč`;
@@ -153,7 +163,7 @@ function BillingInner() {
                 actions={
                     !native &&
                     sub?.stripe_customer_id && (
-                        <Button size="sm" variant="secondary" icon={CreditCardIcon} loading={busy === 'portal'} onClick={portal}>
+                        <Button size="sm" variant="secondary" icon={CreditCardIcon} loading={busy === 'portal'} onClick={() => portal()}>
                             {t('billing.manage')}
                         </Button>
                     )
@@ -173,6 +183,12 @@ function BillingInner() {
                     )}
                 </div>
 
+                {activating && (
+                    <p role="status" className="flex items-center gap-1.5 text-meta text-emerald-700 dark:text-emerald-300">
+                        <CircleNotchIcon weight="bold" className="size-3.5 animate-spin" />
+                        {t('billing.activating')}
+                    </p>
+                )}
                 {granted && (
                     <p className="flex items-center gap-1.5 text-meta text-ink dark:text-white">
                         <GiftIcon weight="bold" className="size-4 text-emerald-600 dark:text-emerald-300" />
@@ -309,7 +325,7 @@ function BillingInner() {
                                     {p !== 'free' && canBuy && (
                                         liveStripe ? (
                                             !current && (
-                                                <Button size="sm" variant="secondary" loading={busy === 'portal'} onClick={portal} fullWidth>
+                                                <Button size="sm" variant="secondary" loading={busy === `portal:${p}`} onClick={() => portal(`portal:${p}`)} fullWidth>
                                                     {t('billing.switchInPortal')}
                                                 </Button>
                                             )

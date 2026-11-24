@@ -8,8 +8,52 @@
  * It never makes a network request.
  */
 import { buildDemoData, DEMO_USER_ID, type Row, type Tables } from './demoData';
+import { E2E_AUTH_KEY, E2E_DB_KEY, E2E_INVITES_KEY, E2E_PASSWORD } from './e2eConstants';
 
-const db: Tables = buildDemoData();
+// --- E2E mode -----------------------------------------------------------------------
+// `localStorage['demo-auth']` set (by the Playwright tests) turns on the fake auth
+// below and keeps the dataset in sessionStorage, so a reload or a full-page
+// navigation sees earlier writes. Without it nothing changes for the screenshots.
+const readStorage = (store: () => Storage, key: string): string | null => {
+    try {
+        return store().getItem(key);
+    } catch {
+        return null;
+    }
+};
+let e2eAuth: string | null = readStorage(() => localStorage, E2E_AUTH_KEY);
+const e2e = e2eAuth !== null;
+
+function loadDb(): Tables {
+    const saved = e2e ? readStorage(() => sessionStorage, E2E_DB_KEY) : null;
+    if (saved) {
+        try {
+            return JSON.parse(saved) as Tables;
+        } catch {
+            /* fall through to a fresh dataset */
+        }
+    }
+    return buildDemoData();
+}
+const db: Tables = loadDb();
+function persist() {
+    if (!e2e) return;
+    try {
+        sessionStorage.setItem(E2E_DB_KEY, JSON.stringify(db));
+    } catch {
+        /* quota / storage off: the tab just forgets on reload */
+    }
+}
+
+/** What the app asked the backend for — tests read it via `window.__fakeSupabase`. */
+const fake = {
+    calls: [] as { name: string; args: unknown }[],
+    outbox: [] as { to: string; kind: string; link: string }[],
+};
+function record(name: string, args: unknown) {
+    fake.calls.push({ name, args: JSON.parse(JSON.stringify(args ?? null)) });
+}
+if (e2e) (window as unknown as { __fakeSupabase: typeof fake }).__fakeSupabase = fake;
 
 // --- Foreign keys (just the ones the app's select strings embed through) ------
 interface Fk {
@@ -198,7 +242,8 @@ function parseOr(expr: string): Pred {
 
 // --- Query builder --------------------------------------------------------------
 let seq = 1000;
-const uuid = () => `00000000-0000-4000-9000-${String(++seq).padStart(12, '0')}`;
+// E2E rows outlive the page (sessionStorage), so they need ids a reload can't repeat.
+const uuid = () => (e2e && crypto.randomUUID ? crypto.randomUUID() : `00000000-0000-4000-9000-${String(++seq).padStart(12, '0')}`);
 
 type Result = { data: any; error: any; count?: number | null; status: number; statusText: string };
 
@@ -289,7 +334,9 @@ class Query implements PromiseLike<Result> {
                     Object.assign(existing, p, { updated_at: now });
                     affected.push(existing);
                 } else {
-                    const row: Row = { id: uuid(), created_at: now, updated_at: now, ...p };
+                    // Column defaults the real tables have (e.g. a new clock-in has no end yet).
+                    const defaults: Row = this.table === 'shifts' ? { ended_at: null, previous_location_id: null } : {};
+                    const row: Row = { id: uuid(), created_at: now, updated_at: now, ...defaults, ...p };
                     rows.push(row);
                     affected.push(row);
                 }
@@ -304,6 +351,10 @@ class Query implements PromiseLike<Result> {
             affected = rows.filter((r) => this.matches(r));
         }
 
+        if (this.op !== 'select') {
+            record(`${this.op}.${this.table}`, this.op === 'update' ? this.patch : this.op === 'delete' ? null : this.payload);
+            persist();
+        }
         if (this.op !== 'select' && this.selectStr === null) {
             return { data: null, error: null, status: 201, statusText: 'OK' };
         }
@@ -372,6 +423,9 @@ const rpcs: Record<string, (args: Row) => unknown> = {
     // Settings → Calendar: a fixed demo feed token.
     calendar_feed_token: () => 'd3m0'.replace(/[^a-f0-9]/g, '0').padEnd(64, 'a'),
     log_members_imported: () => null,
+    // Demo data: the harness already is demo data — adding / removing is a no-op.
+    seed_demo_data: () => ({ batch: 'demo-batch-0001', people: 8, locations: 2 }),
+    clear_demo_data: () => ({ people: 8, locations_kept: 0 }),
     // Announcements: audience size while composing, reach per card, who read it.
     announcement_audience_size: (args: Row) => {
         const loc = args.p_location as string | null;
@@ -429,38 +483,173 @@ const rpcs: Record<string, (args: Row) => unknown> = {
 };
 
 // --- Auth -----------------------------------------------------------------------
-const me = db.profiles.find((p) => p.id === DEMO_USER_ID)!;
-const authUser = {
-    id: DEMO_USER_ID,
+// Screenshots: no `demo-auth` key → always signed in as the demo owner.
+// E2E (tests in e2e/): `localStorage['demo-auth']` holds who is signed in — a
+// profile id, or 'none' when signed out — and sign-in / sign-up / invite go
+// through the fake auth below. Mutations then persist across reloads of the tab
+// (sessionStorage), like a real backend would keep them.
+const authUserFor = (p: Row) => ({
+    id: p.id as string,
     aud: 'authenticated',
     role: 'authenticated',
-    email: me.email,
+    email: p.email as string,
     app_metadata: { provider: 'email' },
-    user_metadata: {},
+    user_metadata: { first_name: p.first_name ?? null, last_name: p.last_name ?? null },
     created_at: '2026-03-02T09:00:00.000Z',
-};
-const session = {
-    access_token: 'demo-access-token',
+});
+const sessionFor = (p: Row) => ({
+    access_token: `demo-access-token:${p.id}`,
     refresh_token: 'demo-refresh-token',
     token_type: 'bearer',
     expires_in: 3600,
     expires_at: Math.floor(Date.now() / 1000) + 3600,
-    user: authUser,
-};
+    user: authUserFor(p),
+});
 const ok = (data: unknown = {}) => Promise.resolve({ data, error: null });
+const fail = (message: string, code: string, status = 400) =>
+    Promise.resolve({ data: { user: null, session: null }, error: { name: 'AuthApiError', message, code, status } });
 
-const auth = new Proxy(
-    {
-        getSession: () => ok({ session }),
-        getUser: () => ok({ user: authUser }),
-        onAuthStateChange: (cb: (event: string, s: unknown) => void) => {
-            setTimeout(() => cb('INITIAL_SESSION', session), 0);
-            return { data: { subscription: { id: 'demo', unsubscribe() {} } } };
-        },
-        signOut: () => ok(),
-    } as Record<string, unknown>,
-    { get: (target, key: string) => target[key] ?? (() => ok({ session, user: authUser })) },
-);
+const profileById = (uid: string | null) => (uid ? (db.profiles.find((p) => p.id === uid) ?? null) : null);
+const currentProfile = (): Row | null => (e2e ? profileById(e2eAuth === 'none' ? null : e2eAuth) : profileById(DEMO_USER_ID));
+const currentSession = () => {
+    const p = currentProfile();
+    return p ? sessionFor(p) : null;
+};
+
+type AuthListener = (event: string, s: unknown) => void;
+const listeners = new Set<AuthListener>();
+function signInAs(p: Row | null, event: 'SIGNED_IN' | 'SIGNED_OUT') {
+    e2eAuth = p ? (p.id as string) : 'none';
+    try {
+        localStorage.setItem(E2E_AUTH_KEY, e2eAuth);
+    } catch {
+        /* storage off */
+    }
+    const s = currentSession();
+    setTimeout(() => listeners.forEach((cb) => cb(event, s)), 0);
+    return s;
+}
+
+const findByLogin = (login: string) =>
+    db.profiles.find((p) => String(p.email).toLowerCase() === login.toLowerCase() || String(p.username).toLowerCase() === login.toLowerCase()) ?? null;
+
+/** Invites sent in this browser (token → who), so the "email link" works after a reload. */
+const INVITES_KEY = E2E_INVITES_KEY;
+type Invite = { email: string; first_name: string | null; last_name: string | null; role: string; org_role_id: string | null; organization_id: string };
+const readInvites = (): Record<string, Invite> => {
+    try {
+        return JSON.parse(localStorage.getItem(INVITES_KEY) ?? '{}');
+    } catch {
+        return {};
+    }
+};
+
+const authImpl: Record<string, unknown> = {
+    getSession: () => ok({ session: currentSession() }),
+    getUser: () => {
+        const p = currentProfile();
+        return ok({ user: p ? authUserFor(p) : null });
+    },
+    onAuthStateChange: (cb: AuthListener) => {
+        listeners.add(cb);
+        setTimeout(() => cb('INITIAL_SESSION', currentSession()), 0);
+        return { data: { subscription: { id: 'demo', unsubscribe: () => listeners.delete(cb) } } };
+    },
+    signOut: () => {
+        if (e2e) signInAs(null, 'SIGNED_OUT');
+        return ok();
+    },
+    signInWithPassword: ({ email, password }: { email: string; password: string }) => {
+        if (!e2e) return ok({ session: currentSession(), user: currentSession()?.user });
+        const p = findByLogin(email);
+        if (!p || password !== E2E_PASSWORD) return fail('Invalid login credentials', 'invalid_credentials');
+        const s = signInAs(p, 'SIGNED_IN');
+        return ok({ session: s, user: s?.user });
+    },
+    setSession: ({ access_token }: { access_token: string }) => {
+        const p = profileById(access_token.replace(/^demo-access-token:/, ''));
+        if (!p) return fail('Invalid token', 'bad_jwt', 401);
+        const s = e2e ? signInAs(p, 'SIGNED_IN') : sessionFor(p);
+        return ok({ session: s, user: s?.user });
+    },
+    signUp: ({ email, options }: { email: string; password: string; options?: { data?: Row } }) => {
+        record('auth.signUp', { email, data: options?.data ?? {} });
+        if (findByLogin(email)) return fail('User already registered', 'user_already_exists', 422);
+        // Like production: email confirmation is on, so no session yet.
+        return ok({ user: { id: uuid(), email, user_metadata: options?.data ?? {} }, session: null });
+    },
+    resend: (args: Row) => {
+        record('auth.resend', args);
+        return ok();
+    },
+    resetPasswordForEmail: (email: string) => {
+        record('auth.resetPasswordForEmail', { email });
+        return ok();
+    },
+    verifyOtp: ({ token_hash, type }: { token_hash: string; type: string }) => {
+        const inv = type === 'invite' ? readInvites()[token_hash] : undefined;
+        if (!e2e || !inv) return fail('Email link is invalid or has expired', 'otp_expired', 403);
+        let p = findByLogin(inv.email);
+        if (!p) {
+            p = {
+                id: uuid(),
+                username: inv.email.split('@')[0].replace(/[^a-z0-9._-]/gi, '').toLowerCase(),
+                first_name: inv.first_name,
+                last_name: inv.last_name,
+                email: inv.email,
+                role: inv.role,
+                organization_id: inv.organization_id,
+                username_changed_at: null,
+                manager_id: null,
+                org_role_id: inv.org_role_id,
+                created_at: new Date().toISOString(),
+            };
+            db.profiles.push(p);
+            persist();
+        }
+        const s = signInAs(p, 'SIGNED_IN');
+        return ok({ session: s, user: s?.user });
+    },
+    updateUser: (attrs: Row) => {
+        record('auth.updateUser', { ...attrs, password: attrs.password ? '***' : undefined });
+        const p = currentProfile();
+        return p ? ok({ user: authUserFor(p) }) : fail('Auth session missing!', 'session_not_found', 401);
+    },
+};
+const auth = new Proxy(authImpl, {
+    get: (target, key: string) => target[key] ?? (() => ok({ session: currentSession(), user: currentSession()?.user ?? null })),
+});
+
+// --- Edge Functions ---------------------------------------------------------------
+const functionsImpl: Record<string, (body: Row) => unknown> = {
+    // Username sign-in returns tokens the client adopts with setSession().
+    'username-login': (body) => {
+        const p = e2e ? findByLogin(String(body.username ?? '')) : profileById(DEMO_USER_ID);
+        if (!p || (e2e && body.password !== E2E_PASSWORD)) return { error: 'invalid' };
+        return { access_token: `demo-access-token:${p.id}`, refresh_token: 'demo-refresh-token' };
+    },
+    // The invite "email": its link is readable by tests via window.__fakeSupabase.outbox.
+    'invite-employee': (body) => {
+        const token = `e2e-invite-${Object.keys(readInvites()).length + 1}`;
+        const invites = readInvites();
+        invites[token] = {
+            email: String(body.email),
+            first_name: (body.first_name as string) ?? null,
+            last_name: (body.last_name as string) ?? null,
+            role: String(body.role ?? 'Employee'),
+            org_role_id: (body.org_role_id as string) ?? null,
+            organization_id: String(body.organization_id),
+        };
+        try {
+            localStorage.setItem(INVITES_KEY, JSON.stringify(invites));
+        } catch {
+            /* storage off */
+        }
+        const link = `${String(body.redirect_to ?? '/accept-invite')}?token_hash=${token}&type=invite`;
+        fake.outbox.push({ to: String(body.email), kind: 'invite', link });
+        return { ok: true };
+    },
+};
 
 // --- Realtime ---------------------------------------------------------------------
 function channel(name: string) {
@@ -483,6 +672,7 @@ function channel(name: string) {
 export const supabase: any = {
     from: (table: string) => new Query(table),
     rpc: (fn: string, args: Row = {}) => {
+        record(`rpc.${fn}`, args);
         const impl = rpcs[fn];
         return Promise.resolve({ data: impl ? impl(args) : null, error: null });
     },
@@ -491,12 +681,25 @@ export const supabase: any = {
     removeChannel: () => Promise.resolve('ok'),
     removeAllChannels: () => Promise.resolve([]),
     getChannels: () => [],
-    functions: { invoke: () => Promise.resolve({ data: { ok: true }, error: null }) },
+    functions: {
+        invoke: (fn: string, opts?: { body?: Row }) => {
+            record(`functions.${fn}`, opts?.body ?? {});
+            const impl = functionsImpl[fn];
+            const data = impl ? impl(opts?.body ?? {}) : { ok: true };
+            const err = data && typeof data === 'object' && 'error' in (data as Row);
+            return Promise.resolve(
+                err
+                    ? { data: null, error: { name: 'FunctionsHttpError', message: 'Edge Function returned a non-2xx status code', context: new Response(JSON.stringify(data), { status: 400 }) } }
+                    : { data, error: null },
+            );
+        },
+    },
     storage: {
         from: () => ({
             upload: () => ok({ path: 'demo' }),
             getPublicUrl: () => ({ data: { publicUrl: '' } }),
             remove: () => ok([]),
+            createSignedUrl: () => ok({ signedUrl: 'about:blank' }),
         }),
     },
 };

@@ -24,7 +24,7 @@ export const AUDIT_GROUPS = {
     team: [
         'member_invited', 'members_imported', 'member_removed', 'member_left', 'profile_updated', 'username_change',
         'wage_changed', 'wage_removed', 'roster_added', 'roster_removed', 'calendar_link_reset', 'telegram_linked',
-        'telegram_unlinked',
+        'telegram_unlinked', 'document_uploaded', 'document_deleted', 'document_expiring',
     ],
     roles: ['role_created', 'role_updated', 'role_moved', 'role_deleted', 'role_permissions'],
     announcements: ['announcement_posted', 'announcement_edited', 'announcement_deleted'],
@@ -41,13 +41,17 @@ export const groupLabel = (g: AuditGroup): TranslationKey => `audit.group.${g}` 
  * One event can fan out into a row per recipient (e.g. a time-off request
  * notifies every reviewer). The log shows it once.
  */
-const FANOUT = new Set(['timeoff_requested', 'swap_requested', 'swap_approved', 'swap_declined', 'request_submitted']);
+const FANOUT = new Set(['timeoff_requested', 'swap_requested', 'swap_approved', 'swap_declined', 'request_submitted', 'document_expiring']);
 
-export function dedupeFanout<T extends { action: string; created_at: string; actor_id: string | null }>(rows: T[]): T[] {
+export function dedupeFanout<
+    T extends { action: string; created_at: string; actor_id: string | null; subject_id?: string | null; details?: { document_id?: string | null } | null },
+>(rows: T[]): T[] {
     const seen = new Set<string>();
     return rows.filter((r) => {
         if (!FANOUT.has(r.action)) return true;
-        const key = `${r.action}|${r.created_at}|${r.actor_id ?? ''}`;
+        // One cron run reminds about several documents at the same instant.
+        const doc = r.action === 'document_expiring' ? `|${r.subject_id ?? ''}|${r.details?.document_id ?? ''}` : '';
+        const key = `${r.action}|${r.created_at}|${r.actor_id ?? ''}${doc}`;
         if (seen.has(key)) return false;
         seen.add(key);
         return true;

@@ -170,6 +170,7 @@ export const LocationSchema = z.object({
   organization_id: z.string().optional(),
   organizationName: z.string().optional(),
   archived_at: z.string().nullable().optional(), // soft-delete: hidden from pickers, history kept
+  demo_batch: z.string().nullable().optional(), // set on "Demo" locations (features/demo)
 });
 
 /**
@@ -291,6 +292,12 @@ export const ShiftAuditLogSchema = z.object({
       people: z.number().nullable().optional(),
       open: z.number().nullable().optional(),
       requests: z.number().nullable().optional(),
+      // Employee documents (document_uploaded / deleted / expiring).
+      document_id: z.string().nullable().optional(),
+      doc_type: z.string().nullable().optional(),
+      valid_until: z.string().nullable().optional(),
+      days_left: z.number().nullable().optional(),
+      stage: z.number().nullable().optional(),
       // Leave balances (leave_adjusted / leave_settings_changed).
       bucket: z.string().nullable().optional(),
       hours: z.number().nullable().optional(),

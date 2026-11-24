@@ -30,4 +30,12 @@ describe('activity log catalog', () => {
         const out = dedupeFanout([row('timeoff_requested', 'a'), row('timeoff_requested', 'b'), row('schedule_published', 'c'), row('schedule_published', 'd')]);
         expect(out.map((r) => r.id)).toEqual(['a', 'c', 'd']);
     });
+
+    it('keeps one reminder per document even when a cron run sends several at once', () => {
+        const row = (id: string, subject: string, doc: string) => ({
+            id, action: 'document_expiring', created_at: '2026-11-25T06:04:00Z', actor_id: null, subject_id: subject, details: { document_id: doc },
+        });
+        const out = dedupeFanout([row('a', 'm1', 'd1'), row('b', 'm1', 'd1'), row('c', 'm1', 'd2'), row('d', 'm2', 'd3')]);
+        expect(out.map((r) => r.id)).toEqual(['a', 'c', 'd']);
+    });
 });

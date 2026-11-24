@@ -21,6 +21,10 @@ subscription was canceled → Free; the dashboard shows the one-time "ended"
 dialog) or `cancel_scheduled` (switched to Free, ends at the period end);
 without it the org pays for Business (the README shots). By hand: set `localStorage['demo-billing']` and reload.
 
+`--demo-org fresh` shows Home as a brand-new owner sees it (setup checklist with
+"Vyzkoušet s ukázkovými daty"); `--demo-org on` as an org holding demo data (the
+demo banner with "Smazat ukázková data"). By hand: `localStorage['demo-org']`.
+
 Needs Python 3 with `playwright` (`pip install playwright && playwright install chromium`)
 and Pillow. `pngquant` is used for optimisation when installed; otherwise Pillow
 quantises to 256 colours.
@@ -28,6 +32,16 @@ quantises to 256 colours.
 To browse the demo app by hand: `corepack yarn vite --config tools/screenshots/vite.config.ts`
 → http://127.0.0.1:5199 (open it with a `cs` browser language, or set
 `localStorage.language = 'cs'`).
+
+## E2E mode
+
+The Playwright suite (`corepack yarn e2e`, see `docs/e2e.md`) builds the same
+app + fake into `dist-e2e/` (`E2E_BUILD=1`: no inline clock script, because it
+runs under the enforced CSP). With `localStorage['demo-auth']` set, the fake
+does real-ish auth — sign-in by email or username with the demo password,
+sign-up, sign-out, invite links — keeps the dataset in `sessionStorage`, and
+exposes `window.__fakeSupabase` (`calls`, `outbox`). Without that key nothing
+changes for the screenshots.
 
 ## Pieces
 
@@ -39,6 +53,7 @@ To browse the demo app by hand: `corepack yarn vite --config tools/screenshots/v
 | `capture.py` | Playwright: Czech UI + default colour scheme via the app's own localStorage preferences, desktop 1440×900 @2x and mobile 390×844 @3x, one function per shot. |
 | `optimize.py` | Shrinks the PNGs. |
 | `run.py` | Starts the server, captures, optimises, stops the server. |
+| `fake/e2eConstants.ts` | E2E mode keys + the demo password, shared with the Playwright tests. |
 
 When a new screen needs data, add the table rows to `demoData.ts` (and a
 foreign key to `FKS` in the fake client if a select string embeds through it).

@@ -468,11 +468,13 @@ same way.
 
 ## 📦 Getting started
 
-Uses **Yarn (Berry v4, via Corepack)** — single lockfile (`yarn.lock`); version
-pinned in `package.json` (`packageManager`). Don't add `package-lock.json`.
+Needs **Node 22** (`.nvmrc`; CI and deploys use 22). Uses **Yarn (Berry v4, via
+Corepack)** — single lockfile (`yarn.lock`); version pinned in `package.json`
+(`packageManager`). Don't add `package-lock.json`.
 
 ```bash
-corepack enable          # once (ships with Node 18+)
+nvm use                  # or any Node 22
+corepack enable          # once
 yarn install
 cp .env.example .env      # then fill in the values below
 yarn dev                 # Vite dev server, exposed on your LAN (--host)
@@ -487,11 +489,15 @@ yarn dev                 # Vite dev server, exposed on your LAN (--host)
 The displayed app version is injected from `package.json` at build time.
 
 ### Local Supabase
+Needs Docker and the Supabase CLI **3.x** (`supabase --version`; `supabase/config.toml` uses the 3.x keys).
 ```bash
-supabase start            # boot local stack (Docker)
-supabase db reset         # apply migrations + seed (supabase/seed.sql)
+supabase start            # boot local stack (Docker); applies every migration + supabase/seed.sql
+supabase db reset         # start over: migrations + seed again
 supabase functions serve  # run Edge Functions locally
 ```
+- Lighter stack when you only need the DB + API: `supabase start -x studio,logflare,vector,imgproxy,realtime,storage-api,edge-runtime,mailpit,postgres-meta,supavisor`.
+- "port is already allocated" on 54321–54327: an old stack from before the rename (project id `planuj-smeny-app`) is still running — `supabase stop --project-id planuj-smeny-app`.
+- Never `supabase db push` to the hosted projects: their migration history differs (apply migrations to preprod with the MCP `apply_migration`).
 
 ### Build for native
 ```bash
@@ -523,6 +529,7 @@ and `announcements` pointing at the `send-push` function. Keep the Firebase
 | `yarn lint` | ESLint |
 | `yarn format` | Prettier write — run it on the files you touch, not the whole repo |
 | `yarn test` / `test:watch` | Vitest (run / watch) |
+| `yarn e2e` / `e2e:remote` | Playwright E2E: fake backend under the enforced CSP / optional read-only preprod smoke (docs/e2e.md) |
 
 Database checks: `supabase/tests/rls_smoke.sql` proves organization isolation,
 no self-promotion and the four-eyes rule in a transaction that is rolled back —

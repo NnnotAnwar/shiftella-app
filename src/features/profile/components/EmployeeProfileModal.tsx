@@ -6,6 +6,7 @@ import { getFullName } from '@shared/utils/getInitials';
 import { usePermissions } from '@shared/auth/usePermissions';
 import { useTranslation } from '@shared/preferences/PreferencesContext';
 import { ProfileView } from './ProfileView';
+import { MemberDocuments } from '@features/documents/MemberDocuments';
 
 export function EmployeeProfileModal({
   employee,
@@ -32,6 +33,9 @@ export function EmployeeProfileModal({
           showOrganization={showOrganization}
           showHeader={false}
         />
+
+        {/* Renders only for the member themself / people who manage them. */}
+        <MemberDocuments member={employee} />
 
         {canViewAdminPanel && (
           <Link

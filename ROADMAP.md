@@ -93,9 +93,14 @@ customers.
   `send-push`; push currently reaches Free orgs too).
 - **Database security** — #99 lock down SECURITY DEFINER helpers, #98 unused
   indexes, stop `org_plan()` revealing other orgs' plans.
-- **E2E tests** (Playwright): sign-in, sign-up, invite, checkout.
-- **Infrastructure** — enforce the prod CSP, deploy on push, retire Vercel (and
-  the Vercel↔Supabase integration), Node 20 → 22, fix the local Supabase CLI.
+- ✅ **E2E tests** (Playwright): sign-in, sign-up, invite, free-beta billing — in CI
+  against the fake backend under the enforced CSP; optional read-only suite
+  against preprod (docs/e2e.md). Checkout waits for paid plans.
+- ✅ **Uptime alerts** — GitHub Actions every 5 min → Telegram on state change
+  (docs/uptime.md; starts with the next master release).
+- **Infrastructure** — ✅ enforce the prod CSP (in `shiftella.caddy`; install with
+  the release), ✅ Node 22, ✅ local Supabase CLI 3.x; still open: deploy on push,
+  retire Vercel (and the Vercel↔Supabase integration).
 
 ### 3. Features
 - **Auto-scheduling** — suggest a rota from availability, 11 h rest, hour

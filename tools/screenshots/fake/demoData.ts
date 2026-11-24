@@ -62,6 +62,20 @@ function billingScenario(): string | null {
     }
 }
 
+/**
+ * Demo-data scenario (features/demo): `localStorage['demo-org']` = 'fresh' (a new
+ * owner: only they and nothing planned count, so Home shows the setup checklist
+ * with "Try it with demo data") | 'on' (the org holds demo data: everyone else,
+ * the rota and two locations are tagged → the demo banner + the checklist).
+ */
+function demoOrgScenario(): string | null {
+    try {
+        return localStorage.getItem('demo-org');
+    } catch {
+        return null;
+    }
+}
+
 // --- Date helpers (local time = Europe/Prague in the harness) ----------------------
 const pad = (n: number) => String(n).padStart(2, '0');
 const ymd = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -383,6 +397,19 @@ export function buildDemoData(): Tables {
         id: id(17, i + 1), organization_id: ORG, user_id: p.id, hourly_rate: rates[p.id as string], currency: 'CZK', effective_from: '2026-09-01', created_by: P.petra, updated_at: created,
     }));
 
+    // Employee documents: one health card about to expire, one expired training, a contract.
+    const dayStr = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const doc = (n: number, user: string, doc_type: string, name: string, valid: Date | null, by: string, mime = 'application/pdf'): Row => ({
+        id: id(19, n), organization_id: ORG, user_id: user, doc_type, name, file_path: `${ORG}/${user}/${id(19, n)}.pdf`,
+        mime_type: mime, size_bytes: 240_000, valid_until: valid ? dayStr(valid) : null, uploaded_by: by, created_at: daysAgo(40 - n),
+    });
+    const member_documents: Row[] = [
+        doc(1, P.eva, 'contract', 'Pracovní smlouva 2026', null, P.petra),
+        doc(2, P.eva, 'health_card', 'Zdravotní průkaz', addDays(today, 12), P.eva, 'image/jpeg'),
+        doc(3, P.eva, 'safety_training', 'Školení BOZP', addDays(today, -4), P.petra),
+        doc(4, P.eva, 'food_card', 'Potravinářský průkaz', addDays(today, 300), P.petra),
+        doc(5, P.petra, 'contract', 'Smlouva jednatelky', null, P.petra),
+    ];
     // Leave / contract settings: a 40 h week, Lukáš part-time at 30 h (shows overtime in the rota).
     const org_leave_settings: Row[] = [
         { organization_id: ORG, enabled_kinds: ['vacation', 'sick', 'ocr', 'comp_time', 'unpaid', 'doctor', 'other'], weekly_hours: 40, vacation_weeks: 4, holiday_comp_time: true, updated_at: created },
@@ -460,6 +487,17 @@ export function buildDemoData(): Tables {
         { user_id: P.petra, push_enabled: true, shifts: true, account: true, requests: true, language: 'cs', updated_at: created },
     ];
 
+    const demoOrg = demoOrgScenario();
+    if (demoOrg === 'fresh' || demoOrg === 'on') {
+        const batch = 'demo-batch-0001';
+        for (const p of profiles) if (p.id !== P.petra) p.demo_batch = batch;
+        for (const s of scheduled_shifts) s.demo_batch = batch;
+        if (demoOrg === 'on') {
+            organizations[0].demo_batch = batch;
+            for (const l of locations) if (l.id !== L.mala) l.demo_batch = batch;
+        }
+    }
+
     return {
         organizations,
         locations,
@@ -483,6 +521,7 @@ export function buildDemoData(): Tables {
         public_holidays,
         availability,
         member_wages,
+        member_documents,
         org_leave_settings,
         member_leave,
         shift_confirmations,

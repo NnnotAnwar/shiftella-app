@@ -37,8 +37,10 @@
 	#   over https + Realtime over wss; Google Fonts (Inter) and Fontshare
 	#   (Satoshi) CSS + font files; blob:/data: for PDF/XLSX exports and the
 	#   embedded PDF font. 'unsafe-inline' styles: framer-motion & co. set inline
-	#   styles; scripts stay strictly 'self'. Adding a third-party script (e.g.
-	#   Stripe.js) means adding its origins here first — see README "CSP".
+	#   styles; scripts stay strictly 'self' (no eval: zod runs jitless, see
+	#   src/shared/zodCsp.ts). Adding a third-party script (e.g. Stripe.js) means
+	#   adding its origins here first — see README "CSP". The E2E suite serves
+	#   this exact line (e2e/serve.mjs), so `corepack yarn e2e` checks a change.
 	header {args[2]} "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://api.fontshare.com; font-src 'self' data: https://fonts.gstatic.com https://cdn.fontshare.com https://api.fontshare.com; img-src 'self' data: blob:; connect-src 'self' https://{args[1]}.supabase.co wss://{args[1]}.supabase.co; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
 
 	# Hashed build output (/assets/<name>-<hash>.js|css): cache forever. A
@@ -81,11 +83,12 @@ www.shiftella.app {
 }
 
 shiftella.app {
-	# Prod Supabase: dcqvipzjqxpbaymaxhxu. CSP starts Report-Only so a missed
-	# origin can't break prod; switch the last argument to
-	# Content-Security-Policy once dev ran the enforced policy without console
-	# errors (login, realtime, invites, PDF/XLSX export, billing checkout).
-	import shiftella_spa prod dcqvipzjqxpbaymaxhxu Content-Security-Policy-Report-Only
+	# Prod Supabase: dcqvipzjqxpbaymaxhxu. CSP ENFORCED (was Report-Only until
+	# v1.14): the E2E suite runs every flow under this exact policy with zero
+	# violations (e2e/serve.mjs reads it from this file), and dev ran it first.
+	# Emergency fallback: set the last argument back to
+	# Content-Security-Policy-Report-Only and reload Caddy.
+	import shiftella_spa prod dcqvipzjqxpbaymaxhxu Content-Security-Policy
 }
 
 # --- Preprod (private) --------------------------------------------------------

@@ -127,6 +127,22 @@ def shot_palette(page: Page, base: str, out: Path) -> None:
     page.screenshot(path=out / "command-palette.png")
 
 
+DEMO_EVA = "00000000-0000-4000-8001-000000000005"
+
+
+def shot_documents(page: Page, base: str, out: Path) -> None:
+    # The owner looks at a barista's documents (amber + red expiry chips).
+    go(page, base, f"/profile/{DEMO_EVA}")
+    scroll_to_text(page, "Dokumenty", 160)
+    page.screenshot(path=out / "documents.png")
+
+
+def shot_mobile_documents(page: Page, base: str, out: Path) -> None:
+    go(page, base, f"/profile/{DEMO_EVA}")
+    scroll_to_text(page, "Dokumenty", 120)
+    page.screenshot(path=out / "mobile-documents.png")
+
+
 def shot_mobile_home(page: Page, base: str, out: Path) -> None:
     go(page, base, "/")
     page.screenshot(path=out / "mobile-home.png")
@@ -156,11 +172,13 @@ DESKTOP_SHOTS = {
     "leave": shot_leave,
     "timeoff": shot_timeoff,
     "palette": shot_palette,
+    "documents": shot_documents,
 }
 MOBILE_SHOTS = {
     "mobile-home": shot_mobile_home,
     "mobile-schedule": shot_mobile_schedule,
     "mobile-more": shot_mobile_more,
+    "mobile-documents": shot_mobile_documents,
 }
 
 
@@ -175,6 +193,12 @@ def main() -> int:
         default=None,
         choices=["trial", "trial3", "free", "past_due", "ended", "cancel_scheduled", "beta"],
         help="subscription scenario in the demo data (default: paid Business)",
+    )
+    ap.add_argument(
+        "--demo-org",
+        default=None,
+        choices=["fresh", "on"],
+        help="demo-data scenario: a new owner (setup checklist + 'try demo data') or demo data on (banner)",
     )
     args = ap.parse_args()
 
@@ -198,6 +222,8 @@ def main() -> int:
             ctx.add_init_script(PREFS_SCRIPT.replace("%THEME%", theme))
             if args.billing:
                 ctx.add_init_script(f"try {{ localStorage.setItem('demo-billing', '{args.billing}'); }} catch (e) {{}}")
+            if args.demo_org:
+                ctx.add_init_script(f"try {{ localStorage.setItem('demo-org', '{args.demo_org}'); }} catch (e) {{}}")
 
             def guard(route):
                 host = urlparse(route.request.url).hostname or ""

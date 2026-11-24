@@ -38,6 +38,7 @@ export type Capability =
     | 'announcements.post' // post, edit, pin and delete announcements
     | 'members.view'
     | 'members.manage' // invite and edit members below your level
+    | 'members.delete' // remove members (and their documents) below your level
     | 'wages.edit'
     | 'locations.manage' // create, edit and archive locations
     | 'activity.view'
@@ -54,6 +55,7 @@ const CAP: Record<Exclude<Capability, 'team.view'>, [PermissionArea, PermissionA
     'announcements.post': ['announcements', 'write', RANK.ADMIN],
     'members.view': ['members', 'read', RANK.MANAGER],
     'members.manage': ['members', 'write', RANK.ADMIN],
+    'members.delete': ['members', 'delete', RANK.ADMIN],
     'wages.edit': ['wages', 'write', RANK.ADMIN],
     'locations.manage': ['locations', 'write', RANK.OWNER],
     'activity.view': ['activity', 'read', RANK.ADMIN],

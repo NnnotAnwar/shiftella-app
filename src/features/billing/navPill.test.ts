@@ -60,4 +60,9 @@ describe('billingNavPill', () => {
         const ent = { ...buildEntitlements({ subscription: base, now: NOW }), isLoading: true };
         expect(billingNavPill(ent, { t, native: false })).toBeNull();
     });
+
+    it('free beta: a quiet "Beta" pill instead of a trial countdown', () => {
+        const e = buildEntitlements({ subscription: base, freeBeta: true, now: NOW });
+        expect(billingNavPill(e, { t, native: false })).toEqual({ text: 'nav.pill.beta', tone: 'muted', urgent: false });
+    });
 });

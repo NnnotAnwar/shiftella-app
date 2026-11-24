@@ -77,6 +77,13 @@ export const billingService = {
         return (data as Subscription | null) ?? null;
     },
 
+    /** The free beta switch (anon too — the landing page reads it). An error counts as off. */
+    async getFreeBeta(): Promise<boolean> {
+        const { data, error } = await supabase.rpc('billing_free_beta');
+        if (error) throw error;
+        return data === true;
+    },
+
     async getUsage(orgId: string): Promise<OrgUsage> {
         const { data, error } = await supabase.rpc('org_usage', { p_org: orgId });
         if (error) throw error;

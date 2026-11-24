@@ -41,6 +41,11 @@ export interface LandingCopy {
         startTrial: string;
         trialNote: string;
         vat: string;
+        /** Free beta: the banner above the plans and the note under each button. */
+        betaBadge: string;
+        betaTitle: string;
+        betaText: string;
+        betaNote: string;
         blurb: Record<'free' | 'team' | 'business', string>;
     };
     faq: { eyebrow: string; title: string; items: { q: string; a: string }[] };
@@ -128,6 +133,10 @@ const cs: LandingCopy = {
         startTrial: 'Vyzkoušet zdarma',
         trialNote: '{days} dní zdarma, bez karty',
         vat: 'Ceny jsou konečné, DPH se nepřipočítává.',
+        betaBadge: 'Beta',
+        betaTitle: 'Během bety je všechno zdarma',
+        betaText: 'Všechny funkce tarifu Business, bez limitů a bez karty. Ceny níže začnou platit až po betě a dáme vědět s dostatečným předstihem.',
+        betaNote: 'Zdarma během bety, bez karty',
         blurb: {
             free: 'Pro začátek a nejmenší týmy.',
             team: 'Jedna cena za celý tým.',
@@ -241,6 +250,10 @@ const en: LandingCopy = {
         startTrial: 'Try it free',
         trialNote: '{days} days free, no card',
         vat: 'Prices are final, no VAT is added.',
+        betaBadge: 'Beta',
+        betaTitle: 'Everything is free during the beta',
+        betaText: 'Every Business feature, no limits, no card. The prices below start only after the beta, and we will tell you well in advance.',
+        betaNote: 'Free during the beta, no card',
         blurb: {
             free: 'To get started, and for the smallest teams.',
             team: 'One price for the whole team.',

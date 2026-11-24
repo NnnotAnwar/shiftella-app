@@ -13,7 +13,7 @@
 //   • responses carry Cache-Control + an ETag, and a matching If-None-Match
 //     gets 304, so frequent polling stays cheap. Two indexed queries per hit.
 // Tokens are created / replaced by public.calendar_feed_token() (migration
-// 20261124120000_calendar_feeds_and_member_import.sql).
+// 20261124130000_calendar_feeds_and_member_import.sql).
 // =============================================================================
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';

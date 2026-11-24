@@ -89,7 +89,8 @@ export function PayrollExportModal({ month, members, onClose }: { month: string;
                 toast(t('payroll.empty', { month }), 'info');
                 return;
             }
-            const { file, missing } = await buildPayrollFile(format, report, t, { showWages, czech: language === 'cs' });
+            // cs / sk / uk Excel all expect ';' + decimal comma; only English gets ',' + '.'.
+            const { file, missing } = await buildPayrollFile(format, report, t, { showWages, czech: language !== 'en' });
             if (format === 'money' && missing.length === report.rows.length) {
                 toast(t('payroll.missingNumbers', { names: missing.join(', ') }), 'error');
                 return;

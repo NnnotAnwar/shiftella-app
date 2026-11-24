@@ -282,6 +282,12 @@ export const ShiftAuditLogSchema = z.object({
       location_name: z.string().nullable().optional(),
       scheduled_start: z.string().nullable().optional(),
       minutes: z.number().nullable().optional(),
+      // Shift reminder (end time) + the admins' morning digest (today's numbers).
+      scheduled_end: z.string().nullable().optional(),
+      shifts: z.number().nullable().optional(),
+      people: z.number().nullable().optional(),
+      open: z.number().nullable().optional(),
+      requests: z.number().nullable().optional(),
       // Rota events (schedule_created/updated/removed/published) + time off.
       count: z.number().nullable().optional(),
       month_start: z.string().nullable().optional(),

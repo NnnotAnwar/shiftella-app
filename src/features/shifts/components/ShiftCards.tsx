@@ -95,6 +95,19 @@ export function ShiftCards({ locationName, shifts, userShift, onSelectUser }: Sh
   );
 }
 
+/** The worker's role: their organization role, else the translated level (see boardRole). */
+function RoleChip({ shift }: { shift: ShiftDisplayData }) {
+  const base = 'ml-2 max-w-[45%] shrink-0 truncate rounded-full px-2 py-0.5 text-micro';
+  if (shift.roleColor) {
+    return (
+      <span className={base} style={{ backgroundColor: `${shift.roleColor}24`, color: shift.roleColor }}>
+        {shift.roleLabel ?? shift.role}
+      </span>
+    );
+  }
+  return <span className={`${base} ${getRoleBadgeColor(shift.role)}`}>{shift.roleLabel ?? shift.role}</span>;
+}
+
 /** Start-time chip shared by every row; the accent fill marks your own shift. */
 function TimeChip({ time, own }: { time?: string; own: boolean }) {
   return (
@@ -134,9 +147,7 @@ function UserShiftCard({ userShift, onSelectUser }: { userShift: NonNullable<Shi
           <p className="mt-0.5 truncate text-sm font-semibold leading-tight text-ink dark:text-white">{userShift.name}</p>
         </div>
 
-        <span className={`ml-2 shrink-0 rounded-full px-2 py-0.5 text-micro ${getRoleBadgeColor(userShift.role)}`}>
-          {userShift.role}
-        </span>
+        <RoleChip shift={userShift} />
       </div>
     </div>
   );
@@ -163,9 +174,7 @@ function AssignedShiftCard({ shift, onSelectUser }: { shift: ShiftDisplayData; o
           <p className="truncate text-sm font-semibold leading-tight text-ink dark:text-white">{shift.name}</p>
         </div>
 
-        <span className={`ml-2 shrink-0 rounded-full px-2 py-0.5 text-micro ${getRoleBadgeColor(shift.role)}`}>
-          {shift.role}
-        </span>
+        <RoleChip shift={shift} />
       </div>
     </div>
   );
@@ -179,9 +188,7 @@ function UnassignedShiftCard({ shift }: { shift: ShiftDisplayData }) {
       </div>
       <div className="flex min-w-0 flex-1 items-center justify-between">
         <p className="truncate text-sm font-semibold text-ink dark:text-white">{shift.name}</p>
-        <span className={`ml-2 shrink-0 rounded-full px-2 py-0.5 text-micro ${getRoleBadgeColor(shift.role)}`}>
-          {shift.role}
-        </span>
+        <RoleChip shift={shift} />
       </div>
     </div>
   );

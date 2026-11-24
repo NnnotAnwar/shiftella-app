@@ -10,6 +10,7 @@ import type { Profile } from '@/shared/types';
 import { useTranslation } from '@shared/preferences/PreferencesContext';
 import { useWages } from '@features/wages/useWages';
 import { useEntitlements } from '@features/billing/useBilling';
+import { planFeatureMessage } from '@features/billing/planErrors';
 
 /**
  * Edit an employee's name, role and (for people below you) hourly rate. The
@@ -77,7 +78,7 @@ export function EmployeeForm({ employee, onClose }: { employee: Profile; onClose
             }
             onClose();
         } catch (err) {
-            setError(err instanceof Error ? err.message : t('admin.employeeUpdateError'));
+            setError(planFeatureMessage(err, t) ?? (err instanceof Error ? err.message : t('admin.employeeUpdateError')));
             setIsBusy(false);
         }
     };

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@shared/toast/toastStore';
 import { useTranslation } from '@shared/preferences/PreferencesContext';
 import { type User } from '@shared/types';
+import { usePlanErrorHandler } from '@features/billing/useBilling';
 import { shiftTemplateService } from './shiftTemplateService';
 import { type ShiftTemplateInput } from './types';
 
@@ -13,6 +14,7 @@ import { type ShiftTemplateInput } from './types';
 export function useShiftTemplates(user: User | null) {
   const t = useTranslation();
   const qc = useQueryClient();
+  const planError = usePlanErrorHandler();
   const enabled = !!user;
   const orgId = user?.organization_id ?? 'anon';
   const key = ['shift-templates', orgId];
@@ -36,14 +38,14 @@ export function useShiftTemplates(user: User | null) {
     },
     // TEMPLATE_LIMIT comes from the DB trigger (max 8 per organization).
     onError: (e: unknown) =>
-      toast(e instanceof Error && e.message.includes('TEMPLATE_LIMIT') ? t('tpl.limit') : t('tpl.error'), 'error'),
+      planError(e) || toast(e instanceof Error && e.message.includes('TEMPLATE_LIMIT') ? t('tpl.limit') : t('tpl.error'), 'error'),
   });
 
   const update = useMutation({
     mutationFn: ({ id, patch }: { id: string; patch: Partial<ShiftTemplateInput> }) =>
       shiftTemplateService.update(id, patch),
     onSuccess: invalidate,
-    onError: () => toast(t('tpl.error'), 'error'),
+    onError: (e) => planError(e) || toast(t('tpl.error'), 'error'),
   });
 
   const remove = useMutation({

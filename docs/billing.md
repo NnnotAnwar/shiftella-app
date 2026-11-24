@@ -168,7 +168,21 @@ Check it: `psql "$PREPROD_DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/billing_s
   `src/features/billing/entitlements.ts` (keep them in step): active gift →
   its plan; no-card trial past `trial_ends_at` → free; `trialing` / `active` /
   `past_due` → the plan (past_due = grace while Stripe retries); `canceled` /
-  `incomplete` → free.
+  `incomplete` → free. `org_plan()` is internal (service role + SECURITY
+  DEFINER functions); clients read their own plan through `org_usage()`.
+- **Server-side feature gates** (`20261124120000_plan_feature_gates.sql`):
+  `plan_feature_gate` triggers refuse inserts / updates of `shift_templates`,
+  `shift_swaps` (incl. the swap RPCs), `open_shifts` (incl. claims),
+  `member_wages` (Team+) and `coverage_requirements` (Business) with
+  `PLAN_FEATURE:<feature>`; the client shows the upgrade nudge
+  (`usePlanErrorHandler`, `planErrors.ts`). Reads, deletes and closing what is
+  open (withdraw / decline a swap, release a claim) stay allowed, so a
+  downgraded org keeps its data read-only. Superadmin and writes without a
+  signed-in user pass. The SQL mapping (`plan_has_feature`) mirrors
+  `PLAN_FEATURES` in `plans.ts`. Copy month stays UI-only (it inserts plain
+  rota rows). Smoke test: `supabase/tests/plan_gates_smoke.sql`.
+- **Superadmin invites** skip the member limit: `invite-employee` marks the
+  pending invite `bypass_limits`, which `enforce_member_limit` honours.
 - **Who can pay:** the org's Head Admin (and Superadmin) —
   `has_permission('billing', 'write')`, which only rank ≥ 40 passes today.
 - **Seat sync** (Business only, Team is held at 1): `syncSeats()` in

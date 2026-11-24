@@ -136,16 +136,19 @@ export const ScheduledShiftSchema = z.object({
 export type ScheduledShift = z.infer<typeof ScheduledShiftSchema>;
 
 /**
- * TimeOffSchema: a member's leave (vacation / sick / other) over a date range.
+ * TimeOffSchema: a member's absence (vacation, sick leave, náhradní volno, …) over a date range.
  * Pending until a manager approves; approved leave blocks rota planning.
  */
 export const TimeOffSchema = z.object({
   id: z.string(),
   user_id: z.string(),
   organization_id: z.string(),
-  kind: z.enum(['vacation', 'sick', 'other']),
+  kind: z.enum(['vacation', 'sick', 'other', 'ocr', 'comp_time', 'unpaid', 'doctor', 'sick_day', 'business_trip', 'home_office', 'parental', 'obstacle']),
   starts_on: z.string(), // YYYY-MM-DD
   ends_on: z.string(), // YYYY-MM-DD
+  /** Hours it takes from a balance (vacation / náhradní volno); set by the DB unless the request gave them. */
+  hours: z.coerce.number().nullable().optional(),
+  hours_auto: z.boolean().optional(),
   note: z.string().nullable().optional(),
   status: z.enum(['pending', 'approved', 'declined']),
   reviewed_by: z.string().nullable().optional(),
@@ -288,6 +291,12 @@ export const ShiftAuditLogSchema = z.object({
       people: z.number().nullable().optional(),
       open: z.number().nullable().optional(),
       requests: z.number().nullable().optional(),
+      // Leave balances (leave_adjusted / leave_settings_changed).
+      bucket: z.string().nullable().optional(),
+      hours: z.number().nullable().optional(),
+      year: z.number().nullable().optional(),
+      weekly_hours: z.number().nullable().optional(),
+      vacation_hours: z.number().nullable().optional(),
       // Rota events (schedule_created/updated/removed/published) + time off.
       count: z.number().nullable().optional(),
       month_start: z.string().nullable().optional(),

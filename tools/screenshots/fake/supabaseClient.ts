@@ -377,6 +377,36 @@ const rpcs: Record<string, (args: Row) => unknown> = {
         const loc = args.p_location as string | null;
         return loc ? new Set(db.location_roster.filter((r) => r.location_id === loc).map((r) => r.user_id)).size : db.profiles.length - 1;
     },
+    // Leave balances: entitlement from weekly hours, used = approved vacation (+ a demo history), náhradní volno for holiday work.
+    leave_balances: () =>
+        db.profiles
+            .filter((p) => p.role !== 'Superadmin')
+            .map((p, i) => {
+                const mine = (kind: string, status: string) =>
+                    db.time_off.filter((t) => t.user_id === p.id && t.kind === kind && t.status === status).reduce((a, t) => a + Number(t.hours ?? 0), 0);
+                const weekly = i % 4 === 3 ? 30 : 40;
+                const entitlement = weekly * 4;
+                const used = mine('vacation', 'approved') + [24, 0, 56, 16, 8, 40, 0, 32][i % 8];
+                const earned = [8, 16, 0, 8, 0, 11.5, 0, 8][i % 8];
+                const compUsed = mine('comp_time', 'approved');
+                return {
+                    user_id: p.id,
+                    name: [p.first_name, p.last_name].filter(Boolean).join(' ') || p.username,
+                    weekly_hours: weekly,
+                    vacation_entitlement: entitlement,
+                    vacation_custom: false,
+                    vacation_adjust: i === 2 ? 16 : 0,
+                    vacation_used: used,
+                    vacation_pending: mine('vacation', 'pending'),
+                    vacation_left: entitlement + (i === 2 ? 16 : 0) - used,
+                    comp_earned: earned,
+                    comp_adjust: 0,
+                    comp_used: compUsed,
+                    comp_pending: mine('comp_time', 'pending'),
+                    comp_left: earned - compUsed,
+                };
+            })
+            .sort((a, b) => String(a.name).localeCompare(String(b.name), 'cs')),
     announcement_reach: (args: Row) =>
         ((args.p_ids as string[]) ?? []).map((aid) => {
             const a = db.announcements.find((x) => x.id === aid);

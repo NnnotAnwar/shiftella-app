@@ -26,7 +26,8 @@ export interface FeedShift {
 
 export interface FeedTimeOff {
     id: string;
-    kind: 'vacation' | 'sick' | 'other';
+    /** vacation, sick, comp_time, … (see LABELS); unknown kinds read as "Time off". */
+    kind: string;
     starts_on: string; // YYYY-MM-DD
     ends_on: string; // YYYY-MM-DD, inclusive
     created_at: string | null;
@@ -45,9 +46,17 @@ export interface FeedInput {
 export const TIME_ZONE = 'Europe/Prague';
 const UID_DOMAIN = 'shiftella.app';
 
-const LABELS: Record<FeedLanguage, { shift: string; calendar: string; vacation: string; sick: string; other: string }> = {
-    en: { shift: 'Shift', calendar: 'Shiftella · Shifts', vacation: 'Vacation', sick: 'Sick leave', other: 'Time off' },
-    cs: { shift: 'Směna', calendar: 'Shiftella · Směny', vacation: 'Dovolená', sick: 'Nemoc', other: 'Volno' },
+const LABELS: Record<FeedLanguage, { shift: string; calendar: string; other: string } & Record<string, string>> = {
+    en: {
+        shift: 'Shift', calendar: 'Shiftella · Shifts', vacation: 'Vacation', sick: 'Sick leave', other: 'Time off',
+        ocr: 'Family care (OČR)', comp_time: 'Time off in lieu', unpaid: 'Unpaid leave', doctor: 'Doctor', sick_day: 'Sick day',
+        business_trip: 'Business trip', home_office: 'Home office', parental: 'Parental leave', obstacle: 'Employer-side obstacle',
+    },
+    cs: {
+        shift: 'Směna', calendar: 'Shiftella · Směny', vacation: 'Dovolená', sick: 'Nemoc', other: 'Volno',
+        ocr: 'OČR', comp_time: 'Náhradní volno', unpaid: 'Neplacené volno', doctor: 'Lékař', sick_day: 'Sick day',
+        business_trip: 'Služební cesta', home_office: 'Home office', parental: 'Mateřská / rodičovská', obstacle: 'Překážka na straně zaměstnavatele',
+    },
 };
 
 /** "Směna · U Mostu" / "Shift" (no location). */

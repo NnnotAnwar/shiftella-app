@@ -19,6 +19,7 @@ export const AUDIT_GROUPS = {
         'swap_offered', 'swap_taken', 'swap_requested', 'swap_approved', 'swap_declined', 'swap_withdrawn', 'swap_released',
         'name_requested', 'name_request_approved', 'name_request_rejected', 'name_request_cancelled',
         'request_submitted', 'request_approved', 'request_declined', 'request_cancelled',
+        'leave_adjusted', 'leave_settings_changed',
     ],
     team: [
         'member_invited', 'members_imported', 'member_removed', 'member_left', 'profile_updated', 'username_change',

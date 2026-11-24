@@ -1,25 +1,44 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { SunHorizonIcon, CheckIcon, XIcon, PlusIcon, TrashIcon } from '@phosphor-icons/react';
+import { SunHorizonIcon, CheckIcon, XIcon, PlusIcon, TrashIcon, ScalesIcon } from '@phosphor-icons/react';
 import type { Profile, TimeOff } from '@shared/types';
 import { useTranslation } from '@shared/preferences/PreferencesContext';
 import { Button } from '@shared/components/Button';
 import { Select } from '@shared/components/Select';
 import { DatePicker } from '@shared/components/DatePicker';
-import { Textarea } from '@shared/components/Input';
+import { Input, Textarea } from '@shared/components/Input';
 import { Modal } from '@features/admin/components/Modal';
 import { FormError } from '@shared/components/FormError';
 import { toast } from '@shared/toast/toastStore';
 import { formatDateShort } from '@shared/utils/date';
 import { scheduleService } from '../scheduleService';
-import { KIND_KEYS, leaveErr, todayStr } from '../timeOffShared';
+import { BALANCE_KINDS, KIND_KEYS, LEAVE_KINDS, fmtLeaveHours, leaveErr, todayStr, type LeaveKind } from '../timeOffShared';
+import { useAuthContext } from '@features/auth/AuthContext';
+import { can } from '@shared/auth/permissions';
+import { useInvalidateLeave, useLeaveBalances, useLeaveSettings } from '@features/leave/useLeave';
+import { LeaveBalancesModal } from '@features/leave/LeaveBalancesModal';
+import type { LeaveBalance } from '@features/leave/leaveService';
 
 /**
  * --- TIME OFF CARD ---
  * Leave management on the schedule page. Managers see pending requests to
  * approve/decline and can enter (pre-approved) leave for their people;
  * members file requests and see their status / withdraw pending ones.
+ * Everyone sees their own vacation / náhradní volno balance; people who see
+ * requests open everyone's balances (and deciders edit them) from "Balances".
  */
+
+/** "Zbývá dovolené: 96 h z 160 h" / "Náhradní volno k čerpání: 8 h" for a kind that draws on a balance. */
+function balanceLine(kind: LeaveKind, b: LeaveBalance | undefined, t: ReturnType<typeof useTranslation>): { text: string; left: number } | null {
+    if (!b || !BALANCE_KINDS.has(kind)) return null;
+    if (kind === 'vacation') {
+        return {
+            text: t('timeoff.balanceVacation', { left: fmtLeaveHours(b.vacation_left), total: fmtLeaveHours(b.vacation_entitlement + b.vacation_adjust) }),
+            left: b.vacation_left,
+        };
+    }
+    return { text: t('timeoff.balanceComp', { left: fmtLeaveHours(b.comp_left) }), left: b.comp_left };
+}
 
 /** The "request / add leave" dialog — also used by the Requests page. */
 export function TimeOffRequestModal({
@@ -37,17 +56,32 @@ export function TimeOffRequestModal({
 }) {
     const t = useTranslation();
     const qc = useQueryClient();
+    const invalidateLeave = useInvalidateLeave();
+    const settings = useLeaveSettings();
+    // Deciders may enter any type; everyone else picks from what the organization offers.
+    const kinds = useMemo(
+        () => (managerMode ? LEAVE_KINDS : LEAVE_KINDS.filter((k) => (settings.data?.enabled_kinds ?? ['vacation', 'sick', 'other']).includes(k))),
+        [managerMode, settings.data],
+    );
     const [userId, setUserId] = useState(selfId);
-    const [kind, setKind] = useState<TimeOff['kind']>('vacation');
+    const [chosenKind, setKind] = useState<TimeOff['kind'] | null>(null);
+    const kind: LeaveKind = chosenKind && kinds.includes(chosenKind) ? chosenKind : (kinds[0] ?? 'vacation');
     const [from, setFrom] = useState(todayStr());
     const [to, setTo] = useState(todayStr());
+    const [partDay, setPartDay] = useState(false);
+    const [hours, setHours] = useState('4');
     const [note, setNote] = useState('');
+    const balances = useLeaveBalances(Number(from.slice(0, 4)) || new Date().getFullYear(), BALANCE_KINDS.has(kind));
+    const balance = balanceLine(kind, balances.data?.find((b) => b.user_id === userId), t);
+    const single = from === to;
+    const partHours = single && partDay ? Number(hours.replace(',', '.')) : null;
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     const submit = async () => {
         setError(null);
         if (to < from) return setError(t('timeoff.badRange'));
+        if (partHours !== null && !(partHours > 0 && partHours <= 24)) return setError(t('timeoff.badHours'));
         setBusy(true);
         try {
             await scheduleService.requestTimeOff({
@@ -56,6 +90,7 @@ export function TimeOffRequestModal({
                 kind,
                 starts_on: from,
                 ends_on: to,
+                hours: partHours,
                 note: note.trim() || null,
                 // A manager entering leave for someone approves it directly; their
                 // own leave is a request like anyone's (someone else approves).
@@ -65,6 +100,7 @@ export function TimeOffRequestModal({
             qc.invalidateQueries({ queryKey: ['time-off'] });
             // Approved leave deletes the member's rota shifts on those days (DB trigger).
             qc.invalidateQueries({ queryKey: ['schedule'] });
+            invalidateLeave();
             onClose();
         } catch (err) {
             setError(leaveErr(err, t));
@@ -92,12 +128,15 @@ export function TimeOffRequestModal({
                 <div className="space-y-1.5">
                     <label className="text-label text-gray-400">{t('timeoff.kind')}</label>
                     <Select value={kind} onChange={(e) => setKind(e.target.value as TimeOff['kind'])}>
-                        {(Object.keys(KIND_KEYS) as Array<TimeOff['kind']>).map((k) => (
+                        {kinds.map((k) => (
                             <option key={k} value={k}>
                                 {t(KIND_KEYS[k])}
                             </option>
                         ))}
                     </Select>
+                    {balance && (
+                        <p className={`text-caption ${balance.left <= 0 ? 'text-amber-600 dark:text-amber-400' : 'text-ink-soft dark:text-slate-400'}`}>{balance.text}</p>
+                    )}
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
@@ -109,6 +148,32 @@ export function TimeOffRequestModal({
                         <DatePicker value={to} onChange={setTo} aria-label={t('timeoff.to')} />
                     </div>
                 </div>
+                {single && (
+                    <div className="flex items-center gap-3">
+                        <label className="flex cursor-pointer items-center gap-2 text-meta text-ink dark:text-slate-200">
+                            <input type="checkbox" checked={partDay} onChange={(e) => setPartDay(e.target.checked)} className="size-4 accent-emerald-600" />
+                            {t('timeoff.partDay')}
+                        </label>
+                        {partDay && (
+                            <label className="flex items-center gap-1.5 text-meta text-ink-soft dark:text-slate-400">
+                                <Input
+                                    type="number"
+                                    min={0.5}
+                                    max={24}
+                                    step={0.5}
+                                    value={hours}
+                                    onChange={(e) => setHours(e.target.value)}
+                                    aria-label={t('timeoff.hours')}
+                                    className="h-9 w-20"
+                                />
+                                h
+                            </label>
+                        )}
+                    </div>
+                )}
+                {balance && partHours !== null && partHours > balance.left && (
+                    <p className="text-caption text-amber-600 dark:text-amber-400">{t('timeoff.overBalance', { left: fmtLeaveHours(balance.left) })}</p>
+                )}
                 <div className="space-y-1.5">
                     <label className="text-label text-gray-400">{t('schedule.note')}</label>
                     <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder={t('schedule.notePlaceholder')} />
@@ -149,12 +214,18 @@ export function TimeOffCard({
 }) {
     const t = useTranslation();
     const qc = useQueryClient();
+    const { user } = useAuthContext();
     const [open, setOpen] = useState(false);
+    const [balancesOpen, setBalancesOpen] = useState(false);
+    const invalidateLeave = useInvalidateLeave();
+    const seesBalances = can(user, 'requests.view');
+    const own = useLeaveBalances(new Date().getFullYear()).data?.find((b) => b.user_id === selfId);
 
     const invalidate = () => {
         qc.invalidateQueries({ queryKey: ['time-off'] });
         // Approved leave deletes the member's rota shifts on those days (DB trigger).
         qc.invalidateQueries({ queryKey: ['schedule'] });
+        invalidateLeave();
     };
     const reviewM = useMutation({
         mutationFn: ({ id, approve }: { id: string; approve: boolean }) => scheduleService.reviewTimeOff(id, approve, selfId),
@@ -188,10 +259,22 @@ export function TimeOffCard({
                     {t('timeoff.title')}
                     {pending.length > 0 && <span className="text-amber-500 font-normal"> · {pending.length}</span>}
                 </p>
+                {seesBalances && (
+                    <Button size="sm" variant="ghost" icon={ScalesIcon} onClick={() => setBalancesOpen(true)}>
+                        {t('leave.balances')}
+                    </Button>
+                )}
                 <Button size="sm" variant="tonal" icon={PlusIcon} onClick={() => setOpen(true)}>
                     {managerMode ? t('timeoff.add') : t('timeoff.request')}
                 </Button>
             </div>
+
+            {own && (
+                <p className="flex flex-wrap gap-x-3 gap-y-0.5 text-caption text-ink-soft tabular-nums dark:text-slate-400" data-testid="own-balance">
+                    <span>{t('timeoff.balanceVacation', { left: fmtLeaveHours(own.vacation_left), total: fmtLeaveHours(own.vacation_entitlement + own.vacation_adjust) })}</span>
+                    {(own.comp_left !== 0 || own.comp_earned > 0) && <span>{t('timeoff.balanceComp', { left: fmtLeaveHours(own.comp_left) })}</span>}
+                </p>
+            )}
 
             {visible.length > 0 && (
                 <ul className="space-y-1.5">
@@ -203,6 +286,9 @@ export function TimeOffCard({
                             <span className="min-w-0 flex-1 truncate text-gray-700 dark:text-gray-200">
                                 {managerMode && <span className="font-semibold">{personName(e)} · </span>}
                                 {range(e)}
+                                {e.hours != null && e.hours > 0 && (BALANCE_KINDS.has(e.kind) || e.hours_auto === false) ? (
+                                    <span className="text-gray-400 tabular-nums"> · {fmtLeaveHours(e.hours)}</span>
+                                ) : null}
                                 {e.note ? <span className="text-gray-400"> · {e.note}</span> : null}
                             </span>
                             {e.status === 'pending' && managerMode && e.user_id !== selfId ? (
@@ -241,6 +327,7 @@ export function TimeOffCard({
                 </ul>
             )}
 
+            {balancesOpen && <LeaveBalancesModal selfId={selfId} canDecide={can(user, 'requests.decide')} onClose={() => setBalancesOpen(false)} />}
             {open && (
                 <TimeOffRequestModal
                     members={members}

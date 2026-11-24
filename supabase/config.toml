@@ -392,6 +392,12 @@ verify_jwt = true
 enabled = true
 verify_jwt = false
 
+# ICS feed for Google / Apple Calendar / Outlook — calendar apps can't send a
+# JWT; the secret ?token= (calendar_feeds) is the auth.
+[functions.calendar-feed]
+enabled = true
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

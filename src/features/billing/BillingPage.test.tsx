@@ -14,6 +14,7 @@ const native = { value: false };
 let row: Subscription | null = null;
 let usage = { members: 23, locations: 2 };
 
+const freeBeta = vi.hoisted(() => ({ on: false }));
 vi.mock('@shared/api/supabaseClient', () => ({ supabase: {} }));
 vi.mock('@features/auth/AuthContext', () => ({ useAuthContext: () => ({ user: owner }) }));
 vi.mock('@shared/preferences/PreferencesContext', () => {
@@ -38,6 +39,7 @@ vi.mock('./billingService', () => {
         billingService: {
             getSubscription: vi.fn(async () => row),
             getUsage: vi.fn(async () => usage),
+            getFreeBeta: vi.fn(async () => freeBeta.on),
             // Never resolves: the redirect stays "on its way" (jsdom can't navigate).
             checkoutUrl: vi.fn(() => new Promise<string>(() => {})),
             portalUrl: vi.fn(),
@@ -72,6 +74,7 @@ function renderPage(path = '/billing') {
 describe('BillingPage', () => {
     beforeEach(() => {
         native.value = false;
+        freeBeta.on = false;
         row = { ...base };
         usage = { members: 23, locations: 2 };
         vi.mocked(toast).mockClear();
@@ -85,6 +88,18 @@ describe('BillingPage', () => {
         expect(screen.getByText('billing.choose:billing.plan.business')).toBeInTheDocument();
         expect(screen.getByText('449 Kč')).toBeInTheDocument();
         expect(screen.getByText(/billing\.estimate:23,1,035 Kč/)).toBeInTheDocument();
+    });
+
+    it('free beta: Business, a "free during beta" note, no trial and nothing to buy', async () => {
+        freeBeta.on = true;
+        renderPage();
+        expect(await screen.findByText('billing.status.beta')).toBeInTheDocument();
+        expect(screen.getByText('billing.betaHint')).toBeInTheDocument();
+        expect(screen.getByText('billing.betaPlansSoon')).toBeInTheDocument();
+        expect(screen.getByText('billing.plan.business')).toBeInTheDocument();
+        expect(screen.queryByText(/billing\.trialDaysLeft/)).toBeNull();
+        expect(screen.queryByText(/billing\.choose/)).toBeNull();
+        expect(screen.queryByText(/Kč/)).toBeNull();
     });
 
     it('native: plan status only — no prices, no purchase buttons', async () => {

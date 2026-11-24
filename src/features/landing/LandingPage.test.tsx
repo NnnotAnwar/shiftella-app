@@ -8,6 +8,7 @@ import { LANDING } from './landingContent';
 import { LandingPage } from './LandingPage';
 
 vi.mock('@shared/preferences/PreferencesContext', () => ({ usePreferences: vi.fn() }));
+vi.mock('@features/billing/useBilling', () => ({ useFreeBeta: () => ({ freeBeta: false, isLoading: false }) }));
 vi.mock('@capacitor/core', () => ({ Capacitor: { isNativePlatform: vi.fn(() => false) } }));
 // The toggles need the theme provider; they're covered with the auth pages.
 vi.mock('@features/auth/AuthShell', () => ({ LanguageToggle: () => null, ThemeToggle: () => null }));

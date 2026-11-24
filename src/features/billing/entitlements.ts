@@ -12,6 +12,8 @@ import { LIMITS, PLAN_FEATURES, type BillingInterval, type Feature, type PaidPla
  *   3. trialing / active / past_due (grace while Stripe retries) → the plan.
  *   4. canceled / incomplete / no row → Free.
  * Superadmin bypasses every gate and limit.
+ * Free beta (app_settings.free_beta, mirrored in `org_plan()`): every
+ * organization gets Business, no trial / ended states, no limits.
  */
 
 export type SubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'canceled' | 'incomplete';
@@ -126,6 +128,8 @@ export interface Entitlements {
     usage: OrgUsage | null;
     /** Superadmin: every gate open. */
     bypass: boolean;
+    /** The free beta is on: Business for everyone, nothing to buy. */
+    freeBeta: boolean;
     can: (feature: Feature) => boolean;
     /** May one more member / location be added (unknown usage → yes; the server decides). */
     canAdd: (kind: LimitKind) => boolean;
@@ -137,13 +141,35 @@ export function buildEntitlements({
     subscription,
     usage = null,
     superadmin = false,
+    freeBeta = false,
     now = Date.now(),
 }: {
     subscription: Subscription | null | undefined;
     usage?: OrgUsage | null;
     superadmin?: boolean;
+    freeBeta?: boolean;
     now?: number;
 }): Entitlements {
+    if (freeBeta) {
+        return {
+            plan: 'business',
+            isTrial: false,
+            trialDaysLeft: null,
+            trialExpired: false,
+            planEnded: false,
+            endedSubscriptionId: null,
+            pastDue: subscription?.status === 'past_due' && !hasActiveGrant(subscription, now),
+            source: effectiveSource(subscription, now),
+            grantUntil: null,
+            limits: LIMITS.business,
+            usage,
+            bypass: superadmin,
+            freeBeta: true,
+            can: () => true,
+            canAdd: () => true,
+            overLimit: () => false,
+        };
+    }
     const plan = effectivePlan(subscription, now);
     const limits = LIMITS[plan];
     const grant = hasActiveGrant(subscription, now);
@@ -161,6 +187,7 @@ export function buildEntitlements({
         limits,
         usage,
         bypass: superadmin,
+        freeBeta: false,
         can: (feature) => superadmin || PLAN_FEATURES[plan].has(feature),
         canAdd: (kind) => superadmin || !usage || fitsLimit(plan, kind, usage[kind]),
         overLimit: (kind) => !superadmin && !!usage && limits[kind] !== null && usage[kind] > (limits[kind] as number),

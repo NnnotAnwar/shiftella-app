@@ -8,6 +8,8 @@ import { BUSINESS_MIN_SEATS, LIMITS, PRICES, TRIAL_DAYS, billedPrice, yearlySavi
 import { PricingSection } from './PricingSection';
 
 vi.mock('@shared/preferences/PreferencesContext', () => ({ usePreferences: vi.fn() }));
+const beta = vi.hoisted(() => ({ on: false }));
+vi.mock('@features/billing/useBilling', () => ({ useFreeBeta: () => ({ freeBeta: beta.on, isLoading: false }) }));
 
 function setLanguage(language: Language) {
     vi.mocked(usePreferences).mockReturnValue({
@@ -27,7 +29,10 @@ function renderPricing() {
     );
 }
 
-beforeEach(() => setLanguage('cs'));
+beforeEach(() => {
+    setLanguage('cs');
+    beta.on = false;
+});
 
 describe('Landing pricing (from billing/plans.ts)', () => {
     it('shows the monthly prices and limits of every plan', () => {
@@ -76,5 +81,20 @@ describe('Landing pricing (from billing/plans.ts)', () => {
         expect(text(screen.getByTestId('plan-team'))).toContain(`${PRICES.team.month.czk}CZK/ month`);
         expect(text(screen.getByTestId('plan-free'))).toContain(`Up to ${LIMITS.free.members} people · 1 location`);
         expect(screen.getByText('Prices are final, no VAT is added.')).toBeInTheDocument();
+    });
+
+    it('free beta: a banner says everything is free, and no plan offers a trial', () => {
+        beta.on = true;
+        renderPricing();
+        expect(screen.getByRole('note')).toHaveTextContent('Během bety je všechno zdarma');
+        const team = text(screen.getByTestId('plan-team'));
+        expect(team).toContain('Začít zdarma');
+        expect(team).toContain('Zdarma během bety, bez karty');
+        expect(team).not.toContain('Vyzkoušet zdarma');
+    });
+
+    it('no banner outside the beta', () => {
+        renderPricing();
+        expect(screen.queryByRole('note')).toBeNull();
     });
 });

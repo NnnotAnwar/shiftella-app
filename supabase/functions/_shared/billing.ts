@@ -272,6 +272,17 @@ export async function loadSubscription(admin: SupabaseClient, orgId: string): Pr
     return (data as SubscriptionRow | null) ?? null;
 }
 
+/**
+ * The free beta (app_settings.free_beta): nothing is sold while it's on. An
+ * unreadable flag counts as ON — refusing a sale is the safe side.
+ */
+export async function freeBetaOn(admin: SupabaseClient): Promise<boolean> {
+    const { data, error } = await admin.rpc('billing_free_beta');
+    return error ? true : data === true;
+}
+
+export const FREE_BETA_REFUSAL = { error: 'Shiftella is free during the beta — there is nothing to buy yet.', code: 'FREE_BETA' } as const;
+
 export function hasActiveGrant(row: Pick<SubscriptionRow, 'manual_plan' | 'manual_until'> | null, now = Date.now()): boolean {
     return !!row?.manual_plan && (!row.manual_until || new Date(row.manual_until).getTime() > now);
 }

@@ -37,6 +37,7 @@
 // =============================================================================
 
 import {
+    FREE_BETA_REFUSAL,
     LIVE_STATUSES,
     TEAM_MAX_LOCATIONS,
     TEAM_MAX_MEMBERS,
@@ -44,6 +45,7 @@ import {
     changeRefusal,
     corsHeaders,
     endsAtOf,
+    freeBetaOn,
     json,
     loadSubscription,
     parseChangeRequest,
@@ -94,6 +96,9 @@ Deno.serve(async (req) => {
             await syncFromStripe(admin, sub.id, organizationId);
             return json({ ok: true, ...result, endsAt: target ? endsAtOf(updated) : null }, 200);
         }
+
+        // Free beta: an existing subscription may still be cancelled / resumed (above), but not moved to another paid plan.
+        if (await freeBetaOn(admin)) return json(FREE_BETA_REFUSAL, 409);
 
         const { plan, interval } = request;
         const from = planForPrice(item.price?.id) ?? {

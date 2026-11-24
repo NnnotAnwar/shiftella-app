@@ -258,7 +258,9 @@ function BillingInner() {
     }
 
     // --- Status chip --------------------------------------------------------------
-    const chip = granted
+    const chip = ent.freeBeta
+        ? { label: t('billing.status.beta'), tone: 'emerald' }
+        : granted
         ? { label: t('billing.status.granted'), tone: 'emerald' }
         : grandfathered
           ? { label: t('billing.status.grandfathered'), tone: 'emerald' }
@@ -316,13 +318,22 @@ function BillingInner() {
                     )}
                 </div>
 
+                {ent.freeBeta && (
+                    <div className="space-y-1">
+                        <p className="flex items-center gap-1.5 text-meta text-ink dark:text-white">
+                            <SparkleIcon weight="bold" className="size-4 shrink-0 text-emerald-600 dark:text-emerald-300" />
+                            {t('billing.betaHint')}
+                        </p>
+                        {!native && <p className="text-caption text-ink-soft dark:text-slate-400">{t('billing.betaPlansSoon')}</p>}
+                    </div>
+                )}
                 {activating && (
                     <p role="status" className="flex items-center gap-1.5 text-meta text-emerald-700 dark:text-emerald-300">
                         <CircleNotchIcon weight="bold" className="size-3.5 animate-spin" />
                         {t('billing.activating')}
                     </p>
                 )}
-                {granted && (
+                {granted && !ent.freeBeta && (
                     <p className="flex items-center gap-1.5 text-meta text-ink dark:text-white">
                         <GiftIcon weight="bold" className="size-4 text-emerald-600 dark:text-emerald-300" />
                         {t('billing.grantedBy', { app: APP_NAME })}
@@ -331,7 +342,7 @@ function BillingInner() {
                         </span>
                     </p>
                 )}
-                {grandfathered && <p className="text-meta text-ink-soft dark:text-slate-400">{t('billing.grandfatheredHint')}</p>}
+                {grandfathered && !ent.freeBeta && <p className="text-meta text-ink-soft dark:text-slate-400">{t('billing.grandfatheredHint')}</p>}
                 {ent.isTrial && sub?.trial_ends_at && (
                     <p className="text-meta text-ink-soft dark:text-slate-400">{t('billing.trialEnds', { date: formatDateInText(sub.trial_ends_at) })}</p>
                 )}
@@ -377,8 +388,8 @@ function BillingInner() {
                 )}
             </section>
 
-            {/* PLANS — web only (store rules) */}
-            {!native && (
+            {/* PLANS — web only (store rules); hidden during the free beta */}
+            {!native && !ent.freeBeta && (
                 <section className="space-y-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                         <h3 className="px-1 text-eyebrow text-ink-soft dark:text-slate-400">{t('billing.plans')}</h3>

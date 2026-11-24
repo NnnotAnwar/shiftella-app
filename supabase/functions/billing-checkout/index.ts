@@ -11,6 +11,7 @@
 //   • Business  — per member, quantity = members (minimum 10).
 //   • Days left on the no-card trial carry over (Stripe trial_end) when more
 //     than 2 days remain, so upgrading early never costs trial days.
+//   • Refused (409 FREE_BETA) while the free beta is on (app_settings).
 //   • Refused (409) when the org already has a live Stripe subscription (plan
 //     changes go through billing-change-plan), is grandfathered, or has an
 //     active Superadmin grant.
@@ -20,6 +21,8 @@
 
 import {
     appUrl,
+    FREE_BETA_REFUSAL,
+    freeBetaOn,
     hasActiveGrant,
     json,
     corsHeaders,
@@ -48,6 +51,8 @@ Deno.serve(async (req) => {
         const interval = body.interval === 'year' ? 'year' : body.interval === 'month' ? 'month' : null;
         if (!plan || !interval) return json({ error: 'Pick a plan (team / business) and a billing interval (month / year).' }, 400);
         const language = body.language === 'cs' ? 'cs' : 'en';
+
+        if (await freeBetaOn(admin)) return json(FREE_BETA_REFUSAL, 409);
 
         const row = await loadSubscription(admin, organizationId);
         if (hasActiveGrant(row)) return json({ error: 'Your plan was granted by Shiftella — nothing to pay.', code: 'GRANTED' }, 409);

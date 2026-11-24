@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@shared/toast/toastStore';
 import { useTranslation } from '@shared/preferences/PreferencesContext';
 import { type User } from '@shared/types';
+import { usePlanErrorHandler } from '@features/billing/useBilling';
 import { openShiftService } from './openShiftService';
 import { type OpenShiftInput } from './types';
 
@@ -14,6 +15,7 @@ import { type OpenShiftInput } from './types';
 export function useOpenShifts(user: User | null) {
   const t = useTranslation();
   const qc = useQueryClient();
+  const planError = usePlanErrorHandler();
   const enabled = !!user;
   const orgId = user?.organization_id ?? 'anon';
   const key = ['open-shifts', orgId];
@@ -35,7 +37,7 @@ export function useOpenShifts(user: User | null) {
       invalidate();
       toast(t('open.posted'), 'success');
     },
-    onError: () => toast(t('open.error'), 'error'),
+    onError: (e) => planError(e) || toast(t('open.error'), 'error'),
   });
 
   const claim = useMutation({
@@ -47,7 +49,7 @@ export function useOpenShifts(user: User | null) {
       invalidate();
       toast(t('open.claimed'), 'success');
     },
-    onError: () => toast(t('open.tooLate'), 'error'),
+    onError: (e) => planError(e) || toast(t('open.tooLate'), 'error'),
   });
 
   const release = useMutation({

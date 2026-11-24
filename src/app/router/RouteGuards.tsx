@@ -1,4 +1,6 @@
-import { Navigate, Outlet } from 'react-router-dom';
+import type { ReactNode } from 'react';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { guestHome } from './guestHome';
 import { useAuthContext } from '@features/auth/AuthContext';
 import { PageLoader } from '@shared/components/PageLoader';
 
@@ -13,11 +15,19 @@ import { PageLoader } from '@shared/components/PageLoader';
  * their own session (verifyOtp) and must stay reachable while logged out.
  */
 
-/** Pages that require a session (the whole app shell). */
-export function ProtectedRoute() {
+/**
+ * Pages that require a session (the whole app shell). A signed-out visitor is
+ * sent to "/login" — except at "/" itself on the web, where `landing` (the
+ * public marketing page) is shown instead; see `guestHome()`.
+ */
+export function ProtectedRoute({ landing }: { landing?: ReactNode }) {
   const { user, isAuthChecking } = useAuthContext();
+  const { pathname } = useLocation();
   if (isAuthChecking) return <PageLoader />;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) {
+    if (landing && pathname === '/' && guestHome() === 'landing') return <>{landing}</>;
+    return <Navigate to="/login" replace />;
+  }
   return <Outlet />;
 }
 

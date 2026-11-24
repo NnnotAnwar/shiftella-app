@@ -10,7 +10,7 @@
 
 [![CI](https://github.com/NnnotAnwar/shiftella-app/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/NnnotAnwar/shiftella-app/actions/workflows/ci.yml)
 [![Deploy](https://github.com/NnnotAnwar/shiftella-app/actions/workflows/deploy-hetzner.yml/badge.svg)](https://github.com/NnnotAnwar/shiftella-app/actions/workflows/deploy-hetzner.yml)
-![Version](https://img.shields.io/badge/version-1.12.0%20D%C4%9B%C4%8D%C3%ADn-4f46e5)
+![Version](https://img.shields.io/badge/version-1.13.0%20Ejpovice-4f46e5)
 ![React](https://img.shields.io/badge/React-19-149eca?logo=react&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript&logoColor=white)
 ![Supabase](https://img.shields.io/badge/Supabase-Postgres%20%2B%20RLS-3ecf8e?logo=supabase&logoColor=white)
@@ -537,7 +537,7 @@ run it against **preprod** (SQL editor, or `psql -f`).
   and the build on every PR.
 - **Versioning:** semver tags (`vX.Y.Z`) + GitHub Releases per release. Notable
   releases also carry a **codename** — a Czech town, advancing A→Z
-  (v1.9.0 = _Adamov_, v1.10.0 = _Beroun_, v1.11.0 = _Cheb_, v1.12.0 = _Děčín_).
+  (v1.9.0 = _Adamov_, v1.10.0 = _Beroun_, v1.11.0 = _Cheb_, v1.12.0 = _Děčín_, v1.13.0 = _Ejpovice_).
 - **Scheduled jobs (pg_cron):** auto-end open shifts at Europe/Prague midnight;
   late-for-shift alerts every 5 minutes.
 

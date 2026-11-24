@@ -8,3 +8,6 @@ export const APP_NAME = 'Shiftella';
 
 /** Canonical public URL — for display only; app logic uses `window.location.origin`. */
 export const APP_URL = 'https://shiftella.app';
+
+/** Support / contact address (legal pages, landing footer). */
+export const SUPPORT_EMAIL = 'anuarkairulla@gmail.com';

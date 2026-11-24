@@ -27,7 +27,8 @@ vi.mock('./billingService', () => {
         code?: string;
         limit?: number;
         count?: number;
-        constructor(message: string, extra: { code?: string; limit?: number; count?: number } = {}) {
+        url?: string;
+        constructor(message: string, extra: { code?: string; limit?: number; count?: number; url?: string } = {}) {
             super(message);
             Object.assign(this, extra);
         }
@@ -260,6 +261,22 @@ describe('BillingPage — switching a live subscription in place', () => {
         await act(async () => void fireEvent.click(screen.getByRole('button', { name: 'billing.switchConfirm' })));
         expect(billingService.checkoutUrl).toHaveBeenCalledWith('team', 'month', 'en');
         expect(toast).not.toHaveBeenCalledWith(expect.anything(), 'error');
+    });
+
+    it('PAYMENT_REQUIRED (card declined / 3-D Secure): heads to the invoice, no error, no Checkout', async () => {
+        row = live('team', 'month');
+        vi.mocked(billingService.changePlan).mockRejectedValue(
+            new BillingError('unpaid', { code: 'PAYMENT_REQUIRED', url: 'https://invoice.stripe.com/i/acct_x/inv_1' }),
+        );
+        const checkouts = vi.mocked(billingService.checkoutUrl).mock.calls.length;
+        renderPage();
+        const business = await screen.findByRole('button', { name: 'billing.switchTo:billing.plan.business' });
+        fireEvent.click(business);
+        await act(async () => void fireEvent.click(screen.getByRole('button', { name: 'billing.switchConfirm' })));
+        expect(toast).toHaveBeenCalledWith('billing.err.PAYMENT_REQUIRED', 'info');
+        expect(toast).not.toHaveBeenCalledWith(expect.anything(), 'error');
+        expect(billingService.checkoutUrl).toHaveBeenCalledTimes(checkouts);
+        expect(business).toHaveAttribute('aria-busy', 'true');
     });
 
     it('native: no switch buttons even with a live subscription', async () => {

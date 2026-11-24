@@ -118,7 +118,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       # Yarn Berry 4 via Corepack (version pinned by package.json "packageManager");
       # a plain Yarn 1.x would break the install.
@@ -145,6 +145,8 @@ jobs:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL || secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY || secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
           VITE_PUBLIC_SITE_URL: ${{ needs.resolve.outputs.url }}
+          # Optional: that environment's Telegram bot @username (unset = no Telegram block in Settings).
+          VITE_TELEGRAM_BOT_USERNAME: ${{ vars.VITE_TELEGRAM_BOT_USERNAME }}
         run: |
           for v in VITE_SUPABASE_URL VITE_SUPABASE_PUBLISHABLE_KEY; do
             [ -n "${!v}" ] || { echo "::error::$v is not set for the '${{ needs.resolve.outputs.target }}' environment"; exit 1; }

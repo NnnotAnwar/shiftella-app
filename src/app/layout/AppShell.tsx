@@ -11,6 +11,7 @@ import { useLocationManagement } from '@features/locations/hooks/useLocationMana
 import { useToasts, toastStore } from '@shared/toast/toastStore';
 import { useTranslation } from '@shared/preferences/PreferencesContext';
 import { useOnline } from '@shared/hooks/useOnline';
+import { APP_NAME } from '@shared/brand';
 
 import { Sidebar } from './Sidebar';
 import { BottomNav } from './BottomNav';
@@ -48,6 +49,12 @@ export function AppShell() {
   const { user, isAuthChecking, isLoading: isAuthLoading } = useAuthContext();
   const { activeShift, allActiveShifts, locations, selectedLocationId, setSelectedLocationId, handleChangeLocation, isChangingLocation } = useShiftContext();
   const t = useTranslation();
+
+  // index.html carries the landing page's marketing <title> for search engines;
+  // inside the app the tab just says the product name.
+  useEffect(() => {
+    document.title = APP_NAME;
+  }, []);
 
   // Register for push notifications (native only; no-op on web / when signed out).
   usePushNotifications(user?.id);

@@ -224,19 +224,42 @@ export const adminService = {
         });
         if (error) throw await toFunctionError(error);
     },
+
+    /** One activity-log summary after a bulk (Excel / CSV) import. */
+    async logMembersImported(organizationId: string, invited: number, failed: number): Promise<void> {
+        const { error } = await supabase.rpc('log_members_imported', { p_org: organizationId, p_invited: invited, p_failed: failed });
+        if (error) throw new Error(error.message);
+    },
 };
+
+/** An Edge Function's error, with its machine-readable `code` / `limit` when it sent them. */
+export class FunctionError extends Error {
+    code?: string;
+    limit?: number;
+    constructor(message: string, extra: { code?: string; limit?: number } = {}) {
+        super(message);
+        this.name = 'FunctionError';
+        Object.assign(this, extra);
+    }
+}
 
 /**
  * Edge Functions return their error body with a non-2xx status, which supabase-js
  * surfaces as a FunctionsHttpError whose `context` is the raw Response. Pull the
- * server's `error` message out of it so the UI can show something meaningful.
+ * server's `error` message (and `code`) out of it so the UI can show something
+ * meaningful.
  */
 async function toFunctionError(error: unknown): Promise<Error> {
     const context = (error as { context?: Response }).context;
     if (context && typeof context.json === 'function') {
         try {
             const body = await context.json();
-            if (body?.error) return new Error(body.error);
+            if (body?.error) {
+                return new FunctionError(String(body.error), {
+                    code: typeof body.code === 'string' ? body.code : undefined,
+                    limit: typeof body.limit === 'number' ? body.limit : undefined,
+                });
+            }
         } catch {
             // fall through to the generic message
         }

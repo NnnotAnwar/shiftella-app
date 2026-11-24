@@ -12,6 +12,7 @@ import type { TranslationKey } from '@shared/i18n/translations';
 import { billingService } from './billingService';
 import { buildEntitlements, type Entitlements, type LimitKind } from './entitlements';
 import { requiredPlan, type Feature } from './plans';
+import { planFeatureFromError } from './planErrors';
 
 export const billingKeys = {
     all: ['billing'] as const,
@@ -111,5 +112,24 @@ export function useUpgradeNudge() {
             toast(`${message}${hint}`, 'info', { action });
         },
         [user, navigate, t],
+    );
+}
+
+/**
+ * Server-side plan gates: a write the plan doesn't include fails with
+ * `PLAN_FEATURE:<feature>`. Returns a handler for mutation errors — it shows
+ * the upgrade nudge and returns true for such an error, false otherwise (the
+ * caller shows its own message).
+ */
+export function usePlanErrorHandler() {
+    const nudge = useUpgradeNudge();
+    return useCallback(
+        (e: unknown): boolean => {
+            const feature = planFeatureFromError(e);
+            if (!feature) return false;
+            nudge(feature);
+            return true;
+        },
+        [nudge],
     );
 }

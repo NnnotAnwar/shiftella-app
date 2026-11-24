@@ -10,6 +10,7 @@ import { adminService } from '@features/admin/adminService';
 import { leaveErr } from '@features/schedule/timeOffShared';
 import { requestsService } from './requestsService';
 import { swapBlockReason, swapService } from '@features/schedule/swaps/swapService';
+import { planFeatureMessage } from '@features/billing/planErrors';
 import { swapKeys } from '@features/schedule/swaps/useShiftSwaps';
 import { personName, type ShiftSwap } from '@features/schedule/swaps/types';
 import type { RequestItem } from './types';
@@ -224,6 +225,8 @@ export function useRequests() {
         onError: (e) => {
             const code = memberRequestError(e);
             if (code) return toast(t(`mreq.err.${code}` as 'mreq.err.request_empty'), 'error');
+            const planMsg = planFeatureMessage(e, t);
+            if (planMsg) return toast(planMsg, 'info');
             const blocked = swapBlockReason(e);
             toast(blocked ? t(`swap.blocked_${blocked}` as 'swap.blocked_busy') : leaveErr(e, t) || t('requests.error'), 'error');
         },

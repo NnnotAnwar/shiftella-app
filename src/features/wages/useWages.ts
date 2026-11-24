@@ -3,6 +3,7 @@ import { can } from '@shared/auth/permissions';
 import { toast } from '@shared/toast/toastStore';
 import { useTranslation } from '@shared/preferences/PreferencesContext';
 import { type User } from '@shared/types';
+import { usePlanErrorHandler } from '@features/billing/useBilling';
 import { wageService } from './wageService';
 import { type MemberWageInput } from './types';
 
@@ -15,6 +16,7 @@ import { type MemberWageInput } from './types';
 export function useWages(user: User | null) {
   const t = useTranslation();
   const qc = useQueryClient();
+  const planError = usePlanErrorHandler();
   const enabled = !!user;
   const isAdmin = enabled && can(user, 'wages.edit');
 
@@ -40,7 +42,7 @@ export function useWages(user: User | null) {
       qc.invalidateQueries({ queryKey: ['wages', 'mine'] });
       toast(t('wage.saved'), 'success');
     },
-    onError: () => toast(t('wage.error'), 'error'),
+    onError: (e) => planError(e) || toast(t('wage.error'), 'error'),
   });
 
   return { mine, org, setRate, isAdmin };

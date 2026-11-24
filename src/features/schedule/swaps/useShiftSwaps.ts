@@ -4,6 +4,7 @@ import { supabase } from '@shared/api/supabaseClient';
 import { toast } from '@shared/toast/toastStore';
 import { useTranslation } from '@shared/preferences/PreferencesContext';
 import type { User } from '@shared/types';
+import { usePlanErrorHandler } from '@features/billing/useBilling';
 import { swapBlockReason, swapService } from './swapService';
 
 export const swapKeys = { all: ['shift-swaps'] as const };
@@ -17,6 +18,7 @@ export const swapKeys = { all: ['shift-swaps'] as const };
 export function useShiftSwaps(user: User | null) {
     const t = useTranslation();
     const qc = useQueryClient();
+    const planError = usePlanErrorHandler();
     const channelId = useId();
 
     const list = useQuery({ queryKey: swapKeys.all, queryFn: swapService.list, enabled: !!user });
@@ -46,7 +48,7 @@ export function useShiftSwaps(user: User | null) {
     const offer = useMutation({
         mutationFn: (shiftId: string) => swapService.offer(shiftId),
         onSuccess: refresh,
-        onError: () => toast(t('swap.error'), 'error'),
+        onError: (e) => planError(e) || toast(t('swap.error'), 'error'),
     });
     const take = useMutation({
         mutationFn: (id: string) => swapService.take(id),
@@ -56,7 +58,7 @@ export function useShiftSwaps(user: User | null) {
         },
         onError: (e) => {
             refresh();
-            toast(blockedMsg(e), 'error');
+            if (!planError(e)) toast(blockedMsg(e), 'error');
         },
     });
     const withdraw = useMutation({

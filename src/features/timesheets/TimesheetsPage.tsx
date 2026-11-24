@@ -14,6 +14,7 @@ import {
     FileXlsIcon,
     FileCsvIcon,
     ClockUserIcon,
+    CalculatorIcon,
     type Icon,
 } from '@phosphor-icons/react';
 
@@ -36,6 +37,7 @@ import { shareOrExport, shareOrExportAll } from '@shared/utils/shareExport';
 import { useTimesheetRealtime } from './useTimesheetRealtime';
 import { ShiftEditorModal, type ShiftFormValues } from './components/ShiftEditorModal';
 import { PageHeader } from '@shared/components/PageHeader';
+import { PayrollExportModal } from './payroll/PayrollExportModal';
 
 const EXPORT_FORMATS = [
     { fmt: 'pdf' as const, label: 'PDF', Icon: FilePdfIcon },
@@ -149,6 +151,7 @@ function TimesheetsInner() {
     const [exportAllOpen, setExportAllOpen] = useState(false);
     const [exportingAll, setExportingAll] = useState(false);
     const [profileOpen, setProfileOpen] = useState(false);
+    const [payrollOpen, setPayrollOpen] = useState(false);
 
     const backToList = () => {
         setSelectedId(null);
@@ -410,6 +413,17 @@ function TimesheetsInner() {
                                     busy={exportingAll}
                                 />
                             )}
+                            {!selected && (
+                                <button
+                                    onClick={() => setPayrollOpen(true)}
+                                    disabled={!month || members.length === 0}
+                                    title={month ? t('payroll.button') : t('payroll.pickMonth')}
+                                    aria-label={t('payroll.button')}
+                                    className="glass flex items-center justify-center w-9 h-9 rounded-xl text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 active:scale-90 transition-all disabled:opacity-40"
+                                >
+                                    <CalculatorIcon weight="bold" className="w-4 h-4" />
+                                </button>
+                            )}
                             <MonthPicker value={month} onChange={setMonth} />
                         </div>
                     </>
@@ -577,6 +591,9 @@ function TimesheetsInner() {
                 )}
                 {profileOpen && selected && (
                     <UserProfileModal userId={selected.id} onClose={() => setProfileOpen(false)} />
+                )}
+                {payrollOpen && month && (
+                    <PayrollExportModal month={month} members={members} onClose={() => setPayrollOpen(false)} />
                 )}
             </AnimatePresence>
         </div>

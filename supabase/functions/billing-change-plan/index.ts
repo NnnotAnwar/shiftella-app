@@ -23,6 +23,9 @@
 //     yearly) is invoiced now; a downgrade leaves a credit for the next
 //     invoice; while trialing nothing is prorated. A switch also clears a
 //     scheduled cancel.
+//   • An upgrade charged now is applied only once paid (payment_behavior
+//     pending_if_incomplete): declined / 3-D Secure → 402 PAYMENT_REQUIRED
+//     { url: the invoice to pay }; the plan stays as it was until then.
 //   • Same plan + interval → 200 { ok: true, unchanged: true }.
 //   • To Free: cancel_at_period_end = true → 200 { ok: true, plan: 'free',
 //     endsAt }. The plan keeps running until endsAt; then Stripe cancels the
@@ -44,6 +47,7 @@ import {
     json,
     loadSubscription,
     parseChangeRequest,
+    paymentBehaviorFor,
     planForPrice,
     priceFor,
     prorationForChange,
@@ -138,12 +142,33 @@ Deno.serve(async (req) => {
         }
 
         const proration_behavior = prorationForChange(from, { plan, interval }, sub.status);
-        await stripe.subscriptions.update(sub.id, {
+        const payment_behavior = paymentBehaviorFor(proration_behavior);
+        const strict = payment_behavior === 'pending_if_incomplete';
+        const flags = { cancel_at_period_end: false, metadata: { organization_id: organizationId, plan } };
+        // A pending_if_incomplete update accepts only items / proration fields, so the
+        // flags follow in a second call — and only once the upgrade has gone through.
+        const updated = await stripe.subscriptions.update(sub.id, {
             items: [{ id: item.id, price: priceFor(plan, interval), quantity }],
-            cancel_at_period_end: false,
-            metadata: { organization_id: organizationId, plan },
             proration_behavior,
+            payment_behavior,
+            expand: ['latest_invoice'],
+            ...(strict ? {} : flags),
         });
+        if (updated.pending_update) {
+            // Not paid (declined / needs 3-D Secure): the plan stays as it was. Stripe
+            // applies the change by itself if this invoice is paid within 23 hours.
+            const invoice = updated.latest_invoice;
+            const url = invoice && typeof invoice === 'object' ? invoice.hosted_invoice_url ?? null : null;
+            return json(
+                {
+                    error: 'The payment did not go through, so your plan has not changed yet. Pay the invoice to finish the upgrade.',
+                    code: 'PAYMENT_REQUIRED',
+                    url,
+                },
+                402,
+            );
+        }
+        if (strict) await stripe.subscriptions.update(sub.id, flags);
 
         // Write the row now (the webhook will confirm it a moment later).
         await syncFromStripe(admin, sub.id, organizationId);

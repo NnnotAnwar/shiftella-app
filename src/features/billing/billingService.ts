@@ -16,7 +16,9 @@ export class BillingError extends Error {
     code?: string;
     limit?: number;
     count?: number;
-    constructor(message: string, extra: { code?: string; limit?: number; count?: number } = {}) {
+    /** PAYMENT_REQUIRED: Stripe's page for paying the upgrade invoice. */
+    url?: string;
+    constructor(message: string, extra: { code?: string; limit?: number; count?: number; url?: string } = {}) {
         super(message);
         this.name = 'BillingError';
         Object.assign(this, extra);
@@ -26,7 +28,7 @@ export class BillingError extends Error {
 /** Read a function's `{ error, code }` body on a non-2xx (supabase-js hides it on `error.context`). */
 async function invokeError(error: { message: string }): Promise<BillingError> {
     let message = error.message;
-    let extra: { code?: string; limit?: number; count?: number } = {};
+    let extra: { code?: string; limit?: number; count?: number; url?: string } = {};
     const resp = (error as { context?: Response }).context;
     if (resp && typeof resp.json === 'function') {
         try {
@@ -36,6 +38,7 @@ async function invokeError(error: { message: string }): Promise<BillingError> {
                 code: typeof body?.code === 'string' ? body.code : undefined,
                 limit: typeof body?.limit === 'number' ? body.limit : undefined,
                 count: typeof body?.count === 'number' ? body.count : undefined,
+                url: typeof body?.url === 'string' && body.url.startsWith('https://') ? body.url : undefined,
             };
         } catch {
             /* keep the default message */
@@ -98,7 +101,9 @@ export const billingService = {
     /**
      * Switch the live Stripe subscription to another plan / interval in place
      * (billing-change-plan). Throws a BillingError with `code` NO_SUBSCRIPTION
-     * (use Checkout), PLAN_LIMIT_MEMBERS / PLAN_LIMIT_LOCATIONS (doesn't fit Team).
+     * (use Checkout), PLAN_LIMIT_MEMBERS / PLAN_LIMIT_LOCATIONS (doesn't fit Team),
+     * PAYMENT_REQUIRED (an upgrade's charge failed / needs 3-D Secure; `url` = the
+     * invoice to pay — the plan changes once it is paid).
      */
     async changePlan(plan: PaidPlan, interval: BillingInterval): Promise<{ unchanged: boolean }> {
         const d = await invokeChange({ plan, interval }, 'The plan could not be changed.');

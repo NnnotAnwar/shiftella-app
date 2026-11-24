@@ -77,6 +77,15 @@ supabase functions deploy send-push        --no-verify-jwt --project-ref <projec
 
 `send-push` needs no new webhooks. The existing ones on `shift_audit_log`, `name_change_requests` and `announcements` now also reach Telegram. Without `TELEGRAM_BOT_TOKEN`, `send-push` skips Telegram silently.
 
+## Quick setup (one command per environment)
+
+```bash
+bash tools/telegram-connect.sh prod   # @shiftella_bot
+bash tools/telegram-connect.sh dev    # @shiftelladev_bot
+```
+
+It asks for the bot token (hidden), checks that it belongs to the right bot, makes a new webhook secret, saves all three Supabase secrets and runs `tools/telegram-setup.sh`. Then set the GitHub variable `VITE_TELEGRAM_BOT_USERNAME` for that environment and redeploy, so the Settings block appears. The sections below are the manual way.
+
 ## 5. Webhook + command menus
 
 Fastest: run the script. It is idempotent and does `setWebhook`, `setMyCommands` (EN + CS), and the descriptions:

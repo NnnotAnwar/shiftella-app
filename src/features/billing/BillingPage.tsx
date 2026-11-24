@@ -159,6 +159,7 @@ function BillingInner() {
 
     const changePlan = async (target: { plan: PaidPlan; interval: BillingInterval }) => {
         let useCheckout = false;
+        let payUrl: string | null = null;
         await perform(switchKey(target.plan), async () => {
             try {
                 const { unchanged } = await billingService.changePlan(target.plan, target.interval);
@@ -168,10 +169,22 @@ function BillingInner() {
                 );
                 refetchAll();
             } catch (err) {
+                // The upgrade's charge failed or needs 3-D Secure: nothing changed yet —
+                // finish it on Stripe's invoice page (the plan switches once it is paid).
+                if (err instanceof BillingError && err.code === 'PAYMENT_REQUIRED' && err.url) {
+                    payUrl = err.url;
+                    return;
+                }
                 if (!(err instanceof BillingError && err.code === 'NO_SUBSCRIPTION')) throw err;
                 useCheckout = true;
             }
         });
+        if (payUrl) {
+            const url: string = payUrl;
+            toast(t('billing.err.PAYMENT_REQUIRED'), 'info');
+            void run(switchKey(target.plan), async () => url);
+            return;
+        }
         // The subscription ended meanwhile: Checkout for the same choice instead (Stripe asks to pay there).
         if (useCheckout) {
             refetchAll();

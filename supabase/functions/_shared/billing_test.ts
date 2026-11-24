@@ -2,7 +2,7 @@
 // the repo (the root package.json confuses Deno's npm resolution):
 //   cp -R supabase/functions /tmp/fn && cd /tmp/fn && deno test _shared/billing_test.ts
 import { deepStrictEqual, strictEqual } from 'node:assert';
-import { cancelFlagTarget, changeRefusal, endsAtOf, parseChangeRequest } from './billing.ts';
+import { cancelFlagTarget, changeRefusal, endsAtOf, parseChangeRequest, paymentBehaviorFor, prorationForChange } from './billing.ts';
 
 const NOW = Date.parse('2026-12-10T10:00:00Z');
 const live = {
@@ -47,4 +47,14 @@ Deno.test('endsAtOf: cancel_at, else the period end', () => {
     strictEqual(endsAtOf({ cancel_at: 1_800_000_000, current_period_end: 1_700_000_000 }), new Date(1_800_000_000_000).toISOString());
     strictEqual(endsAtOf({ cancel_at: null, current_period_end: 1_700_000_000 }), new Date(1_700_000_000_000).toISOString());
     strictEqual(endsAtOf({}), null);
+});
+
+Deno.test('paymentBehaviorFor: an upgrade charged now applies only once paid', () => {
+    const team = { plan: 'team' as const, interval: 'month' as const };
+    const business = { plan: 'business' as const, interval: 'month' as const };
+    const teamYear = { plan: 'team' as const, interval: 'year' as const };
+    strictEqual(paymentBehaviorFor(prorationForChange(team, business, 'active')), 'pending_if_incomplete');
+    strictEqual(paymentBehaviorFor(prorationForChange(team, teamYear, 'past_due')), 'pending_if_incomplete');
+    strictEqual(paymentBehaviorFor(prorationForChange(business, team, 'active')), 'allow_incomplete');
+    strictEqual(paymentBehaviorFor(prorationForChange(team, business, 'trialing')), 'allow_incomplete');
 });

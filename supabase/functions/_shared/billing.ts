@@ -131,6 +131,18 @@ export function prorationForChange(
     return isUpgrade(from, to) ? 'always_invoice' : 'create_prorations';
 }
 
+/**
+ * Stripe `payment_behavior` for a plan change. An upgrade charged right now
+ * ('always_invoice') uses 'pending_if_incomplete': Stripe applies the new plan
+ * only once that invoice is paid — a declined card or a 3-D Secure check leaves
+ * the subscription as it was (with a `pending_update`) instead of handing out
+ * Business on an unpaid invoice. Everything else charges nothing now, so the
+ * default 'allow_incomplete' is fine.
+ */
+export function paymentBehaviorFor(proration: ProrationBehavior): 'pending_if_incomplete' | 'allow_incomplete' {
+    return proration === 'always_invoice' ? 'pending_if_incomplete' : 'allow_incomplete';
+}
+
 // --- billing-change-plan requests -------------------------------------------------
 
 /**

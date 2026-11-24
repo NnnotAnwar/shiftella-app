@@ -37,6 +37,7 @@ call setMyCommands '{"commands":[
   {"command":"hours","description":"Hours worked this month"},
   {"command":"news","description":"Latest announcements"},
   {"command":"requests","description":"Requests waiting for your decision"},
+  {"command":"language","description":"Switch between English and Czech"},
   {"command":"help","description":"What I can do"},
   {"command":"stop","description":"Disconnect this chat"}]}'
 
@@ -47,6 +48,7 @@ call setMyCommands '{"language_code":"cs","commands":[
   {"command":"hours","description":"Odpracované hodiny tento měsíc"},
   {"command":"news","description":"Nejnovější oznámení"},
   {"command":"requests","description":"Žádosti, které čekají na vás"},
+  {"command":"language","description":"Přepnout mezi češtinou a angličtinou"},
   {"command":"help","description":"Co umím"},
   {"command":"stop","description":"Odpojit tento chat"}]}'
 

@@ -14,6 +14,8 @@ import {
     mainMenu,
     monthWindow,
     parseCommand,
+    parseLanguageArg,
+    parseLanguageButton,
     parseMenuButton,
     weekWindow,
     pragueDate,
@@ -41,23 +43,50 @@ Deno.test('parseCommand: English commands only, @bot suffix, args, other bots, p
     strictEqual(parseCommand(undefined, 'x'), null);
 });
 
-Deno.test('mainMenu: persistent, localized, Requests only for reviewers', () => {
+Deno.test('mainMenu: persistent, localized, Requests only for reviewers, one-tap language switch', () => {
     const en = mainMenu('en', true);
     strictEqual(en.is_persistent, true);
     strictEqual(en.resize_keyboard, true);
-    deepStrictEqual(en.keyboard.flat().map((b) => b.text), ['📅 Shifts', '📍 Today', '⏱ Hours', '📣 News', '📥 Requests', '❓ Help']);
-    deepStrictEqual(mainMenu('cs', false).keyboard.flat().map((b) => b.text), ['📅 Směny', '📍 Dnes', '⏱ Hodiny', '📣 Oznámení', '❓ Nápověda']);
+    deepStrictEqual(en.keyboard.map((r) => r.map((b) => b.text)), [
+        ['📅 Shifts', '📍 Today'],
+        ['⏱ Hours', '📣 News'],
+        ['📥 Requests'],
+        ['❓ Help', '🌐 Čeština'],
+    ]);
+    deepStrictEqual(mainMenu('cs', false).keyboard.map((r) => r.map((b) => b.text)), [
+        ['📅 Směny', '📍 Dnes'],
+        ['⏱ Hodiny', '📣 Oznámení'],
+        ['❓ Nápověda', '🌐 English'],
+    ]);
 });
 
 Deno.test('parseMenuButton: every label in both languages, nothing else', () => {
     for (const lang of ['en', 'cs'] as const) {
-        const labels = mainMenu(lang, true).keyboard.flat().map((b) => b.text);
+        const labels = mainMenu(lang, true).keyboard.flat().map((b) => b.text).filter((t) => !t.startsWith('🌐'));
         deepStrictEqual(labels.map(parseMenuButton), ['shifts', 'today', 'hours', 'news', 'requests', 'help']);
     }
     strictEqual(parseMenuButton(' 📅 Shifts '), 'shifts');
     strictEqual(parseMenuButton('Shifts'), null);
+    strictEqual(parseMenuButton('🌐 English'), null);
     strictEqual(parseMenuButton('hello'), null);
     strictEqual(parseMenuButton(undefined), null);
+});
+
+Deno.test('language: the 🌐 button switches to the other language; /language args', () => {
+    strictEqual(parseLanguageButton('🌐 English'), 'en');
+    strictEqual(parseLanguageButton(' 🌐 Čeština '), 'cs');
+    strictEqual(parseLanguageButton('English'), null);
+    strictEqual(parseLanguageButton(undefined), null);
+    // The button in each menu leads to the other language.
+    strictEqual(parseLanguageButton(mainMenu('cs', false).keyboard.flat().at(-1)!.text), 'en');
+    strictEqual(parseLanguageButton(mainMenu('en', false).keyboard.flat().at(-1)!.text), 'cs');
+    deepStrictEqual(parseCommand('/language', 'x'), { cmd: 'language', arg: '' });
+    deepStrictEqual(parseCommand('/lang cs', 'x'), { cmd: 'language', arg: 'cs' });
+    strictEqual(parseLanguageArg('CS'), 'cs');
+    strictEqual(parseLanguageArg('čeština'), 'cs');
+    strictEqual(parseLanguageArg('english'), 'en');
+    strictEqual(parseLanguageArg('de'), null);
+    strictEqual(parseLanguageArg(''), null);
 });
 
 Deno.test('weekWindow / monthWindow: paging offsets in Prague time', () => {

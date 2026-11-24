@@ -195,3 +195,12 @@ Deno.test('nav + view-confirm callbacks: round-trip, ranges enforced, ≤ 64 byt
     deepStrictEqual(decodeCallback('v:h:-0'), { type: 'nav', view: 'hours', offset: 0 });
     throws(() => encodeCallback({ type: 'nav', view: 'shifts', offset: 9 }));
 });
+
+Deno.test('lang callback: round-trip, only cs / en', async () => {
+    for (const lang of ['cs', 'en'] as const) {
+        const data = await signCallback('k', 42, { type: 'lang', lang });
+        deepStrictEqual(await verifyCallback('k', 42, data), { type: 'lang', lang });
+    }
+    strictEqual(decodeCallback('l:de'), null);
+    throws(() => encodeCallback({ type: 'lang', lang: 'de' as 'cs' }));
+});

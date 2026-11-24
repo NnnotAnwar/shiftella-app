@@ -158,13 +158,14 @@ Commands are **English in every language** (the replies and the menu follow the 
 | `/start <code>` | Links the chat. The code is single-use and expires after 10 minutes; the welcome also shows the menu. |
 | `/start` (no code), `/help`, `/menu`, **❓ Help** | How to link (with a link to shiftella.app), or the command list and the menu. |
 | `/stop` | Unlinks and removes the menu. |
+| `/language`, **🌐 English / 🌐 Čeština** | Switches the bot's language. The menu button is one tap: it is labelled with the other language. `/language` alone shows a CS / EN picker, and `/language cs` sets it directly. The choice (`telegram_links.language_chosen`) beats the app language for bot replies **and** Telegram notifications; push in the app keeps the app language. Works on every plan. |
 | `/shifts`, **📅 Shifts** | Published shifts for the next 7 days (✓ confirmed, ○ not yet), with **Confirm shifts**, **◀ / Next week ▶** (up to 8 weeks ahead, the message is redrawn in place) and **Open app**. Confirming redraws the list with ✓. |
 | `/today`, **📍 Today** | Today's shift, whether you are clocked in (read only), and who else is on at the same place; **🔄 Refresh** redraws it. |
 | `/hours`, **⏱ Hours** | This month's net hours, with the same mandatory-break rule as My hours (−30 min per started 6 h), against planned shifts; **◀ Previous month / Next month ▶** (up to 12 months back). |
 | `/news`, **📣 News** | The latest 3 announcements. |
 | `/requests`, **📥 Requests** | People who can decide get up to 5 cards with **Approve / Decline** (the rest stay in the app). Others get "you don't decide requests". The menu button is shown to reviewers only. |
 
-**Menu:** a persistent reply keyboard under the message box (📅 Shifts · 📍 Today / ⏱ Hours · 📣 News / 📥 Requests · ❓ Help), sent with the welcome, `/help` and any unrecognised text. The labels are localized and matched in both languages.
+**Menu:** a persistent reply keyboard under the message box (📅 Shifts · 📍 Today / ⏱ Hours · 📣 News / 📥 Requests / ❓ Help · 🌐 other language), sent with the welcome, `/help` and any unrecognised text. The labels are localized and matched in both languages.
 
 **Never:** clocking in or out through the bot. Attendance stays in the app.
 

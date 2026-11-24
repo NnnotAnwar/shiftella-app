@@ -11,6 +11,12 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+dist-e2e
+
+# Playwright (E2E) output
+test-results/
+playwright-report/
+blob-report/
 *.local
 .env
 .env*

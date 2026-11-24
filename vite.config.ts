@@ -48,7 +48,7 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     css: false,
-    // Agent worktrees live under .claude/ — never pick up their tests.
-    exclude: [...configDefaults.exclude, '.claude/**', 'marketing/**'],
+    // Agent worktrees live under .claude/ — never pick up their tests. e2e/ is Playwright's.
+    exclude: [...configDefaults.exclude, '.claude/**', 'marketing/**', 'e2e/**'],
   },
 })

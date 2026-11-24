@@ -118,7 +118,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       # Yarn Berry 4 via Corepack (version pinned by package.json "packageManager");
       # a plain Yarn 1.x would break the install.

@@ -214,6 +214,24 @@ describe('features by plan', () => {
         expect(requiredPlan('activityLog')).toBe('business');
     });
 
+    it('free beta: Business for everyone — no trial, no ended state, no limits', () => {
+        const expired: Subscription = {
+            organization_id: 'org1', plan: 'business', status: 'trialing', interval: null, seats: null,
+            trial_ends_at: new Date(NOW - 86_400_000).toISOString(), current_period_end: null, cancel_at_period_end: false,
+            stripe_customer_id: null, stripe_subscription_id: null, source: 'trial', manual_plan: null, manual_until: null, manual_note: null,
+        };
+        const e = buildEntitlements({ subscription: expired, usage: { members: 40, locations: 7 }, freeBeta: true, now: NOW });
+        expect(e.freeBeta).toBe(true);
+        expect(e.plan).toBe('business');
+        expect([e.isTrial, e.trialExpired, e.planEnded]).toEqual([false, false, false]);
+        expect(e.can('activityLog')).toBe(true);
+        expect(e.canAdd('members')).toBe(true);
+        expect(e.overLimit('locations')).toBe(false);
+        // Off: the same row is an expired trial on Free.
+        const off = buildEntitlements({ subscription: expired, usage: { members: 40, locations: 7 }, now: NOW });
+        expect([off.freeBeta, off.plan, off.trialExpired]).toEqual([false, 'free', true]);
+    });
+
     it('Superadmin bypasses every gate and limit', () => {
         const e = buildEntitlements({ subscription: null, usage: { members: 99, locations: 9 }, superadmin: true, now: NOW });
         expect(e.can('activityLog')).toBe(true);

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CheckIcon } from '@phosphor-icons/react';
+import { CheckIcon, SparkleIcon } from '@phosphor-icons/react';
 import { usePreferences } from '@shared/preferences/PreferencesContext';
 import { buttonClass } from '@shared/components/buttonStyles';
 import {
@@ -15,6 +15,7 @@ import {
     type BillingInterval,
     type Plan,
 } from '@features/billing/plans';
+import { useFreeBeta } from '@features/billing/useBilling';
 import { LANDING, fill } from './landingContent';
 import { SectionHead } from './SectionHead';
 
@@ -24,11 +25,14 @@ import { SectionHead } from './SectionHead';
  * minimum seats, trial length, yearly saving — is read from billing/plans.ts,
  * the single source of truth shared with the Billing page and Stripe setup.
  * Web only: the landing never renders in the native apps (App Store rules).
+ * During the free beta a banner says everything is free; the prices stay as a
+ * preview of what comes after.
  */
 export function PricingSection() {
     const { language, t } = usePreferences();
     const c = LANDING[language].pricing;
     const [interval, setBillingInterval] = useState<BillingInterval>('month');
+    const { freeBeta } = useFreeBeta();
     const nf = new Intl.NumberFormat(language === 'cs' ? 'cs-CZ' : 'en-GB');
     const plural = new Intl.PluralRules(language === 'cs' ? 'cs' : 'en');
     const savePct = yearlySavingPct('team');
@@ -48,6 +52,19 @@ export function PricingSection() {
     return (
         <section id="pricing" aria-labelledby="pricing-title" className="scroll-mt-20 py-12 sm:py-16">
             <SectionHead id="pricing-title" eyebrow={c.eyebrow} title={c.title} sub={fill(c.sub, { days: TRIAL_DAYS })} />
+
+            {freeBeta && (
+                <div role="note" className="glass mx-auto mt-6 flex max-w-2xl items-start gap-3 rounded-2xl p-4 ring-1 ring-emerald-500/30 dark:ring-emerald-400/25">
+                    <SparkleIcon weight="fill" aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    <div className="space-y-0.5">
+                        <p className="flex flex-wrap items-center gap-2 text-body-strong text-ink dark:text-white">
+                            {c.betaTitle}
+                            <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-micro text-white">{c.betaBadge}</span>
+                        </p>
+                        <p className="text-meta text-ink-soft dark:text-slate-400">{c.betaText}</p>
+                    </div>
+                </div>
+            )}
 
             {/* Monthly / yearly */}
             <div className="mt-6 flex justify-center">
@@ -129,10 +146,10 @@ export function PricingSection() {
 
                             <div className="mt-auto pt-5">
                                 <Link to="/signup" className={buttonClass({ variant: featured ? 'primary' : 'secondary', size: 'md', fullWidth: true })}>
-                                    {plan === 'free' ? c.startFree : c.startTrial}
+                                    {plan === 'free' || freeBeta ? c.startFree : c.startTrial}
                                 </Link>
                                 <p className="mt-2 min-h-4 text-center text-caption text-ink-soft dark:text-slate-400">
-                                    {plan !== 'free' && fill(c.trialNote, { days: TRIAL_DAYS })}
+                                    {plan !== 'free' && (freeBeta ? c.betaNote : fill(c.trialNote, { days: TRIAL_DAYS }))}
                                 </p>
                             </div>
                         </article>

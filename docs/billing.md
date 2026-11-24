@@ -4,6 +4,10 @@ Shiftella bills **per organization**. One row in `public.subscriptions` per org
 holds its plan; Stripe is the source of truth for paid plans and a webhook
 mirrors it into the database. Nothing here is live until you do the steps below.
 
+> **Free beta is on.** Until the owner has a business registration (IČO), every
+> organization gets Business for free and nothing can be bought. The switch, and
+> how to end it, are in [free-beta.md](free-beta.md).
+
 ## Plans
 
 | Plan | Price (excl. VAT) | Limits | Adds |

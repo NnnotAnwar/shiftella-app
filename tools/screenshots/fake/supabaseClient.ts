@@ -9,6 +9,7 @@
  */
 import { buildDemoData, DEMO_USER_ID, type Row, type Tables } from './demoData';
 import { E2E_AUTH_KEY, E2E_DB_KEY, E2E_INVITES_KEY, E2E_PASSWORD } from './e2eConstants';
+import { fakeOrgAnalytics } from './analytics';
 
 // --- E2E mode -----------------------------------------------------------------------
 // `localStorage['demo-auth']` set (by the Playwright tests) turns on the fake auth
@@ -426,6 +427,8 @@ const rpcs: Record<string, (args: Row) => unknown> = {
     // Demo data: the harness already is demo data — adding / removing is a no-op.
     seed_demo_data: () => ({ batch: 'demo-batch-0001', people: 8, locations: 2 }),
     clear_demo_data: () => ({ people: 8, locations_kept: 0 }),
+    // Owner analytics: derived from the demo rota (see ./analytics.ts).
+    org_analytics: (args: Row) => fakeOrgAnalytics(db, args),
     // Announcements: audience size while composing, reach per card, who read it.
     announcement_audience_size: (args: Row) => {
         const loc = args.p_location as string | null;

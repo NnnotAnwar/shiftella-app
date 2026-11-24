@@ -1,5 +1,5 @@
 import { CheckCircleIcon, ClockIcon, WarningIcon, XCircleIcon, type Icon } from '@phosphor-icons/react';
-import type { TranslationKey } from '@shared/i18n/translations';
+import { INTL_LOCALE, type Language, type TranslationKey } from '@shared/i18n/translations';
 
 /**
  * Shared chart styling for the analytics cards — colours were run through the
@@ -12,7 +12,7 @@ const BINS_DARK = ['dark:bg-white/[0.04]', 'dark:bg-emerald-950', 'dark:bg-emera
 export const binClass = (b: number) => `${BINS_LIGHT[b]} ${BINS_DARK[b]}`;
 
 export function fmtPeople(v: number, lang: string): string {
-    return new Intl.NumberFormat(lang === 'cs' ? 'cs-CZ' : 'en-GB', { maximumFractionDigits: 1 }).format(v);
+    return new Intl.NumberFormat(INTL_LOCALE[lang as Language] ?? 'en-GB', { maximumFractionDigits: 1 }).format(v);
 }
 
 /**

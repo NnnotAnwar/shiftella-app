@@ -5,7 +5,7 @@ import { ClockIcon, CoinsIcon, TimerIcon, UmbrellaIcon, type Icon } from '@phosp
 import { useAuthContext } from '@features/auth/AuthContext';
 import { can } from '@shared/auth/permissions';
 import { usePreferences } from '@shared/preferences/PreferencesContext';
-import type { TranslationKey } from '@shared/i18n/translations';
+import { INTL_LOCALE, type Language, type TranslationKey } from '@shared/i18n/translations';
 import { PageHeader } from '@shared/components/PageHeader';
 import { MonthPicker } from '@shared/components/MonthPicker';
 import { Select } from '@shared/components/Select';
@@ -57,7 +57,7 @@ const localToday = () => {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
-const localeOf = (lang: string) => (lang === 'cs' ? 'cs-CZ' : 'en-GB');
+const localeOf = (lang: string) => INTL_LOCALE[lang as Language] ?? 'en-GB';
 
 function fmtMoney(v: number, currency: string, lang: string): string {
     try {

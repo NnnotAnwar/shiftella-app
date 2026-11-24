@@ -1379,7 +1379,6 @@ export const en = {
     'analytics.allLocations': 'All locations',
     'analytics.worked': 'Worked',
     'analytics.planned': 'Planned',
-    'analytics.vsPlan': '{pct} vs plan',
     'analytics.ofPlan': 'of {planned} planned',
     'analytics.ofPlanToDate': 'of {planned} planned so far',
     'analytics.noPlan': 'Nothing published in the rota',
@@ -1445,7 +1444,6 @@ export const en = {
     'analytics.colAbsence': 'Absence',
     'analytics.empty': 'No hours or rota in this period yet.',
     'analytics.error': 'Couldn\'t load analytics.',
-    'analytics.rangeAria': '{from} – {to}',
 } as const;
 
 export type TranslationKey = keyof typeof en;
@@ -2798,7 +2796,6 @@ export const cs: Record<TranslationKey, string> = {
     'analytics.allLocations': 'Všechna místa',
     'analytics.worked': 'Odpracováno',
     'analytics.planned': 'Plán',
-    'analytics.vsPlan': '{pct} oproti plánu',
     'analytics.ofPlan': 'z {planned} v plánu',
     'analytics.ofPlanToDate': 'z {planned} v plánu k dnešku',
     'analytics.noPlan': 'V rozpisu nic zveřejněno',
@@ -2864,7 +2861,6 @@ export const cs: Record<TranslationKey, string> = {
     'analytics.colAbsence': 'Nepřít.',
     'analytics.empty': 'V tomto období zatím nejsou žádné hodiny ani rozpis.',
     'analytics.error': 'Analytiku se nepodařilo načíst.',
-    'analytics.rangeAria': '{from} – {to}',
 };
 
 /**

@@ -30,6 +30,7 @@ import { LANGUAGES } from '@shared/i18n/translations';
 import { PageHeader } from '@shared/components/PageHeader';
 import { APP_NAME } from '@shared/brand';
 import { canManageBilling } from '@features/billing/useBilling';
+import { CalendarFeedCard } from './calendar/CalendarFeedCard';
 
 const APP_VERSION = __APP_VERSION__;
 const SUPPORT_EMAIL = 'anuarkairulla@gmail.com';
@@ -305,6 +306,14 @@ export default function SettingsPage() {
           )}
         </div>
       </div>
+
+      {/* CALENDAR — subscribe to my published shifts (ICS feed) */}
+      {user?.organization_id && (
+        <div className="space-y-2">
+          <h3 className="px-1 text-eyebrow text-ink-soft dark:text-slate-400">{t('cal.title')}</h3>
+          <CalendarFeedCard />
+        </div>
+      )}
 
       {/* SECURITY — biometric app-lock: admins only, and only on native (the
           lock is a device feature; the toggle would be a no-op on web). */}

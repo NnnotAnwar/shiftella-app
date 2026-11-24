@@ -14,6 +14,7 @@ import { formatDateInText, formatDateShort } from '@shared/utils/date';
 import { APP_NAME } from '@shared/brand';
 import type { TranslationKey } from '@shared/i18n/translations';
 import { BillingError, billingService } from './billingService';
+import { billingErrorMessage } from './planErrors';
 import { canManageBilling, isNativeApp, useEntitlements, useOrgUsage, useSubscription } from './useBilling';
 import { useRedirectAction } from './useRedirectAction';
 import {
@@ -117,7 +118,7 @@ function BillingInner() {
                 n: err.count ?? (kind === 'members' ? members : locations),
             });
         }
-        return err instanceof Error ? err.message : t('common.actionFailed');
+        return billingErrorMessage(err, t, t('common.actionFailed'));
     };
 
     const { busy, run, perform } = useRedirectAction({

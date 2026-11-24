@@ -6,6 +6,7 @@ import { useAuthContext } from '@/features/auth/AuthContext';
 import { isSuperAdmin as isSuper, rankOf } from '@shared/auth/permissions';
 import { useOrgRoles } from '@features/roles/useOrgRoles';
 import { usePreferences, useTranslation } from '@shared/preferences/PreferencesContext';
+import { inviteErrorMessage } from '../inviteErrors';
 
 /**
  * Invite a brand-new user by email.
@@ -61,7 +62,7 @@ export function InviteEmployeeForm({ onClose }: { onClose: () => void }) {
             });
             onClose();
         } catch (err) {
-            setError(err instanceof Error ? err.message : t('admin.inviteSendError'));
+            setError(inviteErrorMessage(err, t, t('admin.inviteSendError')));
             setIsBusy(false);
         }
     };

@@ -1,0 +1,23 @@
+# Shiftella: the public pages are the landing page, sign-in / sign-up and the
+# legal pages. Everything else is the signed-in app.
+User-agent: *
+Allow: /$
+Allow: /login
+Allow: /signup
+Allow: /privacy
+Allow: /terms
+Disallow: /overview
+Disallow: /schedule
+Disallow: /announcements
+Disallow: /requests
+Disallow: /timesheets
+Disallow: /activity
+Disallow: /admin
+Disallow: /settings
+Disallow: /billing
+Disallow: /profile
+Disallow: /accept-invite
+Disallow: /reset-password
+Disallow: /forgot-password
+
+Sitemap: https://shiftella.app/sitemap.xml

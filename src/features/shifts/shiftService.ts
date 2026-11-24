@@ -8,9 +8,11 @@ import { z } from 'zod';
  */
 
 // A bare shift row (own active shift / history) vs. a board row that joins the
-// worker profile so colleague cards can render a name.
+// worker profile (and their organization role, in the same request) so colleague
+// cards can render a name and a role badge.
 const SHIFT_SELECT = '*';
-const SHIFT_WITH_PROFILE_SELECT = '*, profiles(username, first_name, last_name, role)';
+const SHIFT_WITH_PROFILE_SELECT =
+  '*, profiles(username, first_name, last_name, role, org_role:org_roles!profiles_org_role_id_fkey(name, color, base_role, preset_key))';
 
 // Raw row for the profile "currently working" lookup. `shifts` has TWO FKs to
 // `locations` (location_id + previous_location_id), so the embed MUST name the

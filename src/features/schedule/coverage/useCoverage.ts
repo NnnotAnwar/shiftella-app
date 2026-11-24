@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@shared/toast/toastStore';
 import { useTranslation } from '@shared/preferences/PreferencesContext';
 import { type User } from '@shared/types';
+import { usePlanErrorHandler } from '@features/billing/useBilling';
 import { coverageService } from './coverageService';
 import { type CoverageRequirementInput } from './types';
 
@@ -15,6 +16,7 @@ import { type CoverageRequirementInput } from './types';
 export function useCoverage(user: User | null) {
   const t = useTranslation();
   const qc = useQueryClient();
+  const planError = usePlanErrorHandler();
   const enabled = !!user;
   const orgId = user?.organization_id ?? 'anon';
   const key = ['coverage-requirements', orgId];
@@ -43,7 +45,7 @@ export function useCoverage(user: User | null) {
       return coverageService.set(user, input);
     },
     onSuccess: invalidate,
-    onError: () => toast(t('coverage.error'), 'error'),
+    onError: (e) => planError(e) || toast(t('coverage.error'), 'error'),
   });
 
   const remove = useMutation({

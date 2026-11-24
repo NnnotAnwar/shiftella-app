@@ -74,7 +74,17 @@ export const NameChangeRequestSchema = z.object({
 export const ShiftProfileSchema = z.object({
   username: z.string(),
   first_name: z.string().nullable(),
-  last_name: z.string().nullable()
+  last_name: z.string().nullable(),
+  // The worker's organization role (custom roles, #124) — what the board badge shows.
+  org_role: z
+    .object({
+      name: z.string(),
+      color: z.string().nullable().optional(),
+      base_role: z.string().nullable().optional(),
+      preset_key: z.string().nullable().optional(),
+    })
+    .nullable()
+    .optional(),
 });
 
 /**
@@ -311,6 +321,9 @@ export const ShiftAuditLogSchema = z.object({
       pinned: z.boolean().nullable().optional(),
       email: z.string().nullable().optional(),
       anonymous: z.boolean().nullable().optional(),
+      // members_imported: how many invites went out / failed.
+      invited: z.number().nullable().optional(),
+      failed: z.number().nullable().optional(),
     })
     .passthrough()
     .default({}),
@@ -351,7 +364,9 @@ export type ShiftDisplayData = {
   id?: string;
   userId?: string; // Who this shift belongs to — lets the card open their profile.
   name: string;
-  role: string;
+  role: string; // Base role (level) — picks the badge palette.
+  roleLabel?: string; // What the badge says (organization role / translated level); defaults to `role`.
+  roleColor?: string | null; // A custom organization role's own colour (hex).
   start: string;
   end: string | null;
   isChangeLocation?: boolean;

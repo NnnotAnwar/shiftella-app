@@ -8,6 +8,7 @@ import { ActiveShift } from '@features/shifts/components/ActiveShift';
 import { NextShiftCard } from '@features/schedule/components/NextShiftCard';
 import { CheckIn } from '@features/shifts/components/CheckIn';
 import { ShiftCards } from '@features/shifts/components/ShiftCards';
+import { boardRole } from '@features/shifts/boardRole';
 import { MobileLocationField } from '@features/locations/components/MobileLocationField';
 import { UserProfileModal } from '@features/profile/components/UserProfileModal';
 import { AnnouncementBanner } from '@features/announcements/AnnouncementBanner';
@@ -61,12 +62,15 @@ export function HomePage() {
         .filter((s) => s.location_id === location.id && s.user_id !== user.id)
         .map((s) => {
           const prevLoc = s.previous_location_id ? locations.find((l) => l.id === s.previous_location_id) : null;
+          const badge = boardRole(s.role, s.profiles?.org_role, t);
           return {
             id: s.id,
             userId: s.user_id,
             start: formatTime(s.started_at),
             name: `${s.profiles?.first_name || 'Employee'} ${s.profiles?.last_name || ''}`.trim(),
-            role: s.role,
+            role: badge.role,
+            roleLabel: badge.label,
+            roleColor: badge.color,
             end: null,
             previousLocationName: prevLoc?.name,
             isChangeLocation: !!s.previous_location_id,
@@ -76,10 +80,13 @@ export function HomePage() {
       let userCard: ShiftDisplayData | undefined;
       if (activeShift && location.id === activeShift.location_id) {
         const prevLoc = activeShift.previous_location_id ? locations.find((l) => l.id === activeShift.previous_location_id) : null;
+        const badge = boardRole(user.role.name, user.org_role, t);
         userCard = {
           userId: user.id,
           name: userFullName,
-          role: user.role.name,
+          role: badge.role,
+          roleLabel: badge.label,
+          roleColor: badge.color,
           start: formatTime(activeShift.started_at),
           end: null,
           previousLocationName: prevLoc?.name,

@@ -73,6 +73,11 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
             .upsert({ user_id: userId, language, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
     }, [userId, language]);
 
+    // Keep <html lang> in step with the UI language (screen readers, hyphenation, SEO).
+    useEffect(() => {
+        document.documentElement.lang = language;
+    }, [language]);
+
     const setTimeFormat = useCallback((format: TimeFormat) => {
         localStorage.setItem(STORAGE.timeFormat, format);
         setTimeFormatState(format);

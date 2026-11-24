@@ -12,6 +12,10 @@
 //
 // The chosen organization + role travel as user metadata and are applied
 // atomically by the handle_new_user trigger (see the companion migration).
+// Plan member limit: org admins are refused at it (PLAN_LIMIT_MEMBERS); a
+// Superadmin may invite past it — the pending invite is marked bypass_limits
+// and the database's member-limit trigger honours that. Every refusal carries
+// a `code` the client translates (see _shared/invite.ts).
 // Custom roles (#124): the client sends an organization role (`org_role_id`);
 // its LEVEL must sit below the caller's, and the caller needs the Team
 // (members) write permission.
@@ -19,6 +23,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { syncSeats } from '../_shared/billing.ts';
+import { memberLimitRefusal, pendingInviteRow } from '../_shared/invite.ts';
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -80,7 +85,7 @@ Deno.serve(async (req) => {
         const callerRank = isSuperadmin ? 1000 : Number(callerPos ?? callerRole?.rank ?? 0);
         // Inviting needs the Team (members) write permission of the caller's role.
         const { data: mayInvite } = await admin.rpc('profile_has_permission', { p_user: caller.id, p_area: 'members', p_action: 'write' });
-        if (!isSuperadmin && !mayInvite) return json({ error: 'You are not allowed to invite users.' }, 403);
+        if (!isSuperadmin && !mayInvite) return json({ error: 'You are not allowed to invite users.', code: 'NOT_ALLOWED' }, 403);
 
         // 4. Parse + validate the request body.
         const body = await req.json().catch(() => ({}));
@@ -93,19 +98,19 @@ Deno.serve(async (req) => {
         const redirectTo = body.redirect_to ? String(body.redirect_to) : '';
         const language = body.language === 'cs' ? 'cs' : 'en';
 
-        if (!email || !email.includes('@')) return json({ error: 'A valid email is required.' }, 400);
+        if (!email || !email.includes('@')) return json({ error: 'A valid email is required.', code: 'EMAIL_INVALID' }, 400);
 
         // 5. Apply scoping (server is the source of truth).
         if (!isSuperadmin) {
             organizationId = callerProfile.organization_id; // org admins can only invite into their own org
         }
-        if (!organizationId) return json({ error: 'An organization is required.' }, 400);
+        if (!organizationId) return json({ error: 'An organization is required.', code: 'ORG_REQUIRED' }, 400);
 
         // 6. An organization role decides the level (and must belong to the org).
         let targetRank: number | null = null;
         if (orgRoleId) {
             const { data: orgRole } = await admin.from('org_roles').select('id, organization_id, base_role, sort').eq('id', orgRoleId).single();
-            if (!orgRole || orgRole.organization_id !== organizationId) return json({ error: 'Unknown role.' }, 400);
+            if (!orgRole || orgRole.organization_id !== organizationId) return json({ error: 'Unknown role.', code: 'UNKNOWN_ROLE' }, 400);
             role = orgRole.base_role;
             targetRank = Number(orgRole.sort);
         }
@@ -115,24 +120,23 @@ Deno.serve(async (req) => {
             admin.from('roles').select('name, rank').eq('name', role).single(),
             admin.from('organizations').select('id, name').eq('id', organizationId).single(),
         ]);
-        if (!roleRow) return json({ error: `Unknown role "${role}".` }, 400);
-        if (!orgRow) return json({ error: 'Unknown organization.' }, 400);
+        if (!roleRow) return json({ error: `Unknown role "${role}".`, code: 'UNKNOWN_ROLE' }, 400);
+        if (!orgRow) return json({ error: 'Unknown organization.', code: 'UNKNOWN_ORG' }, 400);
         if ((targetRank ?? Number(roleRow.rank)) >= callerRank) {
-            return json({ error: 'You cannot invite someone at or above your own role level.' }, 403);
+            return json({ error: 'You cannot invite someone at or above your own role level.', code: 'ROLE_TOO_HIGH' }, 403);
         }
 
         //    Plan member limit (Free 5, Team 15). The database refuses the
         //    profile too (plan_member_limit trigger); this gives a clear message.
-        const [{ data: planName }, { data: memberCount }] = await Promise.all([
-            admin.rpc('org_plan', { p_org: organizationId }),
-            admin.rpc('org_member_count', { p_org: organizationId }),
-        ]);
-        const { data: memberLimit } = await admin.rpc('plan_member_limit', { p_plan: planName ?? 'free' });
-        if (memberLimit != null && Number(memberCount ?? 0) >= Number(memberLimit)) {
-            return json(
-                { error: `Your plan allows up to ${memberLimit} members. Upgrade in Billing to add more.`, code: 'PLAN_LIMIT_MEMBERS', limit: memberLimit },
-                402,
-            );
+        //    A Superadmin may invite past it (the invite is marked bypass_limits).
+        if (!isSuperadmin) {
+            const [{ data: planName }, { data: memberCount }] = await Promise.all([
+                admin.rpc('org_plan', { p_org: organizationId }),
+                admin.rpc('org_member_count', { p_org: organizationId }),
+            ]);
+            const { data: memberLimit } = await admin.rpc('plan_member_limit', { p_plan: planName ?? 'free' });
+            const refusal = memberLimitRefusal(isSuperadmin, memberLimit, memberCount);
+            if (refusal) return json(refusal, 402);
         }
 
         // 7. Send the invitation. The trigger reads this metadata to provision
@@ -149,14 +153,10 @@ Deno.serve(async (req) => {
         // The provisioning trigger trusts only this server-written record for
         // the organization and role (auth sets invited_at only after the
         // insert, and user metadata can't be trusted).
-        const { error: pendingError } = await admin.from('pending_invites').upsert({
-            email,
-            organization_id: organizationId,
-            role,
-            org_role_id: orgRoleId || null,
-            created_by: caller.id,
-        });
-        if (pendingError) return json({ error: 'Could not prepare the invitation.' }, 500);
+        const { error: pendingError } = await admin
+            .from('pending_invites')
+            .upsert(pendingInviteRow({ email, organizationId, role, orgRoleId, createdBy: caller.id, isSuperadmin }));
+        if (pendingError) return json({ error: 'Could not prepare the invitation.', code: 'INVITE_FAILED' }, 500);
         const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, {
             data: {
                 organization_id: organizationId,

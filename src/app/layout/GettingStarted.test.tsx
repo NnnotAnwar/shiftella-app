@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { User } from '@shared/types';
@@ -7,6 +7,8 @@ import { GettingStarted } from './GettingStarted';
 
 // Counts the checklist reads: profiles, all rota rows, published rota rows.
 const counts = { profiles: 1, scheduled: 0, published: 0 };
+const demo = { batch: null as string | null };
+const calls = { isFilters: [] as string[], rpc: [] as [string, unknown][] };
 vi.mock('@shared/api/supabaseClient', () => ({
     supabase: {
         from: (table: string) => {
@@ -17,15 +19,30 @@ vi.mock('@shared/api/supabaseClient', () => ({
                     if (col === 'published') published = true;
                     return q;
                 },
+                is: (col: string, v: unknown) => {
+                    calls.isFilters.push(`${table}.${col}=${String(v)}`);
+                    return q;
+                },
+                maybeSingle: () => Promise.resolve({ data: { demo_batch: demo.batch }, error: null }),
                 then: (resolve: (r: { count: number; error: null }) => unknown) =>
                     resolve({ count: table === 'profiles' ? counts.profiles : published ? counts.published : counts.scheduled, error: null }),
             };
             return q;
         },
+        rpc: (fn: string, args: unknown) => {
+            calls.rpc.push([fn, args]);
+            if (fn === 'seed_demo_data') demo.batch = 'b1';
+            return Promise.resolve({ data: null, error: null });
+        },
     },
 }));
-vi.mock('@shared/preferences/PreferencesContext', () => ({
-    useTranslation: () => (k: string, v?: Record<string, string | number>) => (v ? `${k}:${Object.values(v).join(',')}` : k),
+vi.mock('@shared/preferences/PreferencesContext', () => {
+    const t = (k: string, v?: Record<string, string | number>) => (v ? `${k}:${Object.values(v).join(',')}` : k);
+    return { useTranslation: () => t, usePreferences: () => ({ t, language: 'cs' }) };
+});
+const toasts: { message: string; opts?: { action?: { label: string } } }[] = [];
+vi.mock('@shared/toast/toastStore', () => ({
+    toast: (message: string, _type: string, opts?: { action?: { label: string } }) => void toasts.push({ message, opts }),
 }));
 
 const owner: User = {
@@ -60,6 +77,10 @@ describe('GettingStarted', () => {
             clear: () => store.clear(),
         });
         Object.assign(counts, { profiles: 1, scheduled: 0, published: 0 });
+        demo.batch = null;
+        calls.isFilters.length = 0;
+        calls.rpc.length = 0;
+        toasts.length = 0;
     });
 
     it('a brand-new org: four steps, the first is next and has its hint', async () => {
@@ -89,5 +110,29 @@ describe('GettingStarted', () => {
         const { container } = renderCard(1);
         await new Promise((r) => setTimeout(r, 20));
         expect(container).toBeEmptyDOMElement();
+    });
+
+    it('demo rows never tick a step off: both counts filter demo_batch IS NULL', async () => {
+        renderCard(0);
+        await screen.findByText('start.title');
+        expect(calls.isFilters).toEqual(expect.arrayContaining(['profiles.demo_batch=null', 'scheduled_shifts.demo_batch=null']));
+    });
+
+    it('no demo yet: one tap adds it (Czech texts) and offers Undo', async () => {
+        renderCard(0);
+        fireEvent.click(await screen.findByRole('button', { name: 'demo.try' }));
+        await waitFor(() => expect(calls.rpc).toEqual([['seed_demo_data', { p_lang: 'cs' }]]));
+        await waitFor(() => expect(toasts.map((x) => x.message)).toContain('demo.added'));
+        expect(toasts.find((x) => x.message === 'demo.added')?.opts?.action?.label).toBe('common.undo');
+        // the org has demo data now → the offer is gone
+        await waitFor(() => expect(screen.queryByRole('button', { name: 'demo.try' })).toBeNull());
+    });
+
+    it('demo data already on: no offer', async () => {
+        demo.batch = 'b1';
+        renderCard(0);
+        await screen.findByText('start.title');
+        await new Promise((r) => setTimeout(r, 20));
+        expect(screen.queryByRole('button', { name: 'demo.try' })).toBeNull();
     });
 });

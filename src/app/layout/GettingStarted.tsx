@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { CheckIcon, MapPinIcon, PaperPlaneTiltIcon, CalendarPlusIcon, MegaphoneSimpleIcon, XIcon, type Icon } from '@phosphor-icons/react';
+import { CheckIcon, MapPinIcon, PaperPlaneTiltIcon, CalendarPlusIcon, MegaphoneSimpleIcon, FlaskIcon, XIcon, type Icon } from '@phosphor-icons/react';
 import { supabase } from '@shared/api/supabaseClient';
 import { can, isSuperAdmin } from '@shared/auth/permissions';
+import { Button } from '@shared/components/Button';
+import { useDemoData } from '@features/demo/useDemoData';
 import { useTranslation } from '@shared/preferences/PreferencesContext';
 import type { User } from '@shared/types';
 
@@ -14,6 +16,8 @@ import type { User } from '@shared/types';
  * then do employees see their shifts and get notified). Each ticks itself off
  * from real data and says in one line what to do; the next open step is
  * highlighted. The card disappears once all are done (or when hidden).
+ * Demo data (see features/demo) never ticks a step off; until there is some,
+ * the owner can fill the org with it in one tap to look around first.
  */
 
 const hiddenKey = (uid: string) => `getting-started:hidden:${uid}`;
@@ -26,7 +30,7 @@ const readHidden = (uid: string) => {
 };
 
 async function countOf(table: 'profiles' | 'scheduled_shifts', orgId: string, publishedOnly = false) {
-    let q = supabase.from(table).select('id', { count: 'exact', head: true }).eq('organization_id', orgId);
+    let q = supabase.from(table).select('id', { count: 'exact', head: true }).eq('organization_id', orgId).is('demo_batch', null);
     if (publishedOnly) q = q.eq('published', true);
     const { count, error } = await q;
     if (error) throw error;
@@ -37,6 +41,7 @@ export function GettingStarted({ user, locationCount }: { user: User; locationCo
     const t = useTranslation();
     const [hidden, setHidden] = useState(() => readHidden(user.id));
     const eligible = can(user, 'locations.manage') && !isSuperAdmin(user) && !hidden;
+    const demo = useDemoData(user);
 
     const counts = useQuery({
         queryKey: ['getting-started', user.organization_id],
@@ -137,6 +142,14 @@ export function GettingStarted({ user, locationCount }: { user: User; locationCo
                     );
                 })}
             </ol>
+            {demo.loaded && !demo.active && (
+                <div className="mt-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 border-t border-ink/6 px-1 pt-2.5 dark:border-white/8">
+                    <p className="min-w-0 text-caption text-ink-soft dark:text-slate-400">{t('demo.tryHint')}</p>
+                    <Button size="sm" variant="tonal" icon={FlaskIcon} loading={demo.seeding} onClick={demo.seed} className="shrink-0">
+                        {t('demo.try')}
+                    </Button>
+                </div>
+            )}
         </section>
     );
 }

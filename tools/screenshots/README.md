@@ -21,6 +21,10 @@ subscription was canceled → Free; the dashboard shows the one-time "ended"
 dialog) or `cancel_scheduled` (switched to Free, ends at the period end);
 without it the org pays for Business (the README shots). By hand: set `localStorage['demo-billing']` and reload.
 
+`--demo-org fresh` shows Home as a brand-new owner sees it (setup checklist with
+"Vyzkoušet s ukázkovými daty"); `--demo-org on` as an org holding demo data (the
+demo banner with "Smazat ukázková data"). By hand: `localStorage['demo-org']`.
+
 Needs Python 3 with `playwright` (`pip install playwright && playwright install chromium`)
 and Pillow. `pngquant` is used for optimisation when installed; otherwise Pillow
 quantises to 256 colours.

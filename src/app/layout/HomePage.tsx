@@ -15,6 +15,7 @@ import { AnnouncementBanner } from '@features/announcements/AnnouncementBanner';
 import { useTranslation } from '@shared/preferences/PreferencesContext';
 import { DashboardHeader } from './DashboardHeader';
 import { GettingStarted } from './GettingStarted';
+import { DemoDataBanner } from '@features/demo/DemoDataBanner';
 import { usePullToRefresh } from '@shared/hooks/usePullToRefresh';
 import { shiftKeys } from '@features/shifts/shiftKeys';
 import { type ShiftDisplayData } from '@shared/types';
@@ -120,8 +121,11 @@ export function HomePage() {
       {/* 1. GREETING + DATE (+ live clock on desktop) */}
       <DashboardHeader firstName={user.first_name || user.username} />
 
-      {/* New owners: a three-step setup checklist until the org is up. */}
-      <GettingStarted user={user} locationCount={activeLocations.length} />
+      {/* Owner with demo data on: say so + one-tap remove. */}
+      <DemoDataBanner user={user} />
+
+      {/* New owners: a four-step setup checklist until the org is up (demo locations don't count). */}
+      <GettingStarted user={user} locationCount={activeLocations.filter((l) => !l.demo_batch).length} />
 
       <AnnouncementBanner />
 

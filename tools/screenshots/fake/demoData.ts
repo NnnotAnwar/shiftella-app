@@ -16,7 +16,6 @@ export type Tables = Record<string, Row[]>;
 const id = (kind: number, n: number) => `00000000-0000-4000-8${String(kind).padStart(3, '0')}-${String(n).padStart(12, '0')}`;
 
 const ORG = id(0, 1);
-export const DEMO_USER_ID = id(1, 1);
 
 // --- People -----------------------------------------------------------------------
 const P = {
@@ -33,6 +32,20 @@ const P = {
     veronika: id(1, 11),
     david: id(1, 12),
 };
+
+/**
+ * Who is signed in: Petra (the owner) by default; `localStorage['demo-user']` =
+ * a key of P (e.g. 'eva') signs in someone else — an ordinary employee view.
+ */
+export const DEMO_USER_ID: string = (() => {
+    try {
+        const k = localStorage.getItem('demo-user') as keyof typeof P | null;
+        if (k && P[k]) return P[k];
+    } catch {
+        /* no storage */
+    }
+    return P.petra;
+})();
 
 const L = { mala: id(2, 1), karlin: id(2, 2), vino: id(2, 3) };
 

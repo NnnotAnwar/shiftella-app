@@ -8,6 +8,7 @@ import {
     PlusIcon,
     PaperPlaneTiltIcon,
     IdentificationBadgeIcon,
+    FileArrowUpIcon,
 } from '@phosphor-icons/react';
 import { SearchInput } from '@shared/components/SearchInput';
 import { Button } from '@shared/components/Button';
@@ -26,6 +27,7 @@ import { OrganizationForm } from './components/OrganizationForm';
 import { LocationForm, type LocationEditTarget } from './components/LocationForm';
 import { EmployeeForm } from './components/EmployeeForm';
 import { InviteEmployeeForm } from './components/InviteEmployeeForm';
+import { ImportMembersModal } from './import/ImportMembersModal';
 import { StatCard, ErrorState } from './components/AdminStateViews';
 import { OrganizationsList } from './components/OrganizationsList';
 import { LocationsList, type LocationRow } from './components/LocationsList';
@@ -40,6 +42,7 @@ type ModalState =
     | { kind: 'emp-form'; emp: Profile }
     | { kind: 'emp-profile'; emp: EmployeeRow }
     | { kind: 'invite-emp' }
+    | { kind: 'import-emp' }
     | { kind: 'delete'; entity: TabType; id: string; label: string }
     | null;
 
@@ -147,6 +150,10 @@ function AdminPanel() {
         } else if (ent.canAdd('members')) setModal({ kind: 'invite-emp' });
         else nudge('members');
     };
+    const handleImport = () => {
+        if (ent.canAdd('members')) setModal({ kind: 'import-emp' });
+        else nudge('members');
+    };
 
     const confirmDelete = async () => {
         if (modal?.kind !== 'delete') return;
@@ -178,13 +185,21 @@ function AdminPanel() {
                 description={isSuperAdmin ? t('admin.fullAccess') : t('admin.managingOrg')}
                 actions={
                     canAdd && (
-                        <Button
-                            size="sm"
-                            icon={safeTab === 'employees' ? PaperPlaneTiltIcon : PlusIcon}
-                            onClick={handleAdd}
-                        >
-                            {safeTab === 'employees' ? t('admin.inviteEmployee') : safeTab === 'locations' ? t('admin.addLocation') : t('admin.addOrganization')}
-                        </Button>
+                        <div className="flex items-center gap-2">
+                            {safeTab === 'employees' && (
+                                <Button size="sm" variant="secondary" icon={FileArrowUpIcon} onClick={handleImport} title={t('import.title')} aria-label={t('import.title')}>
+                                    {/* Icon-only on phones so it sits beside "Invite" without overflowing. */}
+                                    <span className="hidden sm:inline">{t('import.button')}</span>
+                                </Button>
+                            )}
+                            <Button
+                                size="sm"
+                                icon={safeTab === 'employees' ? PaperPlaneTiltIcon : PlusIcon}
+                                onClick={handleAdd}
+                            >
+                                {safeTab === 'employees' ? t('admin.inviteEmployee') : safeTab === 'locations' ? t('admin.addLocation') : t('admin.addOrganization')}
+                            </Button>
+                        </div>
                     )
                 }
             />
@@ -314,6 +329,7 @@ function AdminPanel() {
                     />
                 )}
                 {modal?.kind === 'invite-emp' && <InviteEmployeeForm onClose={() => setModal(null)} />}
+                {modal?.kind === 'import-emp' && <ImportMembersModal onClose={() => setModal(null)} />}
                 {modal?.kind === 'delete' && (
                     <ConfirmDialog
                         title={t('admin.confirmDeletionTitle')}

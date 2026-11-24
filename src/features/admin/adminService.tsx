@@ -224,6 +224,12 @@ export const adminService = {
         });
         if (error) throw await toFunctionError(error);
     },
+
+    /** One activity-log summary after a bulk (Excel / CSV) import. */
+    async logMembersImported(organizationId: string, invited: number, failed: number): Promise<void> {
+        const { error } = await supabase.rpc('log_members_imported', { p_org: organizationId, p_invited: invited, p_failed: failed });
+        if (error) throw new Error(error.message);
+    },
 };
 
 /** An Edge Function's error, with its machine-readable `code` / `limit` when it sent them. */

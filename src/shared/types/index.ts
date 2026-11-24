@@ -321,6 +321,9 @@ export const ShiftAuditLogSchema = z.object({
       pinned: z.boolean().nullable().optional(),
       email: z.string().nullable().optional(),
       anonymous: z.boolean().nullable().optional(),
+      // members_imported: how many invites went out / failed.
+      invited: z.number().nullable().optional(),
+      failed: z.number().nullable().optional(),
     })
     .passthrough()
     .default({}),

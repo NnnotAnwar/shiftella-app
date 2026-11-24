@@ -24,14 +24,16 @@ type T = (key: TranslationKey, vars?: Record<string, string | number>) => string
  *                                            urgent: staying on Free is fine, and
  *                                            the plan-ended dialog asks once.
  *   paid, gift, early     → the plan name    muted
+ *   free beta             → "Beta"           muted
  * Nothing while loading or for the Superadmin (every gate is open anyway).
  */
 export function billingNavPill(
-    ent: Pick<Entitlements, 'plan' | 'isTrial' | 'trialDaysLeft' | 'trialExpired' | 'pastDue' | 'bypass'> & { isLoading?: boolean },
+    ent: Pick<Entitlements, 'plan' | 'isTrial' | 'trialDaysLeft' | 'trialExpired' | 'pastDue' | 'bypass'> & { isLoading?: boolean; freeBeta?: boolean },
     { t, native }: { t: T; native: boolean },
 ): NavPill | null {
     if (ent.isLoading || ent.bypass) return null;
     if (ent.pastDue) return { text: t('nav.pill.payment'), tone: 'rose', urgent: true };
+    if (ent.freeBeta) return { text: t('nav.pill.beta'), tone: 'muted', urgent: false };
     if (ent.isTrial) {
         const n = ent.trialDaysLeft ?? 0;
         return { text: t('nav.pill.trial', { n }), tone: 'amber', urgent: n <= TRIAL_URGENT_DAYS };

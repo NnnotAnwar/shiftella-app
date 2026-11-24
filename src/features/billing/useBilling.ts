@@ -19,7 +19,17 @@ export const billingKeys = {
     subscription: (orgId: string) => ['billing', 'subscription', orgId] as const,
     usage: (orgId: string) => ['billing', 'usage', orgId] as const,
     allOrgs: ['billing', 'all-orgs'] as const,
+    freeBeta: ['billing', 'free-beta'] as const,
 };
+
+/**
+ * Is the free beta on (everything free, nothing to buy)? Works signed out
+ * (landing). Unknown / failed → false, so the regular billing UI shows.
+ */
+export function useFreeBeta() {
+    const q = useQuery({ queryKey: billingKeys.freeBeta, queryFn: () => billingService.getFreeBeta(), staleTime: 10 * 60_000, retry: 1 });
+    return { freeBeta: q.data === true, isLoading: q.isLoading };
+}
 
 /**
  * Who manages the organization's subscription: its Head Admin (and the
@@ -81,13 +91,14 @@ export function useEntitlements(): Entitlements & { isLoading: boolean } {
     const { user } = useAuthContext();
     const subQ = useSubscription();
     const usageQ = useOrgUsage();
+    const beta = useFreeBeta();
     const superadmin = !!user && isSuperAdmin(user);
-    const isLoading = !!user && subQ.isLoading;
+    const isLoading = !!user && (subQ.isLoading || beta.isLoading);
     return useMemo(() => {
-        const e = buildEntitlements({ subscription: subQ.data, usage: usageQ.data ?? null, superadmin });
+        const e = buildEntitlements({ subscription: subQ.data, usage: usageQ.data ?? null, superadmin, freeBeta: beta.freeBeta });
         if (!isLoading) return { ...e, isLoading };
         return { ...e, isLoading, can: () => true, canAdd: () => true, overLimit: () => false };
-    }, [subQ.data, usageQ.data, superadmin, isLoading]);
+    }, [subQ.data, usageQ.data, superadmin, beta.freeBeta, isLoading]);
 }
 
 /**

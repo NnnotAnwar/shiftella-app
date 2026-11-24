@@ -7,6 +7,7 @@ import {
     ClockUserIcon,
     UserCircleGearIcon,
     ClockCounterClockwiseIcon,
+    ChartLineUpIcon,
     GearIcon,
     MegaphoneIcon,
     CreditCardIcon,
@@ -45,6 +46,7 @@ export interface NavCaps {
     team: boolean; // the Team page (members.view)
     timesheets: boolean; // timesheets.view
     activity: boolean; // activity.view
+    analytics: boolean; // analytics.view (rota + timesheets read)
     billing: boolean; // the org's Head Admin (and Superadmin)
 }
 
@@ -90,6 +92,7 @@ export const NAV_ITEMS: readonly NavItemDef[] = [
     { id: 'requests', labelKey: 'nav.requests', icon: UserCircleGearIcon, route: '/requests', section: 'work', badge: 'pendingRequests' },
     { id: 'timesheets', labelKey: 'nav.timesheets', icon: ClockUserIcon, route: '/timesheets', section: 'manage', visible: (c) => c.timesheets, mobileSlot: { manager: 3 } },
     { id: 'admin', labelKey: 'nav.team', icon: ShieldCheckIcon, route: '/admin', section: 'manage', visible: (c) => c.team, mobileSlot: { manager: 4 } },
+    { id: 'analytics', labelKey: 'nav.analytics', icon: ChartLineUpIcon, route: '/analytics', section: 'manage', visible: (c) => c.analytics },
     { id: 'activity', labelKey: 'nav.activity', icon: ClockCounterClockwiseIcon, route: '/activity', section: 'manage', visible: (c) => c.activity },
     // First in System, with a status pill, so the owner never has to hunt for it.
     { id: 'billing', labelKey: 'nav.billing', icon: CreditCardIcon, route: '/billing', section: 'system', visible: (c) => c.billing, pill: 'billing' },
@@ -121,6 +124,7 @@ export function useNavItems(): ResolvedNavItem[] {
     const team = can('members.view');
     const timesheets = can('timesheets.view');
     const activity = can('activity.view');
+    const analytics = can('analytics.view');
     const observer = can('team.view');
     // Deciders: requests waiting for them; everyone else: unseen decisions on their own.
     const pendingRequests = useRequestsBadge();
@@ -129,7 +133,7 @@ export function useNavItems(): ResolvedNavItem[] {
     const t = useTranslation();
 
     return useMemo(() => {
-        const caps: NavCaps = { team, timesheets, activity, billing };
+        const caps: NavCaps = { team, timesheets, activity, analytics, billing };
         const audience: MobileAudience = observer ? 'manager' : 'staff';
         const badges: Record<BadgeSource, number> = { pendingRequests, unreadAnnouncements };
         const pills: Record<PillSource, NavPill | null> = { billing: billing ? billingNavPill(ent, { t, native: isNativeApp() }) : null };
@@ -144,5 +148,5 @@ export function useNavItems(): ResolvedNavItem[] {
             badgeCount: i.badge ? badges[i.badge] : 0,
             pill: i.pill ? pills[i.pill] : null,
         }));
-    }, [team, timesheets, activity, billing, observer, pendingRequests, unreadAnnouncements, ent, t]);
+    }, [team, timesheets, activity, analytics, billing, observer, pendingRequests, unreadAnnouncements, ent, t]);
 }

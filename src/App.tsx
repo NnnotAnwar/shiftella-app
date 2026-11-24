@@ -58,6 +58,7 @@ const AnnouncementsPage = lazy(() => import('./features/announcements/Announceme
 const AdminPage = lazy(() => import('./features/admin/AdminPage').then((m) => ({ default: m.AdminPage })));
 const RequestsPage = lazy(() => import('./features/requests/RequestsPage').then((m) => ({ default: m.RequestsPage })));
 const TimesheetsPage = lazy(() => import('./features/timesheets/TimesheetsPage').then((m) => ({ default: m.TimesheetsPage })));
+const AnalyticsPage = lazy(() => import('./features/analytics/AnalyticsPage').then((m) => ({ default: m.AnalyticsPage })));
 const AuditLogPage = lazy(() => import('./features/timesheets/AuditLogPage').then((m) => ({ default: m.AuditLogPage })));
 const SettingsPage = lazy(() => import('./features/settings/SettingsPage'));
 const ProfilePage = lazy(() => import('./features/profile/ProfilePage'));
@@ -130,6 +131,8 @@ export default function App() {
                           <Route path="admin" element={<AdminPage />} />
                           {/* Timesheets: managers+ view (rank >= 20); admins edit. */}
                           <Route path="timesheets" element={<GatedPage feature="timesheets" titleKey="nav.timesheets"><TimesheetsPage /></GatedPage>} />
+                          {/* Owner analytics: rota + timesheets read (the page self-guards; the RPC checks too). */}
+                          <Route path="analytics" element={<GatedPage feature="timesheets" titleKey="nav.analytics"><AnalyticsPage /></GatedPage>} />
                           {/* Activity Log is admin-only (rank >= 30); the page self-guards too. */}
                           <Route path="activity" element={<GatedPage feature="activityLog" titleKey="nav.activity"><AuditLogPage /></GatedPage>} />
                         </Route>

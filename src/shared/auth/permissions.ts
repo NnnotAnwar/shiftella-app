@@ -43,9 +43,10 @@ export type Capability =
     | 'locations.manage' // create, edit and archive locations
     | 'activity.view'
     | 'roles.view'
-    | 'roles.manage'; // create, edit, reorder roles below your own
+    | 'roles.manage' // create, edit, reorder roles below your own
+    | 'analytics.view'; // owner analytics: needs both rota.view and timesheets.view (mirrors org_analytics)
 
-const CAP: Record<Exclude<Capability, 'team.view'>, [PermissionArea, PermissionAction, number]> = {
+const CAP: Record<Exclude<Capability, 'team.view' | 'analytics.view'>, [PermissionArea, PermissionAction, number]> = {
     'rota.view': ['rota', 'read', RANK.MANAGER],
     'rota.edit': ['rota', 'write', RANK.ADMIN],
     'timesheets.view': ['timesheets', 'read', RANK.MANAGER],
@@ -78,6 +79,7 @@ export function can(user: Pick<User, 'role' | 'permissions' | 'org_role'> | null
     if (!user) return false;
     if (isSuperAdmin(user) || rankOf(user as Pick<Profile, 'role' | 'org_role'>) >= RANK.OWNER) return true;
     if (cap === 'team.view') return (['rota.view', 'timesheets.view', 'members.view', 'requests.view'] as const).some((c) => can(user, c));
+    if (cap === 'analytics.view') return can(user, 'rota.view') && can(user, 'timesheets.view');
     const [area, action, minRank] = CAP[cap];
     if (user.permissions) return !!user.permissions[area]?.[action];
     return rankOf(user as Pick<Profile, 'role' | 'org_role'>) >= minRank;

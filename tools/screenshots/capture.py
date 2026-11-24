@@ -130,6 +130,11 @@ def shot_billing(page: Page, base: str, out: Path) -> None:
     page.screenshot(path=out / "billing.png")
 
 
+def shot_analytics(page: Page, base: str, out: Path) -> None:
+    go(page, base, "/analytics")
+    page.screenshot(path=out / "analytics.png", full_page=True)
+
+
 def shot_palette(page: Page, base: str, out: Path) -> None:
     go(page, base, "/")
     page.keyboard.press("Meta+k")
@@ -172,6 +177,11 @@ def shot_mobile_more(page: Page, base: str, out: Path) -> None:
     page.screenshot(path=out / "mobile-more.png")
 
 
+def shot_mobile_analytics(page: Page, base: str, out: Path) -> None:
+    go(page, base, "/analytics")
+    page.screenshot(path=out / "mobile-analytics.png", full_page=True)
+
+
 DESKTOP_SHOTS = {
     "dashboard": shot_dashboard,
     "schedule": shot_schedule,
@@ -181,6 +191,7 @@ DESKTOP_SHOTS = {
     "billing": shot_billing,
     "leave": shot_leave,
     "timeoff": shot_timeoff,
+    "analytics": shot_analytics,
     "palette": shot_palette,
     "documents": shot_documents,
 }
@@ -189,6 +200,7 @@ MOBILE_SHOTS = {
     "mobile-schedule": shot_mobile_schedule,
     "mobile-more": shot_mobile_more,
     "mobile-documents": shot_mobile_documents,
+    "mobile-analytics": shot_mobile_analytics,
 }
 
 

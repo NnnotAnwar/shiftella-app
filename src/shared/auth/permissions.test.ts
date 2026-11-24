@@ -111,3 +111,19 @@ describe('can (capabilities): managers observe, admins act', () => {
         expect(can(null, 'team.view')).toBe(false);
     });
 });
+
+describe('can("analytics.view"): rota + timesheets read, like org_analytics', () => {
+    it('is off for staff and on for the Head Admin', () => {
+        expect(can(mkUser(0), 'analytics.view')).toBe(false);
+        expect(can(mkUser(10), 'analytics.view')).toBe(false);
+        expect(can(mkUser(RANK.OWNER), 'analytics.view')).toBe(true);
+    });
+
+    it('follows custom-role grants: both areas are needed', () => {
+        const base = mkUser(20);
+        const both = { ...base, permissions: { rota: { read: true }, timesheets: { read: true } } } as unknown as User;
+        const rotaOnly = { ...base, permissions: { rota: { read: true } } } as unknown as User;
+        expect(can(both, 'analytics.view')).toBe(true);
+        expect(can(rotaOnly, 'analytics.view')).toBe(false);
+    });
+});

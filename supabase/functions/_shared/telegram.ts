@@ -60,7 +60,11 @@ export function appUrl(env: string | undefined = Deno.env.get('APP_URL')): strin
 // --- Inline-button callback data (≤ 64 bytes, HMAC-signed per chat) -----------
 //
 //   d:<t|n|s|m>:<uuid hex>:<a|r>   decide a request (time off / name / swap / member)
-//   c:<from base36 s>:<to base36 s> confirm my published shifts in [from, to)
+//   c:<from base36 s>:<to base36 s>[:<week>] confirm my published shifts in [from, to);
+//                                   with <week> it came from the /shifts view, which
+//                                   is then redrawn (✓ marks) instead of just losing the button
+//   v:<s|h|t>:<offset>              page a view: shifts week (0…8 ahead), hours month
+//                                   (0…−12 back), today (0, refresh)
 // Each is followed by ":<sig>", sig = first 12 bytes of HMAC-SHA256(key,
 // "<chat_id>|<payload>") base64url. Signing binds a button to the chat it was
 // sent to; the server re-checks every permission anyway.
@@ -69,9 +73,17 @@ export type RequestKind = 'timeoff' | 'name' | 'swap' | 'member';
 const KIND_CODE: Record<RequestKind, string> = { timeoff: 't', name: 'n', swap: 's', member: 'm' };
 const CODE_KIND: Record<string, RequestKind> = { t: 'timeoff', n: 'name', s: 'swap', m: 'member' };
 
+export type NavView = 'shifts' | 'hours' | 'today';
+const VIEW_CODE: Record<NavView, string> = { shifts: 's', hours: 'h', today: 't' };
+const CODE_VIEW: Record<string, NavView> = { s: 'shifts', h: 'hours', t: 'today' };
+/** Allowed offsets per view (anything else is rejected when decoding). */
+const VIEW_RANGE: Record<NavView, [number, number]> = { shifts: [0, 8], hours: [-12, 0], today: [0, 0] };
+const inRange = (view: NavView, n: number) => Number.isInteger(n) && n >= VIEW_RANGE[view][0] && n <= VIEW_RANGE[view][1];
+
 export type CallbackAction =
     | { type: 'decide'; kind: RequestKind; id: string; approve: boolean }
-    | { type: 'confirm'; from: Date; to: Date };
+    | { type: 'confirm'; from: Date; to: Date; week?: number }
+    | { type: 'nav'; view: NavView; offset: number };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -80,8 +92,13 @@ export function encodeCallback(a: CallbackAction): string {
         if (!UUID_RE.test(a.id)) throw new Error('bad id');
         return `d:${KIND_CODE[a.kind]}:${a.id.replace(/-/g, '').toLowerCase()}:${a.approve ? 'a' : 'r'}`;
     }
+    if (a.type === 'nav') {
+        if (!inRange(a.view, a.offset)) throw new Error('bad offset');
+        return `v:${VIEW_CODE[a.view]}:${a.offset}`;
+    }
     const s = (d: Date) => Math.floor(d.getTime() / 1000).toString(36);
-    return `c:${s(a.from)}:${s(a.to)}`;
+    if (a.week !== undefined && !inRange('shifts', a.week)) throw new Error('bad week');
+    return `c:${s(a.from)}:${s(a.to)}${a.week !== undefined ? `:${a.week}` : ''}`;
 }
 
 export function decodeCallback(payload: string): CallbackAction | null {
@@ -91,12 +108,20 @@ export function decodeCallback(payload: string): CallbackAction | null {
         const id = `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
         return { type: 'decide', kind: CODE_KIND[m[1]], id, approve: m[3] === 'a' };
     }
-    m = /^c:([0-9a-z]{1,8}):([0-9a-z]{1,8})$/.exec(payload);
+    m = /^c:([0-9a-z]{1,8}):([0-9a-z]{1,8})(?::(\d))?$/.exec(payload);
     if (m) {
         const from = new Date(parseInt(m[1], 36) * 1000);
         const to = new Date(parseInt(m[2], 36) * 1000);
         if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime()) || to <= from) return null;
-        return { type: 'confirm', from, to };
+        if (m[3] === undefined) return { type: 'confirm', from, to };
+        const week = Number(m[3]);
+        return inRange('shifts', week) ? { type: 'confirm', from, to, week } : null;
+    }
+    m = /^v:([sht]):(-?\d{1,2})$/.exec(payload);
+    if (m) {
+        const view = CODE_VIEW[m[1]];
+        const offset = Number(m[2]);
+        return inRange(view, offset) ? { type: 'nav', view, offset: offset === 0 ? 0 : offset } : null;
     }
     return null;
 }

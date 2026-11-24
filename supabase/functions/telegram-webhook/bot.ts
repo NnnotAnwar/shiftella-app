@@ -12,22 +12,17 @@ export { pragueDate, pragueMidnight, TZ };
 
 export type Command = 'start' | 'help' | 'stop' | 'shifts' | 'today' | 'hours' | 'news' | 'requests' | 'unknown';
 
+// English commands only (the same in every language; the menu and replies are localized).
 const ALIASES: Record<string, Command> = {
     start: 'start',
     help: 'help',
-    pomoc: 'help',
-    napoveda: 'help',
+    menu: 'help',
     stop: 'stop',
     shifts: 'shifts',
-    smeny: 'shifts',
     today: 'today',
-    dnes: 'today',
     hours: 'hours',
-    hodiny: 'hours',
     news: 'news',
-    oznameni: 'news',
     requests: 'requests',
-    zadosti: 'requests',
 };
 
 /**
@@ -46,18 +41,63 @@ export function isLinkCode(arg: string): boolean {
     return /^[a-f0-9]{40}$/.test(arg);
 }
 
+// --- Main menu (persistent reply keyboard) ---------------------------------------
+
+export type MenuCommand = 'shifts' | 'today' | 'hours' | 'news' | 'requests' | 'help';
+
+const MENU_LABELS: Record<Lang, Record<MenuCommand, string>> = {
+    en: { shifts: '📅 Shifts', today: '📍 Today', hours: '⏱ Hours', news: '📣 News', requests: '📥 Requests', help: '❓ Help' },
+    cs: { shifts: '📅 Směny', today: '📍 Dnes', hours: '⏱ Hodiny', news: '📣 Oznámení', requests: '📥 Žádosti', help: '❓ Nápověda' },
+};
+
+export interface ReplyKeyboard {
+    keyboard: { text: string }[][];
+    resize_keyboard: true;
+    is_persistent: true;
+    input_field_placeholder?: string;
+}
+
+/** The menu under the message box. Reviewers get a Requests button. */
+export function mainMenu(lang: Lang, canReview: boolean): ReplyKeyboard {
+    const l = MENU_LABELS[lang];
+    return {
+        keyboard: [
+            [{ text: l.shifts }, { text: l.today }],
+            [{ text: l.hours }, { text: l.news }],
+            canReview ? [{ text: l.requests }, { text: l.help }] : [{ text: l.help }],
+        ],
+        resize_keyboard: true,
+        is_persistent: true,
+        input_field_placeholder: lang === 'cs' ? 'Vyberte v menu…' : 'Pick from the menu…',
+    };
+}
+
+/** A menu button's text (either language) → its command; null for anything else. */
+export function parseMenuButton(text: string | undefined | null): MenuCommand | null {
+    const t = (text ?? '').trim();
+    if (!t) return null;
+    for (const lang of ['en', 'cs'] as Lang[]) {
+        for (const [cmd, label] of Object.entries(MENU_LABELS[lang])) if (label === t) return cmd as MenuCommand;
+    }
+    return null;
+}
+
+// --- Views with arrows: how far they may page ---------------------------------------
+export const SHIFTS_MAX_WEEKS = 8; // weeks ahead
+export const HOURS_MAX_MONTHS = 12; // months back
+
 // --- Copy ----------------------------------------------------------------------------
 
 const S = {
     en: {
-        welcome: (name: string) => `Done${name ? `, ${name}` : ''}! This chat is now linked to Shiftella.\nYou'll get your notifications here. Try /shifts or /help.`,
+        welcome: (name: string) => `Done${name ? `, ${name}` : ''}! This chat is now linked to Shiftella.\nYou'll get your notifications here — and the menu below has everything else.`,
         startUnlinked: 'Hi! I\'m the <b>Shiftella</b> bot — shift notifications, announcements and quick answers about your schedule.\n\nTo link this chat, open the app: <b>Settings → Notifications → Telegram → Connect</b>.',
         badCode: 'This link has expired or was already used. In the app, tap <b>Connect Telegram</b> again.',
         notLinked: 'This chat isn\'t linked to a Shiftella account. Link it in the app: <b>Settings → Notifications → Telegram</b>.',
         stopped: 'Disconnected. I won\'t send you anything more. You can link again from the app any time.',
         stopNotLinked: 'This chat isn\'t linked — nothing to disconnect.',
         plan: 'Telegram notifications are part of the <b>Team</b> plan. Ask the account owner to upgrade.',
-        unknown: 'I don\'t know that one. /help lists what I can do.',
+        unknown: 'I don\'t know that one — use the menu below or /help.',
         privateOnly: 'I only work in a private chat.',
         error: 'Something went wrong. Please try again in a moment.',
         help: [
@@ -68,9 +108,20 @@ const S = {
             '/news — latest announcements',
             '/requests — requests waiting for your decision',
             '/stop — disconnect this chat',
+            '',
+            'Or just use the menu under the message box.',
         ].join('\n'),
         shiftsTitle: 'Your shifts · next 7 days',
+        shiftsRange: (range: string) => `Your shifts · ${range}`,
         noShifts: 'No shifts in the next 7 days.',
+        noShiftsRange: 'No shifts in this week.',
+        prevWeek: '◀ Previous',
+        nextWeek: 'Next week ▶',
+        prevMonth: '◀ Previous month',
+        nextMonth: 'Next month ▶',
+        thisWeek: 'This week',
+        thisMonth: 'This month',
+        refresh: '🔄 Refresh',
         confirmAll: 'Confirm shifts',
         allDay: 'all day',
         todayTitle: 'Today',
@@ -109,27 +160,38 @@ const S = {
         anonymous: 'Anonymous',
     },
     cs: {
-        welcome: (name: string) => `Hotovo${name ? `, ${name}` : ''}! Tento chat je propojený se Shiftellou.\nOznámení vám budu posílat sem. Zkuste /smeny nebo /help.`,
+        welcome: (name: string) => `Hotovo${name ? `, ${name}` : ''}! Tento chat je propojený se Shiftellou.\nOznámení vám budu posílat sem — a vše ostatní najdete v menu dole.`,
         startUnlinked: 'Ahoj! Jsem bot <b>Shiftella</b> — oznámení o směnách, novinky z týmu a rychlé odpovědi na váš rozpis.\n\nChat propojíte v aplikaci: <b>Nastavení → Oznámení → Telegram → Propojit</b>.',
         badCode: 'Odkaz vypršel nebo už byl použit. V aplikaci klepněte znovu na <b>Propojit Telegram</b>.',
         notLinked: 'Tento chat není propojený s účtem Shiftella. Propojíte ho v aplikaci: <b>Nastavení → Oznámení → Telegram</b>.',
         stopped: 'Odpojeno. Už vám nic posílat nebudu. Znovu propojit můžete kdykoli v aplikaci.',
         stopNotLinked: 'Tento chat není propojený — není co odpojit.',
         plan: 'Oznámení v Telegramu jsou součástí tarifu <b>Team</b>. Požádejte majitele účtu o přechod.',
-        unknown: 'Tomu nerozumím. Co umím, najdete v /help.',
+        unknown: 'Tomu nerozumím — použijte menu dole nebo /help.',
         privateOnly: 'Funguji jen v soukromém chatu.',
         error: 'Něco se pokazilo. Zkuste to prosím za chvíli.',
         help: [
             '<b>Shiftella bot</b>',
-            '/smeny — vaše směny na příštích 7 dní',
-            '/dnes — dnešní směna a kdo je s vámi',
-            '/hodiny — odpracované hodiny tento měsíc',
-            '/oznameni — nejnovější oznámení',
-            '/zadosti — žádosti, které čekají na vás',
+            '/shifts — vaše směny na příštích 7 dní',
+            '/today — dnešní směna a kdo je s vámi',
+            '/hours — odpracované hodiny tento měsíc',
+            '/news — nejnovější oznámení',
+            '/requests — žádosti, které čekají na vás',
             '/stop — odpojit tento chat',
+            '',
+            'Nebo prostě použijte menu pod polem pro zprávu.',
         ].join('\n'),
         shiftsTitle: 'Vaše směny · příštích 7 dní',
+        shiftsRange: (range: string) => `Vaše směny · ${range}`,
         noShifts: 'Na příštích 7 dní nemáte žádnou směnu.',
+        noShiftsRange: 'Tento týden nemáte žádnou směnu.',
+        prevWeek: '◀ Předchozí',
+        nextWeek: 'Další týden ▶',
+        prevMonth: '◀ Předchozí měsíc',
+        nextMonth: 'Další měsíc ▶',
+        thisWeek: 'Tento týden',
+        thisMonth: 'Tento měsíc',
+        refresh: '🔄 Obnovit',
         confirmAll: 'Potvrdit směny',
         allDay: 'celý den',
         todayTitle: 'Dnes',
@@ -190,10 +252,16 @@ export function daysWindow(now: Date, n: number): { from: Date; to: Date } {
     return { from: pragueMidnight(y, m, d), to: pragueMidnight(y, m, d + n) };
 }
 
-/** [first of this month, first of next month) in Prague. */
-export function monthWindow(now: Date): { from: Date; to: Date } {
+/** [first of this month, first of next month) in Prague; `offset` months away (−1 = last month). */
+export function monthWindow(now: Date, offset = 0): { from: Date; to: Date } {
     const { y, m } = pragueDate(now);
-    return { from: pragueMidnight(y, m, 1), to: pragueMidnight(y, m + 1, 1) };
+    return { from: pragueMidnight(y, m + offset, 1), to: pragueMidnight(y, m + offset + 1, 1) };
+}
+
+/** The /shifts page: week `offset` = [today + 7·offset days, +7 days) in Prague. */
+export function weekWindow(now: Date, offset = 0): { from: Date; to: Date } {
+    const { y, m, d } = pragueDate(now);
+    return { from: pragueMidnight(y, m, d + 7 * offset), to: pragueMidnight(y, m, d + 7 * offset + 7) };
 }
 
 export function fmtTime(iso: string | Date, lang: Lang): string {
@@ -253,10 +321,17 @@ export function shiftLine(s: ShiftRow, lang: Lang, withDay = true): string {
     return `${mark} ${head}${s.location ? ` · ${escapeHtml(s.location)}` : ''}`;
 }
 
-export function formatShifts(rows: ShiftRow[], lang: Lang): string {
+/**
+ * The /shifts list. Without `range` it is "the next 7 days"; with one (a later
+ * week from the arrows) the title names the days, e.g. "Mon 1 Dec – Sun 7 Dec".
+ */
+export function formatShifts(rows: ShiftRow[], lang: Lang, range?: { from: Date; to: Date }): string {
     const c = copy(lang);
-    if (rows.length === 0) return c.noShifts;
-    return [`<b>${c.shiftsTitle}</b>`, ...rows.map((r) => shiftLine(r, lang))].join('\n');
+    const title = range
+        ? c.shiftsRange(`${fmtDay(range.from, lang)} – ${fmtDay(new Date(range.to.getTime() - 60_000), lang)}`)
+        : c.shiftsTitle;
+    const body = rows.length === 0 ? (range ? c.noShiftsRange : c.noShifts) : rows.map((r) => shiftLine(r, lang)).join('\n');
+    return `<b>${escapeHtml(title)}</b>\n${body}`;
 }
 
 export function formatToday(

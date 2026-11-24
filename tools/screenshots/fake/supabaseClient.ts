@@ -364,6 +364,30 @@ const rpcs: Record<string, (args: Row) => unknown> = {
     // Settings → Calendar: a fixed demo feed token.
     calendar_feed_token: () => 'd3m0'.replace(/[^a-f0-9]/g, '0').padEnd(64, 'a'),
     log_members_imported: () => null,
+    // Announcements: audience size while composing, reach per card, who read it.
+    announcement_audience_size: (args: Row) => {
+        const loc = args.p_location as string | null;
+        return loc ? new Set(db.location_roster.filter((r) => r.location_id === loc).map((r) => r.user_id)).size : db.profiles.length - 1;
+    },
+    announcement_reach: (args: Row) =>
+        ((args.p_ids as string[]) ?? []).map((aid) => {
+            const a = db.announcements.find((x) => x.id === aid);
+            const audience = a?.location_id
+                ? new Set(db.location_roster.filter((r) => r.location_id === a.location_id).map((r) => r.user_id)).size
+                : db.profiles.length - 1;
+            // Demo: most of the team has read the older notices, about half the newest one.
+            const readers = Math.max(0, Math.round(audience * (aid === db.announcements[1]?.id ? 0.45 : 0.8)));
+            return { announcement_id: aid, readers, audience };
+        }),
+    announcement_readers: (args: Row) => {
+        const a = db.announcements.find((x) => x.id === args.p_id);
+        const people = db.profiles.filter((p) => p.id !== a?.author_id).slice(0, 8);
+        return people.map((p, i) => ({
+            user_id: p.id,
+            name: [p.first_name, p.last_name].filter(Boolean).join(' '),
+            read_at: i % 3 === 2 ? null : String(a?.created_at ?? ''),
+        }));
+    },
 };
 
 // --- Auth -----------------------------------------------------------------------

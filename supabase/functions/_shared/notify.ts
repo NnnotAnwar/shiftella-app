@@ -58,6 +58,40 @@ const KIND_NOM: Record<Lang, Record<string, string>> = {
     cs: { vacation: 'dovolená', sick: 'nemocenská', other: 'volno' },
 };
 
+/** "8:00" / "08:00" — a time of day in Prague (the app's business time zone). */
+export function pragueClock(iso: string, lang: Lang): string {
+    try {
+        return new Intl.DateTimeFormat(lang === 'cs' ? 'cs-CZ' : 'en-GB', {
+            timeZone: 'Europe/Prague',
+            hour: lang === 'cs' ? 'numeric' : '2-digit',
+            minute: '2-digit',
+            hourCycle: 'h23',
+        }).format(new Date(iso));
+    } catch {
+        return '';
+    }
+}
+
+/** The morning digest's body: "5 shifts · 4 people · 1 open shift · 2 requests waiting". */
+export function digestBody(v: { shifts?: number; people?: number; open?: number; requests?: number }, lang: Lang): string {
+    const cs = lang === 'cs';
+    const n = (k: unknown) => Math.max(0, Number(k) || 0);
+    const parts: string[] = [];
+    const shifts = n(v.shifts);
+    const people = n(v.people);
+    const open = n(v.open);
+    const req = n(v.requests);
+    if (shifts > 0) {
+        parts.push(shiftsCount(shifts, lang));
+        parts.push(cs ? `${people} ${csPlural(people, 'člověk', 'lidé', 'lidí')}` : `${people} ${people === 1 ? 'person' : 'people'}`);
+    } else {
+        parts.push(cs ? 'dnes žádné směny' : 'no shifts today');
+    }
+    if (open > 0) parts.push(cs ? `${open} ${csPlural(open, 'volná směna', 'volné směny', 'volných směn')}` : `${open} open shift${open === 1 ? '' : 's'}`);
+    if (req > 0) parts.push(cs ? `${req} ${csPlural(req, 'žádost čeká', 'žádosti čekají', 'žádostí čeká')}` : `${req} request${req === 1 ? '' : 's'} waiting`);
+    return parts.join(' · ');
+}
+
 /** Render a notification's title + body for a recipient's language. */
 export function render(msg: PushMessage, lang: Lang): { title: string; body: string } {
     if (msg.title !== undefined || msg.body !== undefined) {
@@ -100,6 +134,17 @@ export function render(msg: PushMessage, lang: Lang): { title: string; body: str
                 ? { title: 'Směna nezahájena', body: `${who} se nepřihlásil(a)${atLoc} — ${mins} zpoždění.` }
                 : { title: 'Shift not started', body: `${who} hasn't clocked in${atLoc} — ${mins} late.` };
         }
+        case 'shift_reminder': {
+            const at = v.start ? pragueClock(String(v.start), lang) : '';
+            return cs
+                ? { title: 'Směna za hodinu', body: `Vaše směna začíná${at ? ` v ${at}` : ' brzy'}${loc ? ` · ${loc}` : ''}.` }
+                : { title: 'Shift in an hour', body: `Your shift starts${at ? ` at ${at}` : ' soon'}${loc ? ` · ${loc}` : ''}.` };
+        }
+        case 'daily_digest':
+            return {
+                title: cs ? 'Dnešní přehled' : 'Today at a glance',
+                body: digestBody({ shifts: Number(v.shifts), people: Number(v.people), open: Number(v.open), requests: Number(v.requests) }, lang),
+            };
         case 'schedule_published':
             return cs
                 ? { title: 'Rozpis zveřejněn', body: `${actor} zveřejnil(a) váš rozpis — ${shiftsCount(n, 'cs')}.` }
@@ -217,14 +262,21 @@ export async function messagesFromWebhook(admin: SupabaseClient, table: string, 
         const bodyText = (record.body as string) || '';
         const shortBody = bodyText.length > 140 ? `${bodyText.slice(0, 139)}…` : bodyText;
 
-        const { data: members } = await admin
-            .from('profiles')
-            .select('id')
-            .eq('organization_id', orgId);
+        // Only the announcement's audience (its location's roster / its role / everyone).
+        let ids: string[] = [];
+        const { data: audience, error: audienceErr } = await admin.rpc('announcement_audience_ids', { p_id: record.id });
+        if (!audienceErr) {
+            ids = ((audience ?? []) as (string | { announcement_audience_ids?: string })[]).map((r) =>
+                typeof r === 'string' ? r : String(r.announcement_audience_ids ?? ''),
+            );
+        } else if (!record.location_id && !record.org_role_id) {
+            // Audience function unavailable: a whole-organization notice can still go to everyone.
+            const { data: members } = await admin.from('profiles').select('id').eq('organization_id', orgId);
+            ids = (members ?? []).map((m: { id: string }) => m.id);
+        }
 
-        return (members ?? [])
-            .map((m: { id: string }) => m.id)
-            .filter((id) => id !== authorId)
+        return ids
+            .filter((id) => id && id !== authorId)
             .map((id) => ({
                 userId: id,
                 // User-authored content — passed pre-rendered (no localization).
@@ -282,6 +334,27 @@ export async function messagesFromWebhook(admin: SupabaseClient, table: string, 
                     key: 'late',
                     vars: { who: (details.target_name as string) || '', loc: (details.location_name as string) || '', bucket: action === 'late_60' ? '60' : '15' },
                     route: '/?openNotifications=1',
+                    category: 'shifts',
+                }];
+            case 'shift_reminder':
+                return [{
+                    userId: target,
+                    key: 'shift_reminder',
+                    vars: { start: (details.scheduled_start as string) || '', loc: (details.location_name as string) || '' },
+                    route: '/',
+                    category: 'shifts',
+                }];
+            case 'daily_digest':
+                return [{
+                    userId: target,
+                    key: 'daily_digest',
+                    vars: {
+                        shifts: Number(details.shifts ?? 0),
+                        people: Number(details.people ?? 0),
+                        open: Number(details.open ?? 0),
+                        requests: Number(details.requests ?? 0),
+                    },
+                    route: '/',
                     category: 'shifts',
                 }];
             case 'schedule_published':

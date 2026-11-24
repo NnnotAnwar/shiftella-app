@@ -97,6 +97,11 @@ def shot_requests(page: Page, base: str, out: Path) -> None:
     page.screenshot(path=out / "requests.png")
 
 
+def shot_announcements(page: Page, base: str, out: Path) -> None:
+    go(page, base, "/announcements")
+    page.screenshot(path=out / "announcements.png")
+
+
 def shot_billing(page: Page, base: str, out: Path) -> None:
     go(page, base, "/billing")
     page.screenshot(path=out / "billing.png")
@@ -133,6 +138,7 @@ DESKTOP_SHOTS = {
     "schedule": shot_schedule,
     "my-hours": shot_my_hours,
     "requests": shot_requests,
+    "announcements": shot_announcements,
     "billing": shot_billing,
     "palette": shot_palette,
 }

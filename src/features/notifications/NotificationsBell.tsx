@@ -2,6 +2,8 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import {
+    AlarmIcon,
+    CoffeeIcon,
     BellIcon,
     PlusIcon,
     PencilSimpleIcon,
@@ -125,6 +127,22 @@ function describe(entry: ShiftAuditLog, t: Translate): { Icon: Icon; tint: strin
                 title: t(entry.action === 'late_60' ? 'notif.late60' : 'notif.late15', { name: d.target_name || '—' }),
                 detail: [d.location_name, d.scheduled_start ? fmtClock(d.scheduled_start) : null].filter(Boolean).join(' · ') || undefined,
             };
+        case 'shift_reminder':
+            return {
+                Icon: AlarmIcon,
+                tint: 'text-sky-500',
+                title: t('notif.shiftReminder', { time: d.scheduled_start ? fmtClock(d.scheduled_start) : '—' }),
+                detail: d.location_name || undefined,
+            };
+        case 'daily_digest': {
+            const parts = [
+                t('notif.digest.shifts', { n: d.shifts ?? 0 }),
+                t('notif.digest.people', { n: d.people ?? 0 }),
+                d.open ? t('notif.digest.open', { n: d.open }) : null,
+                d.requests ? t('notif.digest.requests', { n: d.requests }) : null,
+            ].filter(Boolean);
+            return { Icon: CoffeeIcon, tint: 'text-amber-600', title: t('notif.dailyDigest'), detail: parts.join(' · ') };
+        }
         case 'swap_taken':
         case 'swap_requested':
         case 'swap_approved':

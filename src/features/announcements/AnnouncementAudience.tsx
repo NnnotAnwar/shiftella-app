@@ -124,7 +124,7 @@ export function ReachButton({ id, reach }: { id: string; reach: AnnouncementReac
                 }}
                 aria-expanded={open}
                 title={t('announcements.readBy', { read: reach.readers, total: reach.audience })}
-                className="text-micro inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 font-semibold text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-200"
+                className="text-micro -ml-1.5 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 font-semibold text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-200"
             >
                 <EyeIcon className="size-3.5" aria-hidden />
                 <span>

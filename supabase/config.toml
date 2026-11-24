@@ -96,7 +96,7 @@ openai_api_key = "env(OPENAI_API_KEY)"
 
 # Email testing server. Emails sent with the local dev setup are not actually sent - rather, they
 # are monitored, and you can view the emails that would have been sent from the web interface.
-[inbucket]
+[local_smtp]
 enabled = true
 # Port to use for the email testing server web interface.
 port = 54324
@@ -395,6 +395,12 @@ verify_jwt = false
 # ICS feed for Google / Apple Calendar / Outlook — calendar apps can't send a
 # JWT; the secret ?token= (calendar_feeds) is the auth.
 [functions.calendar-feed]
+enabled = true
+verify_jwt = false
+
+# Push + Telegram fan-out. Called by Database Webhooks (no user JWT), so the
+# gateway check is off — see the function header.
+[functions.send-push]
 enabled = true
 verify_jwt = false
 

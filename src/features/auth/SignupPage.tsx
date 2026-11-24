@@ -2,6 +2,7 @@ import { useState, type SyntheticEvent } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ArrowLeftIcon, BuildingsIcon, EnvelopeSimpleIcon, UserIcon, PaperPlaneTiltIcon } from '@phosphor-icons/react';
 import { usePreferences, useTranslation } from '@shared/preferences/PreferencesContext';
+import { BASE_LANGUAGE } from '@shared/i18n/translations';
 import { Button } from '@shared/components/Button';
 import { Input } from '@shared/components/Input';
 import { FormError } from '@shared/components/FormError';
@@ -52,7 +53,8 @@ export function SignupPage() {
             email: email.trim(),
             password,
             organizationName: orgName.trim(),
-            language,
+            // E-mails exist in cs/en only (sk → cs, uk → en).
+            language: BASE_LANGUAGE[language],
         });
         if (err) {
             const m = err.message.toLowerCase();

@@ -13,6 +13,7 @@ corepack yarn screenshots            # light theme → docs/screenshots/*.png
 corepack yarn screenshots --dark     # dark theme instead
 corepack yarn screenshots --only dashboard billing --out /tmp/shots
 corepack yarn screenshots --billing free --only dashboard billing --out /tmp/shots
+corepack yarn screenshots --lang uk --only dashboard schedule --out /tmp/shots   # cs (default) | en | sk | uk
 ```
 
 `--billing` swaps the demo subscription: `trial` (20 days left), `trial3` (3 days

@@ -12,7 +12,7 @@ import { Skeleton } from '@shared/components/Skeleton';
 import { toast } from '@shared/toast/toastStore';
 import { formatDateInText, formatDateShort } from '@shared/utils/date';
 import { APP_NAME } from '@shared/brand';
-import type { TranslationKey } from '@shared/i18n/translations';
+import { INTL_LOCALE, type TranslationKey } from '@shared/i18n/translations';
 import { BillingError, billingService } from './billingService';
 import { billingErrorMessage } from './planErrors';
 import { canManageBilling, isNativeApp, useEntitlements, useOrgUsage, useSubscription } from './useBilling';
@@ -151,9 +151,9 @@ function BillingInner() {
     const cancelScheduled = liveStripe && !!sub?.cancel_at_period_end;
     const periodEnd = sub?.current_period_end ?? null;
 
-    const num = (n: number) => n.toLocaleString(language === 'cs' ? 'cs-CZ' : 'en-GB');
+    const num = (n: number) => n.toLocaleString(INTL_LOCALE[language]);
     const czk = (n: number) => `${num(n)} Kč`;
-    const eur = (n: number) => n.toLocaleString(language === 'cs' ? 'cs-CZ' : 'en-GB', { style: 'currency', currency: 'EUR' });
+    const eur = (n: number) => n.toLocaleString(INTL_LOCALE[language], { style: 'currency', currency: 'EUR' });
     const planName = (p: Plan) => t(`billing.plan.${p}` as TranslationKey);
     const intervalWord = (iv: BillingInterval) => t(iv === 'year' ? 'billing.yearly' : 'billing.monthly').toLocaleLowerCase(language);
 

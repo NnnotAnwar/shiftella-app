@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CheckIcon, SparkleIcon } from '@phosphor-icons/react';
 import { usePreferences } from '@shared/preferences/PreferencesContext';
+import { BASE_LANGUAGE, INTL_LOCALE } from '@shared/i18n/translations';
 import { buttonClass } from '@shared/components/buttonStyles';
 import {
     BUSINESS_MIN_SEATS,
@@ -33,8 +34,8 @@ export function PricingSection() {
     const c = LANDING[language].pricing;
     const [interval, setBillingInterval] = useState<BillingInterval>('month');
     const { freeBeta } = useFreeBeta();
-    const nf = new Intl.NumberFormat(language === 'cs' ? 'cs-CZ' : 'en-GB');
-    const plural = new Intl.PluralRules(language === 'cs' ? 'cs' : 'en');
+    const nf = new Intl.NumberFormat(INTL_LOCALE[language]);
+    const plural = new Intl.PluralRules(BASE_LANGUAGE[language]);
     const savePct = yearlySavingPct('team');
 
     const locationsLabel = (n: number) => {

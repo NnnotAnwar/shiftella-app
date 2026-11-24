@@ -1,13 +1,14 @@
 import type { Language } from '@shared/i18n/translations';
 
 /**
- * First-visit UI language from the browser: Czech and Slovak speakers get
- * Czech, everyone else English. Only used when no language was saved yet.
+ * First-visit UI language from the browser: Czech, Slovak and Ukrainian
+ * speakers get their language, everyone else English. Only used when no
+ * language was saved yet.
  */
 export function detectLanguage(languages: readonly string[] | undefined | null): Language {
     for (const tag of languages ?? []) {
         const base = tag.toLowerCase().split(/[-_]/)[0];
-        if (base === 'cs' || base === 'sk') return 'cs';
+        if (base === 'cs' || base === 'sk' || base === 'uk') return base;
         if (base) return 'en';
     }
     return 'en';

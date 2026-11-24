@@ -7,7 +7,7 @@ import { LANGUAGES } from '@shared/i18n/translations';
 import { BrandGlyph } from '@shared/components/BrandGlyph';
 import { APP_NAME } from '@shared/brand';
 
-/** One-tap CS/EN switch for the signed-out pages (saved like the Settings choice). */
+/** One-tap CS/EN/SK/UK switch for the signed-out pages (saved like the Settings choice). */
 export function LanguageToggle() {
     const { language, setLanguage, t } = usePreferences();
     // Czech first — the home market.

@@ -8,6 +8,8 @@
  * simple; PreferencesProvider keeps them in sync and re-renders consumers.
  */
 
+import { INTL_LOCALE, isLanguage } from '@shared/i18n/translations';
+
 export type TimeFormat = '12h' | '24h';
 
 let timeFormat: TimeFormat = '24h';
@@ -18,7 +20,7 @@ export function setTimeFormatPreference(format: TimeFormat) {
 }
 
 export function setLocalePreference(language: string) {
-  locale = language === 'cs' ? 'cs-CZ' : 'en-GB';
+  locale = isLanguage(language) ? INTL_LOCALE[language] : 'en-GB';
 }
 
 const hour12 = () => timeFormat === '12h';

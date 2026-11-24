@@ -11,7 +11,17 @@ import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { pragueDate, pragueMidnight } from './prague.ts';
 
 export type PrefCategory = 'shifts' | 'account' | 'requests';
+/** The languages server copy is written in. */
 export type Lang = 'en' | 'cs';
+
+/**
+ * A stored / client language code → the copy language. The app also speaks
+ * Slovak and Ukrainian, but server copy (push, Telegram, calendar) exists in
+ * cs + en only: Slovak falls back to Czech, everything else to English.
+ */
+export function normalizeLang(code: string | null | undefined): Lang {
+    return /^(cs|sk)\b/i.test(code ?? '') ? 'cs' : 'en';
+}
 
 /**
  * A notification to deliver. `key` + `vars` are localized per recipient at send

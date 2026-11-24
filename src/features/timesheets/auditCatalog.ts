@@ -22,7 +22,8 @@ export const AUDIT_GROUPS = {
     ],
     team: [
         'member_invited', 'members_imported', 'member_removed', 'member_left', 'profile_updated', 'username_change',
-        'wage_changed', 'wage_removed', 'roster_added', 'roster_removed', 'calendar_link_reset',
+        'wage_changed', 'wage_removed', 'roster_added', 'roster_removed', 'calendar_link_reset', 'telegram_linked',
+        'telegram_unlinked',
     ],
     roles: ['role_created', 'role_updated', 'role_moved', 'role_deleted', 'role_permissions'],
     announcements: ['announcement_posted', 'announcement_edited', 'announcement_deleted'],

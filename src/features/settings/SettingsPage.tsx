@@ -24,6 +24,7 @@ import { can } from '@shared/auth/permissions';
 import { useDismissibleWarning } from '@shared/hooks/useDismissibleWarning';
 import { HOLIDAY_WARNING_KEY } from '@features/schedule/holidays/HolidayWarning';
 import { useNotificationPrefs } from '@features/notifications/notificationPrefs';
+import { TelegramSettings } from '@features/notifications/telegram/TelegramSettings';
 import { useBiometricEnabled, setBiometricEnabled } from '@features/auth/biometricSetting';
 import { Select } from '@shared/components/Select';
 import { LANGUAGES } from '@shared/i18n/translations';
@@ -344,6 +345,9 @@ export default function SettingsPage() {
           <p className="px-3.5 py-2.5 text-caption text-ink-soft dark:text-slate-400">{t('settings.notif.pushHint')}</p>
         </div>
       </div>
+
+      {/* TELEGRAM — link the bot (hidden until VITE_TELEGRAM_BOT_USERNAME is set) */}
+      <TelegramSettings isReviewer={isReviewer} />
 
       {/* SUBSCRIPTION — the org's plan (Head Admin / Superadmin), see /billing */}
       {canManageBilling(user) && (

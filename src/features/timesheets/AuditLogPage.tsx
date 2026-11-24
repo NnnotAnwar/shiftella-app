@@ -38,6 +38,7 @@ import {
     ChatTextIcon,
     CreditCardIcon,
     GiftIcon,
+    TelegramLogoIcon,
 } from '@phosphor-icons/react';
 
 import { useAuthContext } from '@features/auth/AuthContext';
@@ -114,6 +115,8 @@ const ACTION: Record<string, ActionMeta> = {
     wage_removed: { labelKey: 'audit.a.wage_removed', Icon: CoinsIcon, badge: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300' },
     roster_added: { labelKey: 'audit.a.roster_added', Icon: MapPinLineIcon, badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' },
     roster_removed: { labelKey: 'audit.a.roster_removed', Icon: MapPinLineIcon, badge: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300' },
+    telegram_linked: { labelKey: 'audit.a.telegram_linked', Icon: TelegramLogoIcon, badge: 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-400' },
+    telegram_unlinked: { labelKey: 'audit.a.telegram_unlinked', Icon: TelegramLogoIcon, badge: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300' },
     announcement_posted: { labelKey: 'audit.a.announcement_posted', Icon: MegaphoneIcon, badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' },
     announcement_edited: { labelKey: 'audit.a.announcement_edited', Icon: MegaphoneIcon, badge: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400' },
     announcement_deleted: { labelKey: 'audit.a.announcement_deleted', Icon: TrashIcon, badge: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400' },

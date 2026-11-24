@@ -65,3 +65,34 @@ export async function shareOrExportAll(context: ExportAllContext, format: Export
     const ok = await shareNative(format, `Timesheets_${context.periodLabel}`, title, data);
     if (!ok) await exportAllShifts(format, context);
 }
+
+/**
+ * Any generated file (e.g. the payroll export: XLSX / CSV / XML): a browser
+ * download on the web, the native share sheet inside the app.
+ */
+export async function saveOrShareFile(file: { fileName: string; mime: string; text?: string; base64?: string }, title: string): Promise<void> {
+    if (Capacitor.isNativePlatform()) {
+        try {
+            const res =
+                file.text != null
+                    ? await Filesystem.writeFile({ path: file.fileName, data: file.text, directory: Directory.Cache, encoding: Encoding.UTF8 })
+                    : await Filesystem.writeFile({ path: file.fileName, data: file.base64 ?? '', directory: Directory.Cache });
+            await Share.share({ title, url: res.uri, dialogTitle: title });
+            return;
+        } catch (err) {
+            console.error('Native share failed', err);
+        }
+    }
+    const blob =
+        file.text != null
+            ? new Blob([file.text], { type: file.mime })
+            : new Blob([Uint8Array.from(atob(file.base64 ?? ''), (c) => c.charCodeAt(0))], { type: file.mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = file.fileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+}

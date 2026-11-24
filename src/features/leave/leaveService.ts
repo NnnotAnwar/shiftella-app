@@ -92,6 +92,14 @@ export const leaveService = {
         return z.array(LeaveBalanceSchema).parse(data ?? []);
     },
 
+    /** Weekly hours set per member (rows RLS lets the caller read — everyone for people who see requests). */
+    async weeklyHoursAll(): Promise<Map<string, number>> {
+        const { data, error } = await supabase.from('member_leave').select('user_id, weekly_hours').not('weekly_hours', 'is', null);
+        if (error) throw error;
+        const rows = z.array(z.object({ user_id: z.string(), weekly_hours: num })).parse(data ?? []);
+        return new Map(rows.map((r) => [r.user_id, r.weekly_hours]));
+    },
+
     async memberLeave(userId: string): Promise<MemberLeave | null> {
         const { data, error } = await supabase.from('member_leave').select('user_id, weekly_hours, vacation_hours').eq('user_id', userId).maybeSingle();
         if (error) throw error;

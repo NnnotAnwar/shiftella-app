@@ -78,6 +78,17 @@ interface RosterGridProps {
     isLetter?: (shift: ScheduledShift) => boolean;
     /** Czech rest-rule warnings for a planned shift (11 h rest, days in a row), as text. */
     restFor?: (shift: ScheduledShift) => string[];
+    /** Σ column as planned hours (+ cost for wage readers) instead of the shift count. */
+    sumFor?: (memberId: string) => RowSum | undefined;
+    /** Overtime note for a member (amber marker by the name), if they plan over their weekly hours. */
+    overtimeFor?: (memberId: string) => string | undefined;
+}
+
+export interface RowSum {
+    hours: string;
+    cost?: string;
+    /** Tooltip: shift count, draft part, … */
+    title: string;
 }
 
 /** Diagonal hatch for "can't work" cells — reads as blocked without shouting. */
@@ -96,7 +107,7 @@ function WeekPreview({ days, tone }: { days: number[]; tone: 'sky' | 'emerald' }
     );
 }
 
-export function RosterGrid({ monthKey, rows, shifts, code, canManage, onCellTap, onQuickFill, onRemoveRow, leaveFor, onOpenProfile, holidayFor, requiredOn, availabilityFor, outsideHours, isLetter, restFor }: RosterGridProps) {
+export function RosterGrid({ monthKey, rows, shifts, code, canManage, onCellTap, onQuickFill, onRemoveRow, leaveFor, onOpenProfile, holidayFor, requiredOn, availabilityFor, outsideHours, isLetter, restFor, sumFor, overtimeFor }: RosterGridProps) {
     const t = useTranslation();
     const [fillMenu, setFillMenu] = useState<{ id: string; name: string; left: number; top: number } | null>(null);
 
@@ -161,6 +172,8 @@ export function RosterGrid({ monthKey, rows, shifts, code, canManage, onCellTap,
     const NAME_W = 'w-32 min-w-32 max-w-32 sm:w-40 sm:min-w-40 sm:max-w-40';
     // Blank columns pad the shorter band so day columns line up across bands.
     const blanksFor = (count: number) => Array.from({ length: Math.max(0, maxCols - count) });
+    // Σ column: a narrow shift count, or hours (+ money) when the planner sees the cost.
+    const SUM_W = sumFor ? 'w-16 min-w-16' : 'w-10 min-w-10';
 
     return (
         <div>
@@ -207,7 +220,7 @@ export function RosterGrid({ monthKey, rows, shifts, code, canManage, onCellTap,
                                         <th key={`b${i}`} className="border-b border-gray-100 dark:border-gray-800" />
                                     ))}
                                     {/* Month total per person — rendered on the second band only. */}
-                                    <th className={`border-b border-l border-gray-100 dark:border-gray-800 px-0 pt-1.5 pb-1 w-10 min-w-10 ${bi === 0 ? 'opacity-0' : ''}`}>
+                                    <th className={`border-b border-l border-gray-100 dark:border-gray-800 px-0 pt-1.5 pb-1 ${SUM_W} ${bi === 0 ? 'opacity-0' : ''}`}>
                                         <span className="text-[10px] font-bold text-gray-400">Σ</span>
                                     </th>
                                 </tr>
@@ -233,6 +246,14 @@ export function RosterGrid({ monthKey, rows, shifts, code, canManage, onCellTap,
                                                             {row.name}
                                                         </span>
                                                     )}
+                                                    {(() => {
+                                                        const ot = overtimeFor?.(row.id);
+                                                        return ot ? (
+                                                            <span title={ot} aria-label={ot} role="img" className="shrink-0 p-0.5 -m-0.5">
+                                                                <span className="block size-1.5 rounded-full bg-amber-500 ring-2 ring-amber-500/20" />
+                                                            </span>
+                                                        ) : null;
+                                                    })()}
                                                     {/* Row actions once, on the first band. Always visible on
                                                         touch (no hover there); revealed on hover for mouse. */}
                                                     {bi === 0 && canManage && row.editable && onQuickFill && (
@@ -323,11 +344,28 @@ export function RosterGrid({ monthKey, rows, shifts, code, canManage, onCellTap,
                                             {blanksFor(days.length).map((_, i) => (
                                                 <td key={`b${i}`} className={`border-b border-gray-100 dark:border-gray-800 h-9 ${zebra}`} />
                                             ))}
-                                            <td className={`border-b border-l border-gray-100 dark:border-gray-800 h-9 ${zebra} ${bi === 0 ? 'opacity-0' : ''}`}>
-                                                <span className="text-[11px] font-bold tabular-nums text-gray-500 dark:text-gray-400">
-                                                    {(memberDays ? [...memberDays.values()].flat().length : 0) || ''}
-                                                </span>
-                                            </td>
+                                            {(() => {
+                                                const sum = sumFor?.(row.id);
+                                                return (
+                                                    <td
+                                                        title={bi > 0 ? sum?.title : undefined}
+                                                        className={`border-b border-l border-gray-100 dark:border-gray-800 h-9 px-0.5 ${zebra} ${bi === 0 ? 'opacity-0' : ''}`}
+                                                    >
+                                                        {sumFor ? (
+                                                            sum && (
+                                                                <span className="flex flex-col items-center gap-0.5 leading-none tabular-nums whitespace-nowrap">
+                                                                    <span className="text-caption font-bold text-gray-600 dark:text-gray-300">{sum.hours}</span>
+                                                                    {sum.cost && <span className="text-caption font-normal text-gray-400 dark:text-gray-500">{sum.cost}</span>}
+                                                                </span>
+                                                            )
+                                                        ) : (
+                                                            <span className="text-[11px] font-bold tabular-nums text-gray-500 dark:text-gray-400">
+                                                                {(memberDays ? [...memberDays.values()].flat().length : 0) || ''}
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                );
+                                            })()}
                                         </tr>
                                     );
                                 })}

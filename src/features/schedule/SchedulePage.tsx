@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { PlusIcon, FilePdfIcon, FileXlsIcon, DownloadSimpleIcon, CaretDownIcon, MapPinIcon, CalendarBlankIcon, TableIcon, EraserIcon, CopySimpleIcon, PaperPlaneTiltIcon, UsersThreeIcon } from '@phosphor-icons/react';
+import { PlusIcon, FilePdfIcon, FileXlsIcon, DownloadSimpleIcon, CaretDownIcon, MapPinIcon, CalendarBlankIcon, TableIcon, EraserIcon, CopySimpleIcon, PaperPlaneTiltIcon, UsersThreeIcon, CoinsIcon } from '@phosphor-icons/react';
 
 import { useAuthContext } from '@features/auth/AuthContext';
 import { useShiftContext } from '@features/shifts/ShiftContext';
@@ -18,7 +18,9 @@ import { scheduleService } from './scheduleService';
 import { UserProfileModal } from '@features/profile/components/UserProfileModal';
 import { ScheduledShiftEditor, type DayEditorResult } from './components/ScheduledShiftEditor';
 import { MonthCalendar } from './components/MonthCalendar';
-import { RosterGrid, type RosterRow } from './components/RosterGrid';
+import { RosterGrid, type RosterRow, type RowSum } from './components/RosterGrid';
+import { useRotaCost } from './useRotaCost';
+import { formatMoney, formatPlannedHours, locKey, overtimePremium } from './rotaCost';
 import { MemberSearchAdd } from './components/MemberSearchAdd';
 import { quickFillDays, copyTargetDay } from './scheduleLogic';
 import { MyTeam } from './components/MyTeam';
@@ -265,6 +267,9 @@ export default function SchedulePage() {
         return list;
     }, [shifts, teamOnly, personQuery, membersQ.data, user]);
 
+    // Rota cost: planned hours + overtime for planners, money only for wage readers.
+    const rc = useRotaCost({ user, enabled: teamView && (canManage || can(user, 'wages.edit')), monthKey: selectedMonth, shifts: visibleShifts });
+
     // Team view: one calendar section per active location (keep archived ones
     // that still hold shifts this month), plus a "no location" bucket.
     const sections = useMemo(() => {
@@ -296,6 +301,45 @@ export default function SchedulePage() {
     };
     const memberFull = (s: ScheduledShift) =>
         `${s.profiles?.first_name ?? ''} ${s.profiles?.last_name ?? ''}`.trim() || s.profiles?.username || '—';
+
+    // --- Rota cost labels ---
+    const hrs = (h: number) => formatPlannedHours(h, language);
+    const money = (byCurrency: Record<string, number>) => (rc.showMoney ? formatMoney(byCurrency, language) : '');
+    const memberName = (id: string) => {
+        const m = (membersQ.data ?? []).find((x) => x.id === id);
+        return m ? [m.first_name, m.last_name].filter(Boolean).join(' ') || m.username : '—';
+    };
+    const overtimeText = (userId: string): string | undefined => {
+        const ot = rc.overtime.get(userId);
+        if (!ot) return undefined;
+        const lines = [
+            t('cost.overtime', { hours: hrs(ot.hours) }),
+            ...ot.weeks.map((w) => t('cost.overtimeWeek', { week: String(Number(w.week.slice(-2))), planned: hrs(w.planned), limit: hrs(w.limit) })),
+        ];
+        const rate = rc.rateOf(userId);
+        if (rc.showMoney && rate) lines.push(t('cost.premium', { amount: formatMoney({ [rate.currency]: overtimePremium(ot.hours, rate) }, language) }));
+        return lines.join('\n');
+    };
+    const sumFor = (locId: string | null, items: ScheduledShift[]) => (memberId: string): RowSum | undefined => {
+        const line = rc.cost.byRow.get(`${locKey(locId)}|${memberId}`);
+        if (!line) return undefined;
+        const count = items.filter((s) => s.user_id === memberId).length;
+        return {
+            hours: hrs(line.hours),
+            cost: money(line.cost) || undefined,
+            title: [t('cost.shifts', { count }), line.draftHours > 0 ? t('cost.draftHours', { hours: hrs(line.draftHours) }) : ''].filter(Boolean).join('\n'),
+        };
+    };
+    const visibleIds = new Set(visibleShifts.map((s) => s.user_id));
+    const overtimeIds = [...rc.overtime.keys()].filter((id) => visibleIds.has(id));
+    const overtimeExtra = (() => {
+        const byCurrency: Record<string, number> = {};
+        for (const id of overtimeIds) {
+            const rate = rc.rateOf(id);
+            if (rate) byCurrency[rate.currency] = (byCurrency[rate.currency] ?? 0) + overtimePremium(rc.overtime.get(id)!.hours, rate);
+        }
+        return money(byCurrency);
+    })();
 
     const periodLabel = monthStart.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
 
@@ -788,6 +832,33 @@ export default function SchedulePage() {
                             onManage={() => setManagingTemplates(true)}
                         />
                     )}
+                    {/* Month total — one muted line; money only for wage readers. */}
+                    {rc.enabled && rc.cost.total.hours > 0 && (
+                        <p title={t('cost.hint')} className="flex flex-wrap items-center gap-x-2 gap-y-1 px-1 text-caption text-gray-500 dark:text-gray-400 tabular-nums">
+                            <CoinsIcon weight="bold" className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                            <span className="font-semibold text-gray-700 dark:text-gray-200">
+                                {t('cost.planned')}: {hrs(rc.cost.total.hours)}
+                                {money(rc.cost.total.cost) && ` · ${money(rc.cost.total.cost)}`}
+                            </span>
+                            {rc.cost.total.draftHours > 0 && (
+                                <span className="rounded-full bg-gray-500/10 px-1.5 leading-4">
+                                    {t('cost.drafts', { amount: money(rc.cost.total.draftCost) || hrs(rc.cost.total.draftHours) })}
+                                </span>
+                            )}
+                            {overtimeIds.length > 0 && (
+                                <span
+                                    title={overtimeIds.map((id) => `${memberName(id)}: ${t('cost.overtime', { hours: hrs(rc.overtime.get(id)!.hours) })}`).join('\n')}
+                                    className="rounded-full bg-amber-500/12 px-1.5 leading-4 text-amber-700 dark:text-amber-300"
+                                >
+                                    {t('cost.overtimePeople', { count: overtimeIds.length })}
+                                    {overtimeExtra && ` · +${overtimeExtra}`}
+                                </span>
+                            )}
+                            {rc.showMoney && rc.cost.total.unpriced.size > 0 && (
+                                <span title={[...rc.cost.total.unpriced].map(memberName).join('\n')}>{t('cost.unpriced', { count: rc.cost.total.unpriced.size })}</span>
+                            )}
+                        </p>
+                    )}
                     {sections.map((sec) => {
                         const key = sec.id ?? 'none';
                         const isOpen = !collapsed.has(key);
@@ -807,6 +878,18 @@ export default function SchedulePage() {
                                             <span className="block text-body-strong text-gray-900 dark:text-white truncate">{sec.name}</span>
                                             <span className="flex items-center gap-1.5 text-caption text-gray-400">
                                                 {sec.items.length} {t('schedule.shiftsCount')}
+                                                {rc.enabled &&
+                                                    (() => {
+                                                        const line = rc.cost.byLocation.get(locKey(sec.id));
+                                                        if (!line) return null;
+                                                        const m = money(line.cost);
+                                                        return (
+                                                            <span className="tabular-nums" title={t('cost.hint')}>
+                                                                · {hrs(line.hours)}
+                                                                {m && ` · ${m}`}
+                                                            </span>
+                                                        );
+                                                    })()}
                                                 {(() => {
                                                     const due = sec.items.filter((s) => s.published && new Date(s.starts_at).getTime() > now);
                                                     if (due.length === 0) return null;
@@ -882,6 +965,8 @@ export default function SchedulePage() {
                                                             outsideHours={(sh) => isOutsideHours(sh.starts_at, sh.ends_at, hoursOf(sec.id), sh.all_day)}
                                                             isLetter={isLetterShift}
                                                             restFor={(sh) => (rest.get(sh.id) ?? []).map(restText)}
+                                                            sumFor={rc.enabled ? sumFor(sec.id, sec.items) : undefined}
+                                                            overtimeFor={rc.enabled ? overtimeText : undefined}
                                                         />
                                                     )}
                                                     {sec.id && canManage && addable.length > 0 && (

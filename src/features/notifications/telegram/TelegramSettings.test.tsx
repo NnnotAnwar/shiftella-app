@@ -142,6 +142,7 @@ describe('Settings → Telegram', () => {
         state.link = { ...linked };
         renderBlock(true);
         expect(await screen.findByText('@jana_k')).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'settings.telegram.openBot' })).toHaveAttribute('href', 'https://t.me/ShiftellaBot');
         expect(screen.getByText(/· settings\.telegram\.linked$/)).toBeInTheDocument();
         // Reviewer sees the requests switch.
         expect(screen.getByRole('switch', { name: 'settings.notif.requests' })).toBeInTheDocument();

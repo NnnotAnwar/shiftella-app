@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="cs">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -12,11 +12,62 @@
     <link rel="preconnect" href="https://api.fontshare.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400..900&display=swap" />
     <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@500,700,900&display=swap" />
-    <meta name="description" content="Shiftella – modern shift management for teams. Clock in/out by location in real time, see the live board, monthly analytics and admin tools." />
+    <!-- SEO + sharing, in Czech (the home market). The landing page swaps the title and
+         description per language at runtime (src/features/landing/LandingPage.tsx); the
+         app shell sets the tab title to just "Shiftella". -->
+    <title>Shiftella – rozpis směn, docházka a výkazy pro malé týmy</title>
+    <meta name="description" content="Rozpis směn, docházka podle pobočky, žádosti a výměny směn i výkazy pro kavárny, obchody a ordinace. Bez Excelu a skupinových chatů. 30 dní zdarma, bez karty." />
+    <link rel="canonical" href="https://shiftella.app/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Shiftella" />
+    <meta property="og:locale" content="cs_CZ" />
+    <meta property="og:locale:alternate" content="en_GB" />
+    <meta property="og:url" content="https://shiftella.app/" />
+    <meta property="og:title" content="Shiftella – rozpis směn, docházka a výkazy pro malé týmy" />
+    <meta property="og:description" content="Rozpis směn, docházka a výkazy pro kavárny, obchody a ordinace. Bez Excelu a skupinových chatů. 30 dní zdarma, bez karty." />
+    <meta property="og:image" content="https://shiftella.app/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Shiftella: nástěnka směn na počítači a v telefonu" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Shiftella – rozpis směn, docházka a výkazy pro malé týmy" />
+    <meta name="twitter:description" content="Rozpis směn, docházka a výkazy pro kavárny, obchody a ordinace. 30 dní zdarma, bez karty." />
+    <meta name="twitter:image" content="https://shiftella.app/og-image.png" />
+    <!-- Structured data (a JSON data block, not a script — CSP script-src doesn't apply).
+         Prices must match src/features/billing/plans.ts; landing/seo.test.ts checks it. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Shiftella",
+        "url": "https://shiftella.app/",
+        "image": "https://shiftella.app/og-image.png",
+        "description": "Rozpis směn, docházka podle pobočky, žádosti a výměny směn i výkazy pro malé týmy.",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Web, Android, iOS",
+        "inLanguage": ["cs", "en"],
+        "offers": [
+          { "@type": "Offer", "name": "Free", "price": "0", "priceCurrency": "CZK" },
+          {
+            "@type": "Offer",
+            "name": "Team",
+            "price": "449",
+            "priceCurrency": "CZK",
+            "priceSpecification": { "@type": "UnitPriceSpecification", "price": "449", "priceCurrency": "CZK", "unitCode": "MON", "unitText": "month" }
+          },
+          {
+            "@type": "Offer",
+            "name": "Business",
+            "price": "45",
+            "priceCurrency": "CZK",
+            "priceSpecification": { "@type": "UnitPriceSpecification", "price": "45", "priceCurrency": "CZK", "unitCode": "MON", "unitText": "person per month" }
+          }
+        ]
+      }
+    </script>
     <!-- use-credentials: browsers fetch the manifest without credentials by default, so behind basic auth (dev.shiftella.app) it would 401. -->
     <link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials" />
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
-    <title>Shiftella</title>
   </head>
   <body>
     <div id="root"></div>

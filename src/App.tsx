@@ -38,6 +38,8 @@ import { GatedPage } from './features/billing/UpgradeGate';
  */
 
 // Lazy page chunks. Named exports are mapped to a `default` for React.lazy.
+// Public landing page for signed-out web visitors — its own chunk, never loaded for signed-in users.
+const LandingPage = lazy(() => import('./features/landing/LandingPage').then((m) => ({ default: m.LandingPage })));
 const HomePage = lazy(() => import('./app/layout/HomePage').then((m) => ({ default: m.HomePage })));
 const LoginPage = lazy(() => import('./features/auth/LoginPage').then((m) => ({ default: m.LoginPage })));
 const SignupPage = lazy(() => import('./features/auth/SignupPage').then((m) => ({ default: m.SignupPage })));
@@ -116,8 +118,9 @@ export default function App() {
                       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                     </Route>
 
-                    {/* PROTECTED: requires a session; redirects to "/login" otherwise. */}
-                    <Route element={<ProtectedRoute />}>
+                    {/* PROTECTED: requires a session; redirects to "/login" otherwise.
+                        Signed-out web visitors at "/" get the landing page instead (native: login). */}
+                    <Route element={<ProtectedRoute landing={<LandingPage />} />}>
                       <Route path="/" element={<AppShell />}>
                         <Route index element={<HomePage />} />
                         <Route path="overview" element={<OverviewPage />} />

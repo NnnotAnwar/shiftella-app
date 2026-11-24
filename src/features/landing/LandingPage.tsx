@@ -21,8 +21,9 @@ import { buttonClass } from '@shared/components/buttonStyles';
 import { BrandGlyph } from '@shared/components/BrandGlyph';
 import { APP_NAME, SUPPORT_EMAIL } from '@shared/brand';
 import { TRIAL_DAYS } from '@features/billing/plans';
+import { useFreeBeta } from '@features/billing/useBilling';
 import { LanguageToggle, ThemeToggle } from '@features/auth/AuthShell';
-import { LANDING, fill, type FeatureIcon, type LandingCopy } from './landingContent';
+import { LANDING, fill, withFreeBeta, type FeatureIcon, type LandingCopy } from './landingContent';
 import { PricingSection } from './PricingSection';
 import { SectionHead } from './SectionHead';
 import { useReveal } from './useReveal';
@@ -346,7 +347,8 @@ function Footer({ c }: { c: LandingCopy }) {
 
 export function LandingPage() {
     const { language } = usePreferences();
-    const c = LANDING[language];
+    const { freeBeta } = useFreeBeta();
+    const c = withFreeBeta(LANDING[language], freeBeta);
     const rootRef = useRef<HTMLDivElement>(null);
     useDocumentMeta(c.meta);
     useReveal(rootRef);

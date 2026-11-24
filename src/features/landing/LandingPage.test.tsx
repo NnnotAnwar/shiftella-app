@@ -8,7 +8,8 @@ import { LANDING } from './landingContent';
 import { LandingPage } from './LandingPage';
 
 vi.mock('@shared/preferences/PreferencesContext', () => ({ usePreferences: vi.fn() }));
-vi.mock('@features/billing/useBilling', () => ({ useFreeBeta: () => ({ freeBeta: false, isLoading: false }) }));
+const beta = vi.hoisted(() => ({ on: false }));
+vi.mock('@features/billing/useBilling', () => ({ useFreeBeta: () => ({ freeBeta: beta.on, isLoading: false }) }));
 vi.mock('@capacitor/core', () => ({ Capacitor: { isNativePlatform: vi.fn(() => false) } }));
 // The toggles need the theme provider; they're covered with the auth pages.
 vi.mock('@features/auth/AuthShell', () => ({ LanguageToggle: () => null, ThemeToggle: () => null }));
@@ -32,6 +33,7 @@ function renderLanding() {
 }
 
 beforeEach(() => {
+    beta.on = false;
     vi.mocked(Capacitor.isNativePlatform).mockReturnValue(false);
     document.head.innerHTML = '<meta name="description" content="static">';
     document.title = 'static';
@@ -46,6 +48,16 @@ describe('LandingPage', () => {
         expect(screen.getAllByRole('link', { name: 'Přihlásit se' })[0]).toHaveAttribute('href', '/login');
         expect(document.title).toBe(LANDING.cs.meta.title);
         expect(document.querySelector('meta[name="description"]')).toHaveAttribute('content', LANDING.cs.meta.description);
+    });
+
+    it('free beta: "Začít zdarma" instead of the 30-day trial everywhere', () => {
+        beta.on = true;
+        setLanguage('cs');
+        renderLanding();
+        expect(screen.queryByRole('link', { name: /Vyzkoušet 30 dní zdarma/ })).toBeNull();
+        expect(screen.getAllByRole('link', { name: /Začít zdarma/ })[0]).toHaveAttribute('href', '/signup');
+        expect(screen.getByText('Zdarma během bety')).toBeInTheDocument();
+        expect(screen.getByText(LANDING.cs.beta.finalSub)).toBeInTheDocument();
     });
 
     it('uses the English title and restores the previous one on unmount', () => {

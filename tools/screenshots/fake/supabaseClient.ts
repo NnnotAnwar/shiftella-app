@@ -361,6 +361,14 @@ const rpcs: Record<string, (args: Row) => unknown> = {
         locations: db.locations.filter((l) => !l.archived_at).length,
     }),
     org_plan: () => 'business',
+    // `--billing beta`: the free beta is on.
+    billing_free_beta: () => {
+        try {
+            return localStorage.getItem('demo-billing') === 'beta';
+        } catch {
+            return false;
+        }
+    },
     // Settings → Calendar: a fixed demo feed token.
     calendar_feed_token: () => 'd3m0'.replace(/[^a-f0-9]/g, '0').padEnd(64, 'a'),
     log_members_imported: () => null,

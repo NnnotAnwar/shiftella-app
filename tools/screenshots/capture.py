@@ -102,6 +102,19 @@ def shot_announcements(page: Page, base: str, out: Path) -> None:
     page.screenshot(path=out / "announcements.png")
 
 
+def shot_leave(page: Page, base: str, out: Path) -> None:
+    go(page, base, "/schedule")
+    page.get_by_role("button", name="Zůstatky").first.click()
+    page.wait_for_timeout(800)
+    page.screenshot(path=out / "leave-balances.png")
+
+
+def shot_timeoff(page: Page, base: str, out: Path) -> None:
+    go(page, base, "/schedule")
+    scroll_to_text(page, "Zůstatky", 120)
+    page.screenshot(path=out / "timeoff-card.png")
+
+
 def shot_billing(page: Page, base: str, out: Path) -> None:
     go(page, base, "/billing")
     page.screenshot(path=out / "billing.png")
@@ -140,6 +153,8 @@ DESKTOP_SHOTS = {
     "requests": shot_requests,
     "announcements": shot_announcements,
     "billing": shot_billing,
+    "leave": shot_leave,
+    "timeoff": shot_timeoff,
     "palette": shot_palette,
 }
 MOBILE_SHOTS = {

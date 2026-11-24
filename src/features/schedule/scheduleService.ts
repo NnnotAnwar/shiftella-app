@@ -131,7 +131,7 @@ export const scheduleService = {
     },
 
     // ------------------------------------------------------------------
-    // TIME OFF (vacation / sick / other)
+    // TIME OFF (vacation, sick leave, náhradní volno, …)
     // ------------------------------------------------------------------
 
     /** Leave entries overlapping [fromDate, toDate] (YYYY-MM-DD, inclusive). */
@@ -153,6 +153,8 @@ export const scheduleService = {
         kind: TimeOff['kind'];
         starts_on: string;
         ends_on: string;
+        /** Part of one day (doctor 2 h); null/undefined = the DB counts the planned shifts. */
+        hours?: number | null;
         note?: string | null;
         approved?: boolean;
         reviewed_by?: string | null;
@@ -163,6 +165,7 @@ export const scheduleService = {
             kind: input.kind,
             starts_on: input.starts_on,
             ends_on: input.ends_on,
+            ...(input.hours != null ? { hours: input.hours } : {}),
             note: input.note ?? null,
             status: input.approved ? 'approved' : 'pending',
             reviewed_by: input.approved ? (input.reviewed_by ?? null) : null,

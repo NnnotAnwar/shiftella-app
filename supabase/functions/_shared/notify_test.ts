@@ -59,3 +59,12 @@ Deno.test('announcements: audience lookup failed → a targeted notice goes to n
     });
     deepStrictEqual(msgs, []);
 });
+
+Deno.test('time off: every kind reads right in Czech ("žádost o …") and English', () => {
+    const msg = (key: string, kind: string): Parameters<typeof render>[0] => ({ userId: 'u', key, vars: { who: 'Eva', kind, range: '29. 12.' } });
+    deepStrictEqual(render(msg('timeoff_requested', 'comp_time'), 'cs'), { title: 'Žádost o volno', body: 'Eva žádá o náhradní volno: 29. 12..' });
+    strictEqual(render(msg('timeoff_approved', 'doctor'), 'cs').body, 'Vaše žádost o návštěvu lékaře (29. 12.) byla schválena.');
+    strictEqual(render(msg('timeoff_declined', 'vacation'), 'cs').body, 'Vaše žádost o dovolenou (29. 12.) byla zamítnuta.');
+    strictEqual(render(msg('timeoff_approved', 'comp_time'), 'en').body, 'Your time off in lieu (29. 12.) was approved.');
+    strictEqual(render(msg('timeoff_requested', 'something_new'), 'en').body, 'Eva requested leave: 29. 12..');
+});

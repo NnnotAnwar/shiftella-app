@@ -49,13 +49,30 @@ function shiftsCount(n: number, lang: Lang): string {
     return lang === 'cs' ? `${n} ${csPlural(n, 'směna', 'směny', 'směn')}` : `${n} shift${n === 1 ? '' : 's'}`;
 }
 
+// Absence types (mirror KIND_KEYS in src/features/schedule/timeOffShared.ts).
 const KIND_ACC: Record<Lang, Record<string, string>> = {
-    en: { vacation: 'vacation', sick: 'sick leave', other: 'leave' },
-    cs: { vacation: 'dovolenou', sick: 'nemocenskou', other: 'volno' },
+    en: {
+        vacation: 'vacation', sick: 'sick leave', other: 'leave', ocr: 'family care leave (OČR)', comp_time: 'time off in lieu',
+        unpaid: 'unpaid leave', doctor: 'a doctor\'s visit', sick_day: 'a sick day', business_trip: 'a business trip',
+        home_office: 'home office', parental: 'parental leave', obstacle: 'an employer-side obstacle',
+    },
+    cs: {
+        vacation: 'dovolenou', sick: 'nemocenskou', other: 'volno', ocr: 'OČR', comp_time: 'náhradní volno',
+        unpaid: 'neplacené volno', doctor: 'návštěvu lékaře', sick_day: 'sick day', business_trip: 'služební cestu',
+        home_office: 'home office', parental: 'mateřskou / rodičovskou', obstacle: 'překážku na straně zaměstnavatele',
+    },
 };
 const KIND_NOM: Record<Lang, Record<string, string>> = {
-    en: { vacation: 'vacation', sick: 'sick leave', other: 'leave' },
-    cs: { vacation: 'dovolená', sick: 'nemocenská', other: 'volno' },
+    en: {
+        vacation: 'vacation', sick: 'sick leave', other: 'leave', ocr: 'family care leave (OČR)', comp_time: 'time off in lieu',
+        unpaid: 'unpaid leave', doctor: 'doctor\'s visit', sick_day: 'sick day', business_trip: 'business trip',
+        home_office: 'home office', parental: 'parental leave', obstacle: 'employer-side obstacle',
+    },
+    cs: {
+        vacation: 'dovolená', sick: 'nemocenská', other: 'volno', ocr: 'OČR', comp_time: 'náhradní volno',
+        unpaid: 'neplacené volno', doctor: 'lékař', sick_day: 'sick day', business_trip: 'služební cesta',
+        home_office: 'home office', parental: 'mateřská / rodičovská', obstacle: 'překážka na straně zaměstnavatele',
+    },
 };
 
 /** "8:00" / "08:00" — a time of day in Prague (the app's business time zone). */
@@ -105,6 +122,9 @@ export function render(msg: PushMessage, lang: Lang): { title: string; body: str
     const atLoc = loc ? (cs ? ` v ${loc}` : ` at ${loc}`) : '';
     const n = Number(v.count ?? 1);
     const kind = String(v.kind ?? 'other');
+    // Czech: "žádost o <accusative>" agrees with every kind (dovolenou, náhradní volno, návštěvu lékaře …).
+    const kindAcc = (l: Lang) => KIND_ACC[l][kind] ?? KIND_ACC[l].other;
+    const kindNom = (l: Lang) => KIND_NOM[l][kind] ?? KIND_NOM[l].other;
     const range = String(v.range ?? '');
 
     switch (msg.key) {
@@ -163,16 +183,16 @@ export function render(msg: PushMessage, lang: Lang): { title: string; body: str
         }
         case 'timeoff_requested':
             return cs
-                ? { title: 'Žádost o volno', body: `${who} žádá o ${KIND_ACC.cs[kind]}: ${range}.` }
-                : { title: 'Time-off request', body: `${who} requested ${KIND_ACC.en[kind]}: ${range}.` };
+                ? { title: 'Žádost o volno', body: `${who} žádá o ${kindAcc('cs')}: ${range}.` }
+                : { title: 'Time-off request', body: `${who} requested ${kindAcc('en')}: ${range}.` };
         case 'timeoff_approved':
             return cs
-                ? { title: 'Volno schváleno', body: `Vaše ${KIND_NOM.cs[kind]} (${range}) byla schválena.` }
-                : { title: 'Time off approved', body: `Your ${KIND_NOM.en[kind]} (${range}) was approved.` };
+                ? { title: 'Volno schváleno', body: `Vaše žádost o ${kindAcc('cs')} (${range}) byla schválena.` }
+                : { title: 'Time off approved', body: `Your ${kindNom('en')} (${range}) was approved.` };
         case 'timeoff_declined':
             return cs
-                ? { title: 'Volno zamítnuto', body: `Vaše ${KIND_NOM.cs[kind]} (${range}) byla zamítnuta.` }
-                : { title: 'Time off declined', body: `Your ${KIND_NOM.en[kind]} (${range}) was declined.` };
+                ? { title: 'Volno zamítnuto', body: `Vaše žádost o ${kindAcc('cs')} (${range}) byla zamítnuta.` }
+                : { title: 'Time off declined', body: `Your ${kindNom('en')} (${range}) was declined.` };
         case 'profile_updated': {
             const fields = String(v.fields ?? (cs ? 'profil' : 'profile'));
             return cs

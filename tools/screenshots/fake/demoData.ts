@@ -218,12 +218,12 @@ export function buildDemoData(): Tables {
     // --- Leave (approved leave clears planned shifts, like the DB trigger) ---------
     const md = (day: number, monthOffset = 0) => ymd(new Date(today.getFullYear(), today.getMonth() + monthOffset, day));
     const time_off: Row[] = [
-        { id: id(5, 1), user_id: P.tereza, organization_id: ORG, kind: 'vacation', starts_on: md(21), ends_on: md(27), note: 'Vánoce u rodiny v Brně', status: 'pending', reviewed_by: null, review_note: null, reviewed_at: null, created_at: daysAgo(3, '18:12') },
-        { id: id(5, 2), user_id: P.ondrej, organization_id: ORG, kind: 'other', starts_on: md(31), ends_on: md(31), note: 'Stěhování do nového bytu', status: 'pending', reviewed_by: null, review_note: null, reviewed_at: null, created_at: daysAgo(1, '21:40') },
+        { id: id(5, 1), user_id: P.tereza, organization_id: ORG, kind: 'vacation', starts_on: md(21), ends_on: md(27), hours: 40, hours_auto: true, note: 'Vánoce u rodiny v Brně', status: 'pending', reviewed_by: null, review_note: null, reviewed_at: null, created_at: daysAgo(3, '18:12') },
+        { id: id(5, 2), user_id: P.ondrej, organization_id: ORG, kind: 'comp_time', starts_on: md(31), ends_on: md(31), hours: 8, hours_auto: true, note: 'Za práci na Štědrý den', status: 'pending', reviewed_by: null, review_note: null, reviewed_at: null, created_at: daysAgo(1, '21:40') },
         { id: id(5, 3), user_id: P.lukas, organization_id: ORG, kind: 'sick', starts_on: md(8), ends_on: md(9), note: 'Angína, neschopenka do středy', status: 'approved', reviewed_by: P.petra, review_note: 'Brzy se uzdrav!', reviewed_at: daysAgo(2, '07:15'), created_at: daysAgo(2, '06:48') },
-        { id: id(5, 4), user_id: P.eva, organization_id: ORG, kind: 'vacation', starts_on: md(28), ends_on: md(31), note: 'Hory s rodinou', status: 'approved', reviewed_by: P.petra, review_note: null, reviewed_at: daysAgo(14, '10:02'), created_at: daysAgo(16, '15:30') },
+        { id: id(5, 4), user_id: P.eva, organization_id: ORG, kind: 'vacation', starts_on: md(28), ends_on: md(31), hours: 32, hours_auto: true, note: 'Hory s rodinou', status: 'approved', reviewed_by: P.petra, review_note: null, reviewed_at: daysAgo(14, '10:02'), created_at: daysAgo(16, '15:30') },
         { id: id(5, 5), user_id: P.jakub, organization_id: ORG, kind: 'vacation', starts_on: md(19), ends_on: md(20), note: 'Prodloužený víkend', status: 'declined', reviewed_by: P.petra, review_note: 'Ten víkend máme firemní večírek na Vinohradech – zkusíme jiný termín?', reviewed_at: daysAgo(5, '11:20'), created_at: daysAgo(6, '19:05') },
-        { id: id(5, 6), user_id: P.petra, organization_id: ORG, kind: 'vacation', starts_on: md(4, 1), ends_on: md(8, 1), note: 'Lyže', status: 'approved', reviewed_by: P.petra, review_note: null, reviewed_at: daysAgo(20, '08:30'), created_at: daysAgo(20, '08:29') },
+        { id: id(5, 6), user_id: P.petra, organization_id: ORG, kind: 'vacation', starts_on: md(4, 1), ends_on: md(8, 1), hours: 40, hours_auto: true, note: 'Lyže', status: 'approved', reviewed_by: P.petra, review_note: null, reviewed_at: daysAgo(20, '08:30'), created_at: daysAgo(20, '08:29') },
     ];
     const onLeave = (uid: string, day: string) =>
         time_off.some((t) => t.status === 'approved' && t.user_id === uid && (t.starts_on as string) <= day && day <= (t.ends_on as string));

@@ -53,6 +53,7 @@ import { useTranslation } from '@shared/preferences/PreferencesContext';
 import { Select } from '@shared/components/Select';
 import { Skeleton } from '@shared/components/Skeleton';
 import type { TranslationKey } from '@shared/i18n/translations';
+import { fmtLeaveHours } from '@features/schedule/timeOffShared';
 import { PageHeader } from '@shared/components/PageHeader';
 
 const PAGE = 50;
@@ -131,6 +132,8 @@ const ACTION: Record<string, ActionMeta> = {
     request_declined: { labelKey: 'audit.a.request_declined', Icon: XCircleIcon, badge: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400' },
     request_cancelled: { labelKey: 'audit.a.request_cancelled', Icon: XCircleIcon, badge: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300' },
     org_updated: { labelKey: 'audit.a.org_updated', Icon: BuildingsIcon, badge: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400' },
+    leave_adjusted: { labelKey: 'audit.a.leave_adjusted', Icon: SunHorizonIcon, badge: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' },
+    leave_settings_changed: { labelKey: 'audit.a.leave_settings_changed', Icon: SunHorizonIcon, badge: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400' },
     plan_changed: { labelKey: 'audit.a.plan_changed', Icon: CreditCardIcon, badge: 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400' },
     plan_granted: { labelKey: 'audit.a.plan_granted', Icon: GiftIcon, badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' },
     plan_grant_removed: { labelKey: 'audit.a.plan_grant_removed', Icon: GiftIcon, badge: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300' },
@@ -460,6 +463,14 @@ function GenericBody({ entry }: { entry: ShiftAuditLog }) {
     const t = useTranslation();
     const d = entry.details;
     const parts: string[] = [];
+    if (entry.action === 'leave_adjusted' && d.bucket) {
+        const h = d.hours ?? 0;
+        parts.push(`${t(`leave.bucket.${d.bucket}` as TranslationKey)} ${h > 0 ? '+' : '−'}${fmtLeaveHours(Math.abs(h))}${d.year ? ` · ${d.year}` : ''}`);
+    }
+    if (entry.action === 'leave_settings_changed') {
+        if (d.weekly_hours != null) parts.push(`${t('leave.weeklyHours')}: ${d.weekly_hours}`);
+        if (d.vacation_hours != null) parts.push(`${t('leave.vacationHours')}: ${d.vacation_hours}`);
+    }
     if (d.kind) parts.push(t((entry.action.startsWith('request_') ? `mreq.kind.${d.kind}` : `timeoff.${d.kind}`) as TranslationKey));
     if (d.starts_at) parts.push(fmtRange(d.starts_at, d.ends_at, d.all_day));
     if (d.start_time) parts.push(`${d.start_time}–${d.end_time ?? ''}`);

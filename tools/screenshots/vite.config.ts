@@ -11,6 +11,13 @@ import appConfig from '../../vite.config';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '../..');
 
+/**
+ * E2E build (`corepack yarn e2e`): served under the real, enforced CSP, which
+ * forbids inline scripts — so no pinned clock (the demo data is relative to
+ * "now" anyway) and its own output folder.
+ */
+const E2E = process.env.E2E_BUILD === '1';
+
 /** The moment the app believes it is (override with SCREENSHOT_NOW). */
 const NOW = process.env.SCREENSHOT_NOW ?? '2026-12-10T10:30:00+01:00';
 
@@ -56,7 +63,8 @@ export default defineConfig({
     root,
     cacheDir: path.join(root, 'node_modules/.vite-screenshots'),
     define: appConfig.define,
-    plugins: [fakeSupabase(), ...(appConfig.plugins ?? []), pinnedClock()],
+    plugins: [fakeSupabase(), ...(appConfig.plugins ?? []), ...(E2E ? [] : [pinnedClock()])],
+    build: { ...appConfig.build, outDir: 'dist-e2e', emptyOutDir: true },
     resolve: { alias: appAliases },
     server: { port: Number(process.env.SCREENSHOT_PORT ?? 5199), strictPort: true, host: '127.0.0.1' },
     clearScreen: false,

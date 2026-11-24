@@ -1,0 +1,98 @@
+name: Uptime
+
+# Every 5 minutes: is production up? (site + landing assets + prod Supabase
+# Auth/Database — see tools/uptime/uptime.mjs). On a CHANGE (up → down,
+# down → up) it alerts through the existing Telegram bot; nothing in between,
+# so an outage is one message, not one every 5 minutes.
+#
+# Needs two repository secrets (docs/uptime.md):
+#   TELEGRAM_ALERT_BOT_TOKEN   the @shiftella_bot token
+#   TELEGRAM_ALERT_CHAT_ID     the owner's Telegram chat id
+# Until they exist it still checks and records the state, and only skips the
+# message. The run also fails once when the site goes down, so GitHub's own
+# "workflow failed" email is a fallback alert.
+#
+# Scheduled workflows run from the default branch (master): this starts after
+# the next release (manual runs, too, need the file on master). Until then it
+# runs on PRs that change it.
+#
+# The last state lives in the Actions cache (no repo writes, no extra tokens).
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  # Changes to the checker run it once on their PR (no alert unless the state changes).
+  pull_request:
+    paths: [tools/uptime/**, .github/workflows/uptime.yml]
+  workflow_dispatch:
+    inputs:
+      test_alert:
+        description: Only send a test message to the Telegram chat (checks the secrets)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  actions: write # read + prune this workflow's state cache entries
+
+concurrency:
+  group: uptime
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      TELEGRAM_ALERT_BOT_TOKEN: ${{ secrets.TELEGRAM_ALERT_BOT_TOKEN }}
+      TELEGRAM_ALERT_CHAT_ID: ${{ secrets.TELEGRAM_ALERT_CHAT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: tools/uptime
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Send a test alert
+        if: ${{ inputs.test_alert }}
+        run: node tools/uptime/uptime.mjs test-alert
+
+      - name: Restore the last state
+        if: ${{ !inputs.test_alert }}
+        uses: actions/cache/restore@v4
+        with:
+          path: .uptime-state.json
+          key: uptime-state-${{ github.run_id }}
+          restore-keys: uptime-state-
+
+      - name: Check production
+        id: check
+        if: ${{ !inputs.test_alert }}
+        run: node tools/uptime/uptime.mjs check .uptime-state.json
+
+      - name: Save the state
+        if: ${{ !inputs.test_alert && steps.check.outcome == 'success' && hashFiles('.uptime-state.json') != '' }}
+        uses: actions/cache/save@v4
+        with:
+          path: .uptime-state.json
+          key: uptime-state-${{ github.run_id }}-${{ github.run_attempt }}
+
+      # One tiny entry per run would pile up: keep only the newest few.
+      - name: Prune old state entries
+        if: ${{ !inputs.test_alert && steps.check.outcome == 'success' }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh cache list --key uptime-state- --sort created_at --order desc --limit 100 --json id --jq '.[3:][].id' \
+            | while read -r id; do gh cache delete "$id" >/dev/null || true; done
+
+      - name: Fail once when production goes down
+        if: ${{ steps.check.outputs.changed == 'true' && steps.check.outputs.status == 'down' }}
+        run: |
+          echo "::error::Production is down — see the summary above."
+          exit 1

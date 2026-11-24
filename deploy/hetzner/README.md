@@ -87,7 +87,7 @@ Before you start, the server is set up by the anwar.os repo (Docker plus the edg
    - then target `production`, on branch `master`.
 8. **Cut over.** `shiftella.app` is a new domain, so nothing switches away from Vercel and there's no downtime:
    - set the prod Site URL to `https://shiftella.app`;
-   - once the prod console shows no CSP reports for a while, change the last argument of the prod block in `shiftella.caddy` to `Content-Security-Policy` and reinstall the file (step 5);
+   - the prod CSP is **enforced** in `shiftella.caddy` (since v1.14; it was Report-Only before). Reinstall the file (step 5) when that release goes to prod;
    - rebuild the native apps with the new web URL for email links (`VITE_PUBLIC_SITE_URL`).
 9. **Automatic deploys:** in `deploy-hetzner.yml`, uncomment the `push:` block (master → production, dev → preprod). In Vercel, disconnect Git, so pushes don't deploy in two places.
 10. **Decommission Vercel**, after 2–4 weeks:
@@ -100,7 +100,9 @@ Before you start, the server is set up by the anwar.os repo (Docker plus the edg
 - **Edge headers.** The edge `security_headers` snippet adds HSTS, nosniff, Referrer-Policy, `X-Frame-Options: DENY`, COOP `same-origin`, and a Permissions-Policy that turns off camera, mic, geolocation, payment and USB. All of these fit Shiftella: it uses no geolocation, and billing is a **redirect** to Stripe Checkout, not embedded Stripe.js.
 - **CSP.** `shiftella.caddy` adds only the CSP. It allows the environment's Supabase project (https + wss), Google Fonts, Fontshare, and `data:`/`blob:` for exports.
 - **Adding a third-party script** means changing the CSP first. For example, embedding Stripe.js needs `script-src https://js.stripe.com`, `frame-src https://js.stripe.com https://hooks.stripe.com` and `connect-src https://api.stripe.com`. It also needs a `payment=(self)` Permissions-Policy override in our block, plus a note to the anwar.os side.
-- **Known noise.** zod checks whether `eval` is allowed and logs one harmless CSP message. Don't loosen the CSP for it.
+- **No eval.** zod used to probe `new Function` (one CSP report per page load); it now runs `jitless` (`src/shared/zodCsp.ts`). Never add `'unsafe-eval'`.
+- **Tested in CI.** The E2E job (`ci.yml` → `e2e`, docs/e2e.md) serves the app with the CSP line from `shiftella.caddy`, enforced, and fails on any violation — including exports and every main screen. Change the CSP → run `corepack yarn e2e`.
+- **Rollback.** If prod ever breaks on a blocked origin: set the last argument of the prod block back to `Content-Security-Policy-Report-Only`, reinstall (step 5), then fix the policy.
 
 ## Server commands (as root)
 

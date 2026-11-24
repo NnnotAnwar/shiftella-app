@@ -101,7 +101,8 @@ Deno.serve(async (req) => {
         };
         if (req.headers.get('If-None-Match') === etag) return new Response(null, { status: 304, headers });
         return new Response(req.method === 'HEAD' ? null : body, { status: 200, headers });
-    } catch (_err) {
+    } catch (err) {
+        console.error('calendar-feed failed', err instanceof Error ? err.message : err);
         return plain(500, 'Unexpected error.');
     }
 });

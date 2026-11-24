@@ -97,7 +97,11 @@ async function context(chatId: number): Promise<Ctx | null> {
 
 const reply = (chatId: number, text: string, extra: Record<string, unknown> = {}) => sendMessage(chatId, text, extra);
 const openAppKeyboard = (lang: Lang, route = '/'): InlineKeyboard => ({ inline_keyboard: [[{ text: copy(lang).openApp, url: `${appUrl()}${route}` }]] });
-const siteKeyboard = (): InlineKeyboard => ({ inline_keyboard: [[{ text: 'shiftella.app', url: 'https://shiftella.app' }]] });
+/** "Link it from the app" button → THIS environment's app (dev bot → dev.shiftella.app), at the Telegram settings. */
+const siteKeyboard = (): InlineKeyboard => {
+    const base = appUrl();
+    return { inline_keyboard: [[{ text: base.replace(/^https:\/\//, ''), url: `${base}/settings` }]] };
+};
 /** The persistent menu under the message box (sent with welcome / help / unknown replies). */
 const menu = (ctx: Ctx) => ({ reply_markup: mainMenu(ctx.language, ctx.can_review) });
 

@@ -105,9 +105,10 @@ owner — and approving leave clears the rota for those days.
 <td width="50%" valign="top">
 
 ### Plans & billing
-Free, Team and Business with a 30-day trial. Checkout and invoices run on Stripe;
-switching plan, interval or back to Free happens right in the app, with the exact
-price and seat count shown before anything is charged.
+**Free during the beta** — every organization gets Business, no limits, no card.
+After the beta: Free, Team and Business with a 30-day trial. Checkout and invoices
+run on Stripe; switching plan, interval or back to Free happens right in the app,
+with the exact price and seat count shown before anything is charged.
 
 </td>
 <td width="50%"><img src="docs/screenshots/billing.png" alt="Billing page" /></td>
@@ -137,7 +138,7 @@ mobile tab bar and one-tap actions with Undo keep frequent work to a single tap.
 | 📊 **Timesheets** | My hours with month pace, team timesheets, PDF / Excel / CSV exports, wages & pay estimate |
 | 🛡 **Roles** | Discord-style custom roles: view / change / delete per area, hierarchy enforced in Postgres RLS |
 | 📣 **Communication** | Announcements, in-app bell, push notifications (FCM) with per-category preferences |
-| 💳 **Subscriptions** | Free · Team (449 Kč flat) · Business (45 Kč / person), 30-day trial, Stripe Checkout & Portal, in-app plan changes |
+| 💳 **Subscriptions** | **Free beta now** (Business for everyone). After it: Free · Team (449 Kč flat) · Business (45 Kč / person), 30-day trial, Stripe Checkout & Portal, in-app plan changes |
 | 📜 **Activity log** | An append-only record of every action, filterable by person and group |
 | 🌍 **Everywhere** | Web (PWA), Android & iOS (Capacitor), Czech / English, light & dark, five colour schemes |
 
@@ -303,7 +304,12 @@ mobile tab bar and one-tap actions with Undo keep frequent work to a single tap.
 - **PWA-ready** — installable from the browser (Add to Home Screen).
 
 ### Subscriptions & billing
-- **Plans** — Free (up to 5 people, 1 location), **Team** (flat 449 Kč / month,
+- **Free beta (now)** — one database switch (`app_settings.free_beta`) gives
+  every organization Business with no limits; nothing can be bought (checkout
+  refuses on the server), the app shows "Free beta" instead of prices. Ending it
+  is a fresh trial for everyone plus one flag — see
+  [docs/free-beta.md](docs/free-beta.md).
+- **Plans** (after the beta) — Free (up to 5 people, 1 location), **Team** (flat 449 Kč / month,
   up to 15 people and 3 locations), **Business** (45 Kč per person / month,
   from 10, unlimited). Yearly billing saves 20 %. Prices are final (no VAT added).
 - **30-day Business trial** for every new organization, no card. When it (or a

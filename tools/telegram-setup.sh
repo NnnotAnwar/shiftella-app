@@ -40,12 +40,13 @@ call setMyCommands '{"commands":[
   {"command":"help","description":"What I can do"},
   {"command":"stop","description":"Disconnect this chat"}]}'
 
+# Czech users: the same English commands, with Czech descriptions.
 call setMyCommands '{"language_code":"cs","commands":[
-  {"command":"smeny","description":"Vaše směny na příštích 7 dní"},
-  {"command":"dnes","description":"Dnešní směna a kdo je s vámi"},
-  {"command":"hodiny","description":"Odpracované hodiny tento měsíc"},
-  {"command":"oznameni","description":"Nejnovější oznámení"},
-  {"command":"zadosti","description":"Žádosti, které čekají na vás"},
+  {"command":"shifts","description":"Vaše směny na příštích 7 dní"},
+  {"command":"today","description":"Dnešní směna a kdo je s vámi"},
+  {"command":"hours","description":"Odpracované hodiny tento měsíc"},
+  {"command":"news","description":"Nejnovější oznámení"},
+  {"command":"requests","description":"Žádosti, které čekají na vás"},
   {"command":"help","description":"Co umím"},
   {"command":"stop","description":"Odpojit tento chat"}]}'
 

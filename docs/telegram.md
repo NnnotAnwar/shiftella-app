@@ -109,10 +109,10 @@ curl -sS -X POST "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setMyCommands
 ```sh
 curl -sS -X POST "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setMyCommands" \
   -H 'Content-Type: application/json' \
-  -d '{"language_code":"cs","commands":[{"command":"smeny","description":"Vaše směny na příštích 7 dní"},{"command":"dnes","description":"Dnešní směna a kdo je s vámi"},{"command":"hodiny","description":"Odpracované hodiny tento měsíc"},{"command":"oznameni","description":"Nejnovější oznámení"},{"command":"zadosti","description":"Žádosti, které čekají na vás"},{"command":"help","description":"Co umím"},{"command":"stop","description":"Odpojit tento chat"}]}'
+  -d '{"language_code":"cs","commands":[{"command":"shifts","description":"Vaše směny na příštích 7 dní"},{"command":"today","description":"Dnešní směna a kdo je s vámi"},{"command":"hours","description":"Odpracované hodiny tento měsíc"},{"command":"news","description":"Nejnovější oznámení"},{"command":"requests","description":"Žádosti, které čekají na vás"},{"command":"help","description":"Co umím"},{"command":"stop","description":"Odpojit tento chat"}]}'
 ```
 
-Both alias sets work in either language: `/smeny` = `/shifts`, `/dnes` = `/today`, `/hodiny` = `/hours`, `/oznameni` = `/news`, `/zadosti` = `/requests`.
+The commands are the same English words in both languages; only their descriptions are translated.
 
 Check the webhook with `curl -sS "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/getWebhookInfo"`. Look at `url`, `pending_update_count` and `last_error_message`.
 
@@ -142,16 +142,22 @@ What users see under **Settings → Notifications → Telegram**:
 
 ## 7. What the bot does
 
-| Command | Reply |
+Commands are **English in every language** (the replies and the menu follow the user's app language, CS or EN).
+
+| Command / menu button | Reply |
 |---|---|
-| `/start <code>` | Links the chat. The code is single-use and expires after 10 minutes; it then replies with a welcome. |
-| `/start` (no code), `/help` | How to link (with a link to shiftella.app) or the command list. |
-| `/stop` | Unlinks. |
-| `/smeny` `/shifts` | Published shifts for the next 7 days (✓ confirmed, ○ not yet), with a **Confirm shifts** button and **Open app**. |
-| `/dnes` `/today` | Today's shift, whether you are clocked in, and who else is on at the same place. |
-| `/hodiny` `/hours` | This month's net hours, with the same mandatory-break rule as My hours (−30 min per started 6 h), against planned shifts. |
-| `/oznameni` `/news` | The latest 3 announcements. |
-| `/zadosti` `/requests` | People who can decide get up to 5 cards with **Approve / Decline** (the rest stay in the app). Others get "you don't decide requests". |
+| `/start <code>` | Links the chat. The code is single-use and expires after 10 minutes; the welcome also shows the menu. |
+| `/start` (no code), `/help`, `/menu`, **❓ Help** | How to link (with a link to shiftella.app), or the command list and the menu. |
+| `/stop` | Unlinks and removes the menu. |
+| `/shifts`, **📅 Shifts** | Published shifts for the next 7 days (✓ confirmed, ○ not yet), with **Confirm shifts**, **◀ / Next week ▶** (up to 8 weeks ahead, the message is redrawn in place) and **Open app**. Confirming redraws the list with ✓. |
+| `/today`, **📍 Today** | Today's shift, whether you are clocked in (read only), and who else is on at the same place; **🔄 Refresh** redraws it. |
+| `/hours`, **⏱ Hours** | This month's net hours, with the same mandatory-break rule as My hours (−30 min per started 6 h), against planned shifts; **◀ Previous month / Next month ▶** (up to 12 months back). |
+| `/news`, **📣 News** | The latest 3 announcements. |
+| `/requests`, **📥 Requests** | People who can decide get up to 5 cards with **Approve / Decline** (the rest stay in the app). Others get "you don't decide requests". The menu button is shown to reviewers only. |
+
+**Menu:** a persistent reply keyboard under the message box (📅 Shifts · 📍 Today / ⏱ Hours · 📣 News / 📥 Requests · ❓ Help), sent with the welcome, `/help` and any unrecognised text. The labels are localized and matched in both languages.
+
+**Never:** clocking in or out through the bot. Attendance stays in the app.
 
 Notifications cover every event `send-push` handles, plus announcements with their **full** body.
 
@@ -185,12 +191,12 @@ corepack yarn test src/features/notifications/telegram
    - The bot welcomes you by first name, and the app flips to "@you · linked" within a few seconds.
    - The activity log shows "Telegram linked".
 2. **Code is single-use and expires.** Open the same `t.me/...start=` link again: "link expired or already used". A code older than 10 minutes gives the same reply.
-3. **Commands.** `/smeny`, `/dnes`, `/hodiny`, `/oznameni` in a Czech account, and `/shifts` etc. in an English one.
+3. **Commands and menu.** `/shifts`, `/today`, `/hours`, `/news` and the menu buttons (Czech labels in a Czech account). Page with ◀ ▶ on /shifts and /hours: the same message is redrawn.
 4. **Notifications.**
    - Publish a month for that user: you get "Rozpis zveřejněn" with **Potvrdit**. Tap it: a toast says how many shifts were confirmed, the button disappears, and the app shows the shifts as confirmed.
 5. **Requests.**
    - As an employee, request time off.
-   - As an admin, the bot sends "Žádost o volno". `/zadosti` → **Schválit**: the card shows "✓ Schváleno" and the request is approved in the app.
+   - As an admin, the bot sends "Žádost o volno". **📥 Žádosti** → **Schválit**: the card shows "✓ Schváleno" and the request is approved in the app.
    - The admin's *own* request never appears (four eyes). The same applies to swaps they take part in and to role requests above their rank.
 6. **Switches.** Mute in Settings: no messages. Turn off "Shift changes": no shift messages, but announcements still arrive.
 7. **Plan gate.** On a Free org (trial expired): Connect shows the upgrade prompt, and an already-linked chat gets "part of the Team plan" for commands and no notifications.

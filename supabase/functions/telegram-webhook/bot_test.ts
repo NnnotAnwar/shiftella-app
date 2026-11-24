@@ -11,29 +11,65 @@ import {
     formatRequest,
     formatShifts,
     isLinkCode,
+    mainMenu,
     monthWindow,
     parseCommand,
+    parseMenuButton,
+    weekWindow,
     pragueDate,
     pragueMidnight,
     workedNetHours,
 } from './bot.ts';
 
-Deno.test('parseCommand: aliases, @bot suffix, args, other bots, plain text', () => {
-    deepStrictEqual(parseCommand('/smeny', 'ShiftellaBot'), { cmd: 'shifts', arg: '' });
+Deno.test('parseCommand: English commands only, @bot suffix, args, other bots, plain text', () => {
     deepStrictEqual(parseCommand('/shifts', 'ShiftellaBot'), { cmd: 'shifts', arg: '' });
-    deepStrictEqual(parseCommand('/DNES', 'ShiftellaBot'), { cmd: 'today', arg: '' });
-    deepStrictEqual(parseCommand('/hodiny@shiftellabot', 'ShiftellaBot'), { cmd: 'hours', arg: '' });
-    deepStrictEqual(parseCommand('/oznameni', 'x'), { cmd: 'news', arg: '' });
-    deepStrictEqual(parseCommand('/zadosti', 'x'), { cmd: 'requests', arg: '' });
+    deepStrictEqual(parseCommand('/TODAY', 'ShiftellaBot'), { cmd: 'today', arg: '' });
+    deepStrictEqual(parseCommand('/hours@shiftellabot', 'ShiftellaBot'), { cmd: 'hours', arg: '' });
+    deepStrictEqual(parseCommand('/news', 'x'), { cmd: 'news', arg: '' });
     deepStrictEqual(parseCommand('/requests', 'x'), { cmd: 'requests', arg: '' });
+    deepStrictEqual(parseCommand('/menu', 'x'), { cmd: 'help', arg: '' });
     deepStrictEqual(parseCommand('/start abc123', 'x'), { cmd: 'start', arg: 'abc123' });
     deepStrictEqual(parseCommand('  /help  ', 'x'), { cmd: 'help', arg: '' });
     deepStrictEqual(parseCommand('/stop', '@x'), { cmd: 'stop', arg: '' });
+    // The old Czech aliases are gone.
+    deepStrictEqual(parseCommand('/smeny', 'x'), { cmd: 'unknown', arg: '' });
+    deepStrictEqual(parseCommand('/zadosti', 'x'), { cmd: 'unknown', arg: '' });
     deepStrictEqual(parseCommand('/whatever', 'x'), { cmd: 'unknown', arg: '' });
-    strictEqual(parseCommand('/smeny@OtherBot', 'ShiftellaBot'), null);
+    strictEqual(parseCommand('/shifts@OtherBot', 'ShiftellaBot'), null);
     strictEqual(parseCommand('hello', 'x'), null);
     strictEqual(parseCommand('', 'x'), null);
     strictEqual(parseCommand(undefined, 'x'), null);
+});
+
+Deno.test('mainMenu: persistent, localized, Requests only for reviewers', () => {
+    const en = mainMenu('en', true);
+    strictEqual(en.is_persistent, true);
+    strictEqual(en.resize_keyboard, true);
+    deepStrictEqual(en.keyboard.flat().map((b) => b.text), ['📅 Shifts', '📍 Today', '⏱ Hours', '📣 News', '📥 Requests', '❓ Help']);
+    deepStrictEqual(mainMenu('cs', false).keyboard.flat().map((b) => b.text), ['📅 Směny', '📍 Dnes', '⏱ Hodiny', '📣 Oznámení', '❓ Nápověda']);
+});
+
+Deno.test('parseMenuButton: every label in both languages, nothing else', () => {
+    for (const lang of ['en', 'cs'] as const) {
+        const labels = mainMenu(lang, true).keyboard.flat().map((b) => b.text);
+        deepStrictEqual(labels.map(parseMenuButton), ['shifts', 'today', 'hours', 'news', 'requests', 'help']);
+    }
+    strictEqual(parseMenuButton(' 📅 Shifts '), 'shifts');
+    strictEqual(parseMenuButton('Shifts'), null);
+    strictEqual(parseMenuButton('hello'), null);
+    strictEqual(parseMenuButton(undefined), null);
+});
+
+Deno.test('weekWindow / monthWindow: paging offsets in Prague time', () => {
+    const now = new Date('2026-11-24T10:00:00Z');
+    deepStrictEqual(weekWindow(now, 0), daysWindow(now, 7));
+    const w2 = weekWindow(now, 2);
+    deepStrictEqual(pragueDate(w2.from), { y: 2026, m: 12, d: 8 });
+    deepStrictEqual(pragueDate(w2.to), { y: 2026, m: 12, d: 15 });
+    const back = monthWindow(now, -11); // December 2025
+    deepStrictEqual(pragueDate(back.from), { y: 2025, m: 12, d: 1 });
+    deepStrictEqual(pragueDate(back.to), { y: 2026, m: 1, d: 1 });
+    deepStrictEqual(monthWindow(now, 0), monthWindow(now));
 });
 
 Deno.test('isLinkCode: exactly 40 lowercase hex', () => {
@@ -84,7 +120,10 @@ Deno.test('hours: the My hours break rule', () => {
 });
 
 Deno.test('formatShifts: empty + lines with confirmation marks, escaped location', () => {
-    strictEqual(formatShifts([], 'cs'), 'Na příštích 7 dní nemáte žádnou směnu.');
+    strictEqual(formatShifts([], 'cs'), '<b>Vaše směny · příštích 7 dní</b>\nNa příštích 7 dní nemáte žádnou směnu.');
+    // A later week (from the arrows): the title names the days.
+    const range = { from: new Date('2026-11-30T23:00:00Z'), to: new Date('2026-12-07T23:00:00Z') };
+    strictEqual(formatShifts([], 'en', range), '<b>Your shifts · Tue 1 Dec – Mon 7 Dec</b>\nNo shifts in this week.');
     const text = formatShifts(
         [
             { starts_at: '2026-11-25T07:00:00Z', ends_at: '2026-11-25T15:00:00Z', all_day: false, location: 'Café <Old Town>', confirmed: true },

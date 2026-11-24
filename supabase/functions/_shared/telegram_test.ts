@@ -1,6 +1,6 @@
 // Deno tests for the Telegram helpers. Run from a copy outside the repo:
 //   cp -R supabase/functions /tmp/fn && cd /tmp/fn && deno test
-import { deepStrictEqual, ok, strictEqual } from 'node:assert';
+import { deepStrictEqual, ok, strictEqual, throws } from 'node:assert';
 import {
     appUrl,
     decodeCallback,
@@ -168,4 +168,30 @@ Deno.test('tgCall: ok, 403 → blocked, 429 → one short retry then retry_after
 
     const down = await tgCall('sendMessage', {}, { token: 't', fetchImpl: () => Promise.reject(new Error('dns')) });
     deepStrictEqual(down, { ok: false, status: 0, description: 'network error' });
+});
+
+Deno.test('nav + view-confirm callbacks: round-trip, ranges enforced, ≤ 64 bytes signed', async () => {
+    const secret = 's3cret';
+    for (const a of [
+        { type: 'nav', view: 'shifts', offset: 0 },
+        { type: 'nav', view: 'shifts', offset: 8 },
+        { type: 'nav', view: 'hours', offset: -12 },
+        { type: 'nav', view: 'today', offset: 0 },
+    ] as const) {
+        const data = await signCallback(secret, 123456789012, a);
+        ok(data.length <= 64, data);
+        deepStrictEqual(await verifyCallback(secret, 123456789012, data), a);
+        strictEqual(await verifyCallback(secret, 999, data), null); // another chat
+    }
+    const confirm = { type: 'confirm' as const, from: new Date('2026-12-01T00:00:00Z'), to: new Date('2026-12-08T00:00:00Z'), week: 3 };
+    const data = await signCallback(secret, -1001234567890, confirm);
+    ok(data.length <= 64, data);
+    deepStrictEqual(await verifyCallback(secret, -1001234567890, data), confirm);
+    // Out of range / malformed payloads are rejected even with a valid signature shape.
+    strictEqual(decodeCallback('v:s:9'), null);
+    strictEqual(decodeCallback('v:h:1'), null);
+    strictEqual(decodeCallback('v:t:1'), null);
+    strictEqual(decodeCallback('v:x:0'), null);
+    deepStrictEqual(decodeCallback('v:h:-0'), { type: 'nav', view: 'hours', offset: 0 });
+    throws(() => encodeCallback({ type: 'nav', view: 'shifts', offset: 9 }));
 });

@@ -34,6 +34,7 @@ import {
     tgCall,
     timingSafeEqual,
     verifyCallback,
+    type CallbackAction,
     type InlineButton,
     type InlineKeyboard,
     type Lang,
@@ -46,9 +47,14 @@ import {
     formatRequest,
     formatShifts,
     formatToday,
+    HOURS_MAX_MONTHS,
     isLinkCode,
+    mainMenu,
     monthWindow,
     parseCommand,
+    parseMenuButton,
+    SHIFTS_MAX_WEEKS,
+    weekWindow,
     workedNetHours,
     type PendingRequest,
     type ShiftRow,
@@ -92,6 +98,16 @@ async function context(chatId: number): Promise<Ctx | null> {
 const reply = (chatId: number, text: string, extra: Record<string, unknown> = {}) => sendMessage(chatId, text, extra);
 const openAppKeyboard = (lang: Lang, route = '/'): InlineKeyboard => ({ inline_keyboard: [[{ text: copy(lang).openApp, url: `${appUrl()}${route}` }]] });
 const siteKeyboard = (): InlineKeyboard => ({ inline_keyboard: [[{ text: 'shiftella.app', url: 'https://shiftella.app' }]] });
+/** The persistent menu under the message box (sent with welcome / help / unknown replies). */
+const menu = (ctx: Ctx) => ({ reply_markup: mainMenu(ctx.language, ctx.can_review) });
+
+/** A view = what one message shows; sent by a command, redrawn in place by its arrows. */
+interface View {
+    text: string;
+    keyboard: InlineKeyboard;
+}
+
+const nav = (chatId: number, action: CallbackAction) => signCallback(SECRET, chatId, action);
 
 // --- Commands --------------------------------------------------------------------------
 
@@ -99,7 +115,7 @@ async function onStart(chatId: number, from: TgUser | undefined, arg: string) {
     const tgLang = normalizeLang(from?.language_code);
     if (!arg) {
         const ctx = await context(chatId);
-        if (ctx) return reply(chatId, copy(ctx.language).help);
+        if (ctx) return reply(chatId, copy(ctx.language).help, menu(ctx));
         return reply(chatId, copy(tgLang).startUnlinked, { reply_markup: siteKeyboard() });
     }
     if (!isLinkCode(arg)) return reply(chatId, copy(tgLang).badCode);
@@ -114,26 +130,41 @@ async function onStart(chatId: number, from: TgUser | undefined, arg: string) {
     if (!res?.ok) return reply(chatId, copy(tgLang).badCode);
     const ctx = await context(chatId);
     const lang = ctx?.language ?? tgLang;
-    return reply(chatId, escapeHtml(copy(lang).welcome(res.first_name ?? '')));
+    return reply(chatId, escapeHtml(copy(lang).welcome(res.first_name ?? '')), ctx ? menu(ctx) : {});
 }
 
 async function onStop(chatId: number, lang: Lang) {
     const { data, error } = await admin.rpc('telegram_unlink_chat', { p_chat_id: chatId });
     if (error) throw new Error(`unlink: ${error.code ?? 'rpc'}`);
-    return reply(chatId, data ? copy(lang).stopped : copy(lang).stopNotLinked);
+    // Take the menu away with the link.
+    return reply(chatId, data ? copy(lang).stopped : copy(lang).stopNotLinked, { reply_markup: { remove_keyboard: true } });
 }
 
-async function onShifts(chatId: number, ctx: Ctx) {
-    const lang = ctx.language;
+/** ◀ / ▶ row for a paged view; `null` hides that side. */
+async function arrows(
+    chatId: number,
+    view: 'shifts' | 'hours',
+    prev: { offset: number; label: string } | null,
+    next: { offset: number; label: string } | null,
+): Promise<InlineButton[]> {
+    const row: InlineButton[] = [];
+    if (prev) row.push({ text: prev.label, callback_data: await nav(chatId, { type: 'nav', view, offset: prev.offset }) });
+    if (next) row.push({ text: next.label, callback_data: await nav(chatId, { type: 'nav', view, offset: next.offset }) });
+    return row;
+}
+
+/** /shifts — week `week` (0 = the next 7 days), with ✓/○, Confirm and ◀ ▶. */
+async function shiftsView(chatId: number, ctx: Ctx, week: number): Promise<View> {
+    const c = copy(ctx.language);
     const now = new Date();
-    const win = daysWindow(now, 7);
+    const win = weekWindow(now, week);
     const { data, error } = await admin
         .from('scheduled_shifts')
         .select('id, starts_at, ends_at, all_day, locations(name), shift_confirmations(scheduled_shift_id)')
         .eq('user_id', ctx.user_id)
         .eq('organization_id', ctx.organization_id)
         .eq('published', true)
-        .gt('ends_at', now.toISOString())
+        .gt('ends_at', (week === 0 ? now : win.from).toISOString())
         .lt('starts_at', win.to.toISOString())
         .order('starts_at')
         .limit(30);
@@ -147,17 +178,24 @@ async function onShifts(chatId: number, ctx: Ctx) {
     }));
     const keyboard: InlineButton[][] = [];
     if (rows.some((r) => !r.confirmed) && SECRET) {
-        const data = await signCallback(SECRET, chatId, { type: 'confirm', from: win.from, to: win.to });
-        keyboard.push([{ text: `✓ ${copy(lang).confirmAll}`, callback_data: data }]);
+        keyboard.push([{ text: `✓ ${c.confirmAll}`, callback_data: await nav(chatId, { type: 'confirm', from: win.from, to: win.to, week }) }]);
     }
-    keyboard.push([{ text: copy(lang).openApp, url: `${appUrl()}/schedule` }]);
-    return reply(chatId, formatShifts(rows, lang), { reply_markup: { inline_keyboard: keyboard } });
+    const pager = await arrows(
+        chatId,
+        'shifts',
+        week > 0 ? { offset: week - 1, label: week === 1 ? `◀ ${c.thisWeek}` : c.prevWeek } : null,
+        week < SHIFTS_MAX_WEEKS ? { offset: week + 1, label: c.nextWeek } : null,
+    );
+    if (pager.length) keyboard.push(pager);
+    keyboard.push([{ text: c.openApp, url: `${appUrl()}/schedule` }]);
+    return { text: formatShifts(rows, ctx.language, week === 0 ? undefined : win), keyboard: { inline_keyboard: keyboard } };
 }
 
 const fullName = (p: { first_name?: string | null; last_name?: string | null } | null | undefined) =>
     [p?.first_name, p?.last_name].filter(Boolean).join(' ') || '—';
 
-async function onToday(chatId: number, ctx: Ctx) {
+/** /today — my shift(s) today, clock-in state (read only) and who else is on. 🔄 redraws it. */
+async function todayView(chatId: number, ctx: Ctx): Promise<View> {
     const lang = ctx.language;
     const day = daysWindow(new Date(), 1);
     const { data, error } = await admin
@@ -195,20 +233,33 @@ async function onToday(chatId: number, ctx: Ctx) {
         (open?.started_at as string | undefined) ?? null,
         lang,
     );
-    return reply(chatId, text);
+    const c = copy(lang);
+    return {
+        text,
+        keyboard: {
+            inline_keyboard: [
+                [
+                    { text: c.refresh, callback_data: await nav(chatId, { type: 'nav', view: 'today', offset: 0 }) },
+                    { text: c.openApp, url: `${appUrl()}/` },
+                ],
+            ],
+        },
+    };
 }
 
-async function onHours(chatId: number, ctx: Ctx) {
+/** /hours — month `month` (0 = this month, −1 = last month …), with ◀ ▶. */
+async function hoursView(chatId: number, ctx: Ctx, month: number): Promise<View> {
     const lang = ctx.language;
+    const c = copy(lang);
     const now = new Date();
-    const month = monthWindow(now);
+    const win = monthWindow(now, month);
     const [workedQ, plannedQ] = await Promise.all([
         admin
             .from('shifts')
             .select('started_at, ended_at')
             .eq('user_id', ctx.user_id)
-            .gte('started_at', month.from.toISOString())
-            .lt('started_at', month.to.toISOString())
+            .gte('started_at', win.from.toISOString())
+            .lt('started_at', win.to.toISOString())
             .limit(500),
         admin
             .from('scheduled_shifts')
@@ -216,8 +267,8 @@ async function onHours(chatId: number, ctx: Ctx) {
             .eq('user_id', ctx.user_id)
             .eq('organization_id', ctx.organization_id)
             .eq('published', true)
-            .gte('starts_at', month.from.toISOString())
-            .lt('starts_at', month.to.toISOString())
+            .gte('starts_at', win.from.toISOString())
+            .lt('starts_at', win.to.toISOString())
             .limit(500),
     ]);
     if (workedQ.error || plannedQ.error) throw new Error('hours: query');
@@ -228,11 +279,33 @@ async function onHours(chatId: number, ctx: Ctx) {
         planned.filter((p) => !p.all_day).map((p) => ({ started_at: p.starts_at, ended_at: p.ends_at })),
         now.getTime(),
     );
-    return reply(
+    const pager = await arrows(
         chatId,
-        formatHours({ hours: workedNetHours(worked, now.getTime()), shifts: worked.length }, { hours: plannedHours, shifts: planned.length }, now, lang),
-        { reply_markup: openAppKeyboard(lang, '/overview') },
+        'hours',
+        month > -HOURS_MAX_MONTHS ? { offset: month - 1, label: c.prevMonth } : null,
+        month < 0 ? { offset: month + 1, label: month === -1 ? `${c.thisMonth} ▶` : c.nextMonth } : null,
     );
+    const keyboard: InlineButton[][] = [];
+    if (pager.length) keyboard.push(pager);
+    keyboard.push([{ text: c.openApp, url: `${appUrl()}/overview` }]);
+    return {
+        text: formatHours({ hours: workedNetHours(worked, now.getTime()), shifts: worked.length }, { hours: plannedHours, shifts: planned.length }, win.from, lang),
+        keyboard: { inline_keyboard: keyboard },
+    };
+}
+
+const send = (chatId: number, v: View) => reply(chatId, v.text, { reply_markup: v.keyboard });
+
+/** Redraw a view in place (arrows, 🔄, Confirm). "Not modified" is fine — nothing changed. */
+async function redraw(chatId: number, messageId: number, v: View) {
+    await tgCall('editMessageText', {
+        chat_id: chatId,
+        message_id: messageId,
+        text: v.text,
+        parse_mode: 'HTML',
+        link_preview_options: { is_disabled: true },
+        reply_markup: v.keyboard,
+    });
 }
 
 async function onNews(chatId: number, ctx: Ctx) {
@@ -274,7 +347,8 @@ async function onMessage(msg: TgMessage) {
     const chatId = msg.chat.id;
     // Private chats only: a group must never see anyone's schedule.
     if (msg.chat.type !== 'private' || !msg.from || msg.from.is_bot || msg.from.id !== chatId) return;
-    const parsed = parseCommand(msg.text, BOT_USERNAME);
+    const button = parseMenuButton(msg.text);
+    const parsed = parseCommand(msg.text, BOT_USERNAME) ?? (button ? { cmd: button, arg: '' } : null);
     const tgLang = normalizeLang(msg.from.language_code);
 
     if (parsed?.cmd === 'start') return onStart(chatId, msg.from, parsed.arg);
@@ -284,15 +358,15 @@ async function onMessage(msg: TgMessage) {
     const c = copy(lang);
 
     if (parsed?.cmd === 'stop') return onStop(chatId, lang);
-    if (parsed?.cmd === 'help') return reply(chatId, ctx ? c.help : `${c.help}\n\n${c.notLinked}`);
+    if (parsed?.cmd === 'help') return ctx ? reply(chatId, c.help, menu(ctx)) : reply(chatId, `${c.help}\n\n${c.notLinked}`);
     if (!ctx) return reply(chatId, c.notLinked, { reply_markup: siteKeyboard() });
-    if (!parsed || parsed.cmd === 'unknown') return reply(chatId, c.unknown);
+    if (!parsed || parsed.cmd === 'unknown') return reply(chatId, c.unknown, menu(ctx));
     if (!ctx.allowed) return reply(chatId, c.plan);
 
     switch (parsed.cmd) {
-        case 'shifts': return onShifts(chatId, ctx);
-        case 'today': return onToday(chatId, ctx);
-        case 'hours': return onHours(chatId, ctx);
+        case 'shifts': return send(chatId, await shiftsView(chatId, ctx, 0));
+        case 'today': return send(chatId, await todayView(chatId, ctx));
+        case 'hours': return send(chatId, await hoursView(chatId, ctx, 0));
         case 'news': return onNews(chatId, ctx);
         case 'requests': return onRequests(chatId, ctx);
     }
@@ -322,6 +396,17 @@ async function onCallback(q: TgCallbackQuery) {
     if (!ctx) return answer(c.notLinked.replace(/<[^>]+>/g, ''));
     if (!ctx.allowed) return answer(c.plan.replace(/<[^>]+>/g, ''));
 
+    if (action.type === 'nav') {
+        await answer();
+        const view =
+            action.view === 'shifts'
+                ? await shiftsView(chatId, ctx, action.offset)
+                : action.view === 'hours'
+                  ? await hoursView(chatId, ctx, action.offset)
+                  : await todayView(chatId, ctx);
+        return redraw(chatId, msg.message_id, view);
+    }
+
     if (action.type === 'confirm') {
         const { data, error } = await admin.rpc('telegram_confirm_shifts', {
             p_chat_id: chatId,
@@ -330,6 +415,8 @@ async function onCallback(q: TgCallbackQuery) {
         });
         if (error || typeof data !== 'number' || data < 0) return answer(c.decided.error);
         await answer(c.confirmed(data));
+        // From the /shifts view: redraw it (○ → ✓). From a notification: just drop the button.
+        if (action.week !== undefined) return redraw(chatId, msg.message_id, await shiftsView(chatId, ctx, action.week));
         await tgCall('editMessageReplyMarkup', { chat_id: chatId, message_id: msg.message_id, reply_markup: withoutButton(msg.reply_markup, q.data ?? '') });
         return;
     }

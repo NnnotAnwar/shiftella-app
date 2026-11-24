@@ -1,40 +1,149 @@
+<div align="center">
+
+<img src="public/favicon.svg" width="72" alt="Shiftella logo" />
+
 # Shiftella
 
-A modern, cross-platform **shift-planning and time-tracking** app for Czech
-teams. An owner signs up and creates their organization; people clock in and out
-by location in real time, confirm and swap their planned shifts; admins plan the
-rota, decide requests and post announcements — each with exactly the rights
-their (custom) role gives them. On the web or as a native Android/iOS app.
-Website: [shiftella.app](https://shiftella.app).
+**Shift planning, clock-in and timesheets for small teams — on the web, Android and iPhone.**
 
-> **Status: active development (beta).** Features and UI change frequently.
-> _Version 1.12.0 — “Děčín” · last updated: November 22, 2026._ · See the [Roadmap](ROADMAP.md).
+[shiftella.app](https://shiftella.app) · [Roadmap](ROADMAP.md) · [Deploy docs](deploy/hetzner/README.md) · [Billing docs](docs/billing.md)
+
+[![CI](https://github.com/NnnotAnwar/shiftella-app/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/NnnotAnwar/shiftella-app/actions/workflows/ci.yml)
+[![Deploy](https://github.com/NnnotAnwar/shiftella-app/actions/workflows/deploy-hetzner.yml/badge.svg)](https://github.com/NnnotAnwar/shiftella-app/actions/workflows/deploy-hetzner.yml)
+![Version](https://img.shields.io/badge/version-1.12.0%20D%C4%9B%C4%8D%C3%ADn-4f46e5)
+![React](https://img.shields.io/badge/React-19-149eca?logo=react&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-Postgres%20%2B%20RLS-3ecf8e?logo=supabase&logoColor=white)
+![Capacitor](https://img.shields.io/badge/Capacitor-8-119eff?logo=capacitor&logoColor=white)
+![Stripe](https://img.shields.io/badge/Stripe-billing-635bff?logo=stripe&logoColor=white)
+
+<br />
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/hero-dark.png" />
+  <img src="docs/images/hero-light.png" width="900" alt="Shiftella home: who's on shift right now, per location" />
+</picture>
+
+<br /><br />
+
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/phone-home-dark.png" /><img src="docs/images/phone-home-light.png" width="230" alt="Mobile home" /></picture>
+&nbsp;
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/phone-schedule-dark.png" /><img src="docs/images/phone-schedule-light.png" width="230" alt="My shifts" /></picture>
+&nbsp;
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/phone-more-dark.png" /><img src="docs/images/phone-more-light.png" width="230" alt="More menu" /></picture>
+
+<sub>Czech UI · demo data (an invented Prague café) — no real people.</sub>
+
+</div>
 
 ---
 
-## 📸 Screenshots
+## 👋 About
 
-_Czech UI, default theme. Demo data (invented): a Prague café with three locations._
+Shiftella is a shift-management app built for small and mid-sized teams — cafés,
+shops, clinics, warehouses — that still plan their week in Excel and a group chat.
+The owner creates an organization in a minute; staff clock in on their phone, see
+their shifts, swap them and ask for time off; managers build the month's rota on a
+paper-like grid and publish it with one tap. Everything a team does lands in one
+place, in Czech or English, on the web or as a native app.
 
-| Home — live board | Roster grid (location letters, Σ hours) |
-| :--: | :--: |
-| ![Home](docs/screenshots/desktop-dashboard.png) | ![Roster grid](docs/screenshots/schedule-grid.png) |
-
-| My hours — month pace vs last month | Requests inbox |
-| :--: | :--: |
-| ![My hours](docs/screenshots/my-hours.png) | ![Requests](docs/screenshots/requests.png) |
-
-| Billing — plans | Command palette (⌘K) |
-| :--: | :--: |
-| ![Billing](docs/screenshots/billing.png) | ![Command palette](docs/screenshots/command-palette.png) |
-
-| Mobile (home · my shifts · More) |
-| :--: |
-| <img src="docs/screenshots/mobile-home.png" width="200" /> <img src="docs/screenshots/mobile-schedule.png" width="200" /> <img src="docs/screenshots/mobile-more.png" width="200" /> |
+It is a complete product, not a demo: real sign-up and invites, custom roles
+enforced in the database, an activity log of every action, push notifications,
+Czech labour-law checks and paid plans with Stripe — designed, built, tested and
+operated end to end by one developer.
 
 ---
 
-## ✨ Features
+## 🧭 Product tour
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+### Live board
+Who is on shift right now, per location, updating in real time. Your own shift,
+the next one and a team announcement sit on top; one tap starts or ends a shift.
+
+</td>
+<td width="50%"><img src="docs/screenshots/desktop-dashboard.png" alt="Home: live board" /></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/screenshots/schedule-grid.png" alt="Roster grid" /></td>
+<td width="50%" valign="top">
+
+### Rota on a paper-like grid
+People × days, location letters in the cells, Σ hours per person. Paint shifts
+from templates, copy last month, keep it a draft and publish when ready — staff get
+a push. The grid warns about less than 11 h of rest, a 7th day in a row, holidays
+and time off.
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+### My hours
+Worked vs. planned shifts this month, a pace chart against last month, totals with
+the Czech mandatory-break rule built in, and a pay estimate from the hourly rate.
+Exports to PDF, Excel and CSV for payroll.
+
+</td>
+<td width="50%"><img src="docs/screenshots/my-hours.png" alt="My hours" /></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/screenshots/requests.png" alt="Requests inbox" /></td>
+<td width="50%" valign="top">
+
+### One inbox for requests
+Time off, shift swaps, role requests, name changes and complaints (optionally
+anonymous). Four-eyes by design: nobody decides their own request — not even the
+owner — and approving leave clears the rota for those days.
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+### Plans & billing
+Free, Team and Business with a 30-day trial. Checkout and invoices run on Stripe;
+switching plan, interval or back to Free happens right in the app, with the exact
+price and seat count shown before anything is charged.
+
+</td>
+<td width="50%"><img src="docs/screenshots/billing.png" alt="Billing page" /></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/screenshots/command-palette.png" alt="Command palette" /></td>
+<td width="50%" valign="top">
+
+### Fast to get around
+A command palette (⌘K) jumps to any page or location; the sidebar, a role-aware
+mobile tab bar and one-tap actions with Undo keep frequent work to a single tap.
+
+</td>
+</tr>
+</table>
+
+---
+
+## ✨ What's inside
+
+| | |
+| --- | --- |
+| ⏱ **Clock in / out** | By location, live board of who's on shift (Realtime), auto-end at midnight |
+| 🗓 **Rota** | Roster grid + month calendar, templates, copy month, draft → publish, open shifts, swaps |
+| 🇨🇿 **Czech rules** | 11 h rest, max 6 days in a row, mandatory breaks, public holidays |
+| 📥 **Requests** | Time off, swaps, role requests, complaints (optionally anonymous), four-eyes decisions |
+| 📊 **Timesheets** | My hours with month pace, team timesheets, PDF / Excel / CSV exports, wages & pay estimate |
+| 🛡 **Roles** | Discord-style custom roles: view / change / delete per area, hierarchy enforced in Postgres RLS |
+| 📣 **Communication** | Announcements, in-app bell, push notifications (FCM) with per-category preferences |
+| 💳 **Subscriptions** | Free · Team (449 Kč flat) · Business (45 Kč / person), 30-day trial, Stripe Checkout & Portal, in-app plan changes |
+| 📜 **Activity log** | An append-only record of every action, filterable by person and group |
+| 🌍 **Everywhere** | Web (PWA), Android & iOS (Capacitor), Czech / English, light & dark, five colour schemes |
+
+<details>
+<summary><b>All features in detail</b></summary>
+
 
 ### Shift tracking
 - **Clock in / out by location**, with mid-shift location switching and a
@@ -193,6 +302,48 @@ _Czech UI, default theme. Demo data (invented): a Prague café with three locati
   push notifications.
 - **PWA-ready** — installable from the browser (Add to Home Screen).
 
+### Subscriptions & billing
+- **Plans** — Free (up to 5 people, 1 location), **Team** (flat 449 Kč / month,
+  up to 15 people and 3 locations), **Business** (45 Kč per person / month,
+  from 10, unlimited). Yearly billing saves 20 %. Prices are final (no VAT added).
+- **30-day Business trial** for every new organization, no card. When it (or a
+  paid subscription) ends, the owner gets a one-time prompt to pick a plan; the
+  organization falls back to Free and nothing is deleted.
+- **Stripe** Checkout for new subscriptions; plan and interval changes happen in
+  the app with the right seat count (Team 1, Business = people, min 10); the
+  Customer Portal handles cards, invoices and cancelling. Switch to Free cancels
+  at the period end, with a one-tap resume.
+- **Limits enforced in the database**; the platform owner can grant any
+  organization a plan for free. See [docs/billing.md](docs/billing.md).
+
+</details>
+
+---
+
+## 🧪 Engineering highlights
+
+- **Security in the database, not the UI.** Organization isolation, the role
+  hierarchy, "hand out only rights you hold", four-eyes decisions and plan limits
+  are enforced with Postgres **RLS policies, triggers and checked RPCs** — they
+  hold for direct API calls too. An RLS smoke test proves it on every release.
+- **Real-time by default.** Supabase Realtime drives the live board, requests
+  and the bell, with reconnect handling and React Query cache updates instead of
+  refetch storms.
+- **Billing that can't drift.** Stripe is the source of truth; a signed webhook
+  mirrors subscriptions, seat counts follow the team automatically (prorated
+  monthly, invoiced at once on yearly plans) and plan changes go through the app
+  so a portal switch can never carry the wrong quantity.
+- **Audit everything.** Every action — clock-ins, rota edits, decisions, role and
+  wage changes (never the amounts), invites, plan changes — writes to an
+  append-only activity log, which also feeds the localized push notifications.
+- **Reproducible screenshots.** The README images come from a harness that runs
+  the real app against an in-memory fake Supabase with invented data and a pinned
+  clock — no real people, no backend.
+- **Boring, safe operations.** Static SPA on a Hetzner server behind a shared edge
+  Caddy; CI builds, ships a tarball over a forced-command SSH key and switches an
+  atomic symlink — rollback in seconds. 250+ unit tests, lint, type-check and
+  Caddy validation on every PR.
+
 ---
 
 ## 🛠 Tech stack
@@ -212,6 +363,31 @@ _Czech UI, default theme. Demo data (invented): a Prague café with three locati
 ---
 
 ## 🧱 Architecture
+
+```mermaid
+flowchart LR
+  subgraph Clients
+    W[Web / PWA<br/>shiftella.app]
+    A[Android & iOS<br/>Capacitor]
+  end
+  subgraph Hetzner["Hetzner (EU)"]
+    C[Edge Caddy<br/>HTTPS · static SPA]
+  end
+  subgraph Supabase
+    DB[(Postgres<br/>RLS · triggers · pg_cron)]
+    AU[Auth]
+    RT[Realtime]
+    EF[Edge Functions<br/>invite · billing · push]
+  end
+  S[Stripe]
+  F[Firebase FCM]
+  W --> C
+  W & A --> AU & DB & RT & EF
+  EF <--> S
+  S -- webhooks --> EF
+  DB -- database webhooks --> EF --> F --> A
+```
+
 
 ```
 src/
@@ -271,6 +447,11 @@ same way.
 - **`username-login`** — resolves a username to an email for sign-in.
 - **`delete-account`** — GDPR self-service account deletion; the organization
   keeps a log entry.
+- **`billing-checkout`**, **`billing-change-plan`**, **`billing-portal`** —
+  Stripe Checkout, in-app plan / interval changes (incl. switch to Free and
+  resume) and the Customer Portal; only the organization's owner.
+- **`stripe-webhook`** — verifies Stripe's signature and mirrors subscriptions
+  into `public.subscriptions`; keeps the Business seat count in step.
 - **`send-push`** — sends FCM (HTTP v1) pushes from Database Webhooks
   (`shift_audit_log`, `name_change_requests`, `announcements`), localized per
   recipient (EN/CS) and honouring per-user preferences. Schedule and time-off
@@ -368,9 +549,13 @@ run it against **preprod** (SQL editor, or `psql -f`).
   hierarchy are the source of truth (UI only mirrors them).
 - Keep the `service_role` key and the Firebase **service-account key**
   server-side only (Edge Function secrets); both are gitignored.
-- Don't ship default demo credentials to any shared environment — rotate the
-  seeded admin's password and pick a non-obvious username first.
+- Stripe keys live only in Edge Function secrets; Stripe webhooks are verified
+  by signature.
 
 ---
 
-_Created by Anuar Kairulla._
+## 📄 License
+
+© 2026 Anuar Kairulla. All rights reserved. This is proprietary software: the
+source is visible for transparency, but no licence is granted to copy, modify,
+host or redistribute it.

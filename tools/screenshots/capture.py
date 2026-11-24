@@ -194,6 +194,12 @@ def main() -> int:
         choices=["trial", "trial3", "free", "past_due", "ended", "cancel_scheduled", "beta"],
         help="subscription scenario in the demo data (default: paid Business)",
     )
+    ap.add_argument(
+        "--demo-org",
+        default=None,
+        choices=["fresh", "on"],
+        help="demo-data scenario: a new owner (setup checklist + 'try demo data') or demo data on (banner)",
+    )
     args = ap.parse_args()
 
     out = Path(args.out)
@@ -216,6 +222,8 @@ def main() -> int:
             ctx.add_init_script(PREFS_SCRIPT.replace("%THEME%", theme))
             if args.billing:
                 ctx.add_init_script(f"try {{ localStorage.setItem('demo-billing', '{args.billing}'); }} catch (e) {{}}")
+            if args.demo_org:
+                ctx.add_init_script(f"try {{ localStorage.setItem('demo-org', '{args.demo_org}'); }} catch (e) {{}}")
 
             def guard(route):
                 host = urlparse(route.request.url).hostname or ""

@@ -62,6 +62,20 @@ function billingScenario(): string | null {
     }
 }
 
+/**
+ * Demo-data scenario (features/demo): `localStorage['demo-org']` = 'fresh' (a new
+ * owner: only they and nothing planned count, so Home shows the setup checklist
+ * with "Try it with demo data") | 'on' (the org holds demo data: everyone else,
+ * the rota and two locations are tagged → the demo banner + the checklist).
+ */
+function demoOrgScenario(): string | null {
+    try {
+        return localStorage.getItem('demo-org');
+    } catch {
+        return null;
+    }
+}
+
 // --- Date helpers (local time = Europe/Prague in the harness) ----------------------
 const pad = (n: number) => String(n).padStart(2, '0');
 const ymd = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -466,6 +480,17 @@ export function buildDemoData(): Tables {
     const notification_preferences: Row[] = [
         { user_id: P.petra, push_enabled: true, shifts: true, account: true, requests: true, language: 'cs', updated_at: created },
     ];
+
+    const demoOrg = demoOrgScenario();
+    if (demoOrg === 'fresh' || demoOrg === 'on') {
+        const batch = 'demo-batch-0001';
+        for (const p of profiles) if (p.id !== P.petra) p.demo_batch = batch;
+        for (const s of scheduled_shifts) s.demo_batch = batch;
+        if (demoOrg === 'on') {
+            organizations[0].demo_batch = batch;
+            for (const l of locations) if (l.id !== L.mala) l.demo_batch = batch;
+        }
+    }
 
     return {
         organizations,

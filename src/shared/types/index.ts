@@ -170,6 +170,7 @@ export const LocationSchema = z.object({
   organization_id: z.string().optional(),
   organizationName: z.string().optional(),
   archived_at: z.string().nullable().optional(), // soft-delete: hidden from pickers, history kept
+  demo_batch: z.string().nullable().optional(), // set on "Demo" locations (features/demo)
 });
 
 /**

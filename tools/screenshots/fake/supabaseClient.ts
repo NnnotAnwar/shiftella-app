@@ -423,6 +423,9 @@ const rpcs: Record<string, (args: Row) => unknown> = {
     // Settings → Calendar: a fixed demo feed token.
     calendar_feed_token: () => 'd3m0'.replace(/[^a-f0-9]/g, '0').padEnd(64, 'a'),
     log_members_imported: () => null,
+    // Demo data: the harness already is demo data — adding / removing is a no-op.
+    seed_demo_data: () => ({ batch: 'demo-batch-0001', people: 8, locations: 2 }),
+    clear_demo_data: () => ({ people: 8, locations_kept: 0 }),
     // Announcements: audience size while composing, reach per card, who read it.
     announcement_audience_size: (args: Row) => {
         const loc = args.p_location as string | null;

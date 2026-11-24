@@ -155,6 +155,12 @@ Deno.serve(async (req) => {
     try {
         const payload = await req.json();
 
+        // Demo data (seed_demo_data) never notifies anyone. The webhook triggers
+        // already skip demo rows (WHEN demo_batch IS NULL); this is the backstop.
+        if (payload?.record?.demo_batch) {
+            return new Response(JSON.stringify({ ok: true, skipped: 'demo' }), { headers: { 'Content-Type': 'application/json' } });
+        }
+
         // Push notifications are a Team+ feature: Free organizations (incl. an
         // expired trial) keep the in-app bell but get no device pushes.
         const orgId = payload?.record?.organization_id as string | undefined;

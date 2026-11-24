@@ -24,6 +24,11 @@ export function telegramBotUsername(): string {
     return String(import.meta.env.VITE_TELEGRAM_BOT_USERNAME ?? '').trim().replace(/^@/, '');
 }
 
+/** Opens the chat with the bot (Telegram app on phones, web/desktop otherwise). */
+export function telegramBotUrl(bot: string): string {
+    return `https://t.me/${encodeURIComponent(bot)}`;
+}
+
 /** Deep link that opens the bot with the one-time code as the /start payload. */
 export function telegramStartUrl(bot: string, code: string): string {
     return `https://t.me/${encodeURIComponent(bot)}?start=${encodeURIComponent(code)}`;

@@ -3,13 +3,15 @@ import { Button } from '@shared/components/Button';
 import { useTranslation } from '@shared/preferences/PreferencesContext';
 import { useEntitlements } from '@features/billing/useBilling';
 import { UpgradePrompt } from '@features/billing/UpgradeGate';
-import { telegramBotUsername, type TelegramLinkPrefs } from './telegramService';
+import { BASE, SIZES, VARIANTS } from '@shared/components/buttonStyles';
+import { telegramBotUrl, telegramBotUsername, type TelegramLinkPrefs } from './telegramService';
 import { useTelegramLink } from './useTelegramLink';
 
 /**
  * --- SETTINGS → NOTIFICATIONS → TELEGRAM ---
  * Not linked: "Connect Telegram" (one-time code → t.me/<bot>?start=<code>).
- * Linked: "@username · linked", the bot's own switches and "Disconnect".
+ * Linked: "@username · linked", "Open bot" (t.me/<bot>), the bot's own switches
+ * and "Disconnect".
  * Telegram rides on push, so it's Team+ (an existing link can still be
  * removed on Free). Hidden until VITE_TELEGRAM_BOT_USERNAME is set.
  */
@@ -80,9 +82,19 @@ function TelegramBlock({ bot, isReviewer }: { bot: string; isReviewer: boolean }
                         )}
                     </div>
                     {link ? (
-                        <Button variant="ghost" size="sm" onClick={() => tg.unlink()} loading={tg.unlinking}>
-                            {t('settings.telegram.disconnect')}
-                        </Button>
+                        <div className="flex items-center gap-1 shrink-0">
+                            <a
+                                href={telegramBotUrl(bot)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={`${BASE} ${SIZES.sm} ${VARIANTS.tonal}`}
+                            >
+                                {t('settings.telegram.openBot')}
+                            </a>
+                            <Button variant="ghost" size="sm" onClick={() => tg.unlink()} loading={tg.unlinking}>
+                                {t('settings.telegram.disconnect')}
+                            </Button>
+                        </div>
                     ) : tg.waiting ? (
                         <Button variant="ghost" size="sm" onClick={tg.cancelWait}>
                             {t('common.cancel')}

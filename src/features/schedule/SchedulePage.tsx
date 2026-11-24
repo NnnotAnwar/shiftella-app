@@ -6,6 +6,7 @@ import { PlusIcon, FilePdfIcon, FileXlsIcon, DownloadSimpleIcon, CaretDownIcon, 
 import { useAuthContext } from '@features/auth/AuthContext';
 import { useShiftContext } from '@features/shifts/ShiftContext';
 import { useTranslation, usePreferences } from '@shared/preferences/PreferencesContext';
+import { BASE_LANGUAGE } from '@shared/i18n/translations';
 import { Button } from '@shared/components/Button';
 import { SearchInput } from '@shared/components/SearchInput';
 import { MonthPicker } from '@shared/components/MonthPicker';
@@ -151,7 +152,7 @@ export default function SchedulePage() {
     // --- v1.10 planning aids: holidays, availability, coverage, confirmations, templates ---
     const { language } = usePreferences();
     const { holidayName } = useHolidays(monthFrom, monthTo);
-    const holidayFor = (date: string) => holidayName(date, language === 'cs' ? 'cs' : 'en');
+    const holidayFor = (date: string) => holidayName(date, BASE_LANGUAGE[language]);
     const holidayWarn = useDismissibleWarning(HOLIDAY_WARNING_KEY);
     const [holidayAsk, setHolidayAsk] = useState<{ date: string; name: string; run: () => void } | null>(null);
     const availability = useAvailability(user);

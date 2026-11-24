@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeftIcon } from '@phosphor-icons/react';
 import { usePreferences } from '@shared/preferences/PreferencesContext';
+import { BASE_LANGUAGE } from '@shared/i18n/translations';
 import { LEGAL, type LegalDoc, type LegalLang } from './legalContent';
 
 /**
@@ -11,7 +12,7 @@ import { LEGAL, type LegalDoc, type LegalLang } from './legalContent';
 export function LegalPage({ doc }: { doc: LegalDoc }) {
     const navigate = useNavigate();
     const { language, t } = usePreferences();
-    const lang: LegalLang = language === 'cs' ? 'cs' : 'en';
+    const lang: LegalLang = BASE_LANGUAGE[language];
     const content = LEGAL[doc][lang];
 
     const goBack = () => {

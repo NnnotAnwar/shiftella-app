@@ -291,7 +291,12 @@ const en: LandingCopy = {
     },
 };
 
-export const LANDING: Record<Language, LandingCopy> = { cs, en };
+/**
+ * The landing copy exists in cs + en only (marketing text, rewritten often).
+ * Slovak visitors get the Czech copy, Ukrainian ones the English copy — the
+ * same fallback as everything else that is cs/en-only (see BASE_LANGUAGE).
+ */
+export const LANDING: Record<Language, LandingCopy> = { cs, en, sk: cs, uk: en };
 
 /** Fill `{name}` placeholders (numbers come from plans.ts). */
 /** The copy with the free-beta wording: "Start free" instead of "Try 30 days free". */

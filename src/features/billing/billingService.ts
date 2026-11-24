@@ -1,6 +1,10 @@
 import { supabase } from '@shared/api/supabaseClient';
 import type { BillingInterval, PaidPlan } from './plans';
 import type { OrgUsage, Subscription } from './entitlements';
+import { BASE_LANGUAGE, isLanguage } from '@shared/i18n/translations';
+
+/** Stripe pages / e-mails exist in cs + en only (sk → cs, uk → en). */
+const serverLanguage = (language: string) => (isLanguage(language) ? BASE_LANGUAGE[language] : 'en');
 
 /**
  * --- BILLING SERVICE ---
@@ -102,7 +106,7 @@ export const billingService = {
 
     /** Stripe Checkout URL for the caller's organization. */
     checkoutUrl(plan: PaidPlan, interval: BillingInterval, language: string): Promise<string> {
-        return invokeForUrl('billing-checkout', { plan, interval, language });
+        return invokeForUrl('billing-checkout', { plan, interval, language: serverLanguage(language) });
     },
 
     /**
@@ -134,7 +138,7 @@ export const billingService = {
 
     /** Stripe Customer Portal URL for the caller's organization (card, invoices, billing details, cancel). */
     portalUrl(language: string): Promise<string> {
-        return invokeForUrl('billing-portal', { language });
+        return invokeForUrl('billing-portal', { language: serverLanguage(language) });
     },
 
     /** Superadmin: grant a plan for free (until = null → forever). */

@@ -32,12 +32,12 @@ MOBILE = {
     ),
 }
 
-# Czech UI, default theme (light) + default colour scheme, via the app's own
+# Czech UI (or --lang), default theme (light) + default colour scheme, via the app's own
 # localStorage preferences (PreferencesContext / ThemeContext).
 PREFS_SCRIPT = """
 (() => {
   try {
-    localStorage.setItem('language', 'cs');
+    localStorage.setItem('language', '%LANG%');
     localStorage.setItem('time-format', '24h');
     localStorage.setItem('theme', '%THEME%');
     localStorage.setItem('combo-key', 'lilac-indigo');
@@ -68,6 +68,16 @@ def go(page: Page, base: str, path: str) -> None:
 
 
 # --- Shots ---------------------------------------------------------------------
+# UI text the shots look for, per --lang (keep in sync with src/shared/i18n).
+UI_TEXT = {
+    "cs": {"brush": "Klepnutím na prázdné políčko", "balances": "Zůstatky", "mine": "Moje směny", "more": "Více"},
+    "en": {"brush": "Tap an empty cell", "balances": "Balances", "mine": "My shifts", "more": "More"},
+    "sk": {"brush": "Ťuknutím na prázdne políčko", "balances": "Zostatky", "mine": "Moje zmeny", "more": "Viac"},
+    "uk": {"brush": "Натисніть на порожню клітинку", "balances": "Залишки", "mine": "Мої зміни", "more": "Більше"},
+}
+TEXT = UI_TEXT["cs"]
+
+
 def shot_dashboard(page: Page, base: str, out: Path) -> None:
     go(page, base, "/")
     page.screenshot(path=out / "desktop-dashboard.png")
@@ -83,7 +93,7 @@ def scroll_to_text(page: Page, text: str, offset: int = 24) -> None:
 def shot_schedule(page: Page, base: str, out: Path) -> None:
     go(page, base, "/schedule")
     # The roster grid sits under the team / leave / open-shift cards.
-    scroll_to_text(page, "Klepnutím na prázdné políčko")
+    scroll_to_text(page, TEXT["brush"])
     page.screenshot(path=out / "schedule-grid.png")
 
 
@@ -104,14 +114,14 @@ def shot_announcements(page: Page, base: str, out: Path) -> None:
 
 def shot_leave(page: Page, base: str, out: Path) -> None:
     go(page, base, "/schedule")
-    page.get_by_role("button", name="Zůstatky").first.click()
+    page.get_by_role("button", name=TEXT["balances"]).first.click()
     page.wait_for_timeout(800)
     page.screenshot(path=out / "leave-balances.png")
 
 
 def shot_timeoff(page: Page, base: str, out: Path) -> None:
     go(page, base, "/schedule")
-    scroll_to_text(page, "Zůstatky", 120)
+    scroll_to_text(page, TEXT["balances"], 120)
     page.screenshot(path=out / "timeoff-card.png")
 
 
@@ -150,14 +160,14 @@ def shot_mobile_home(page: Page, base: str, out: Path) -> None:
 
 def shot_mobile_schedule(page: Page, base: str, out: Path) -> None:
     go(page, base, "/schedule")
-    page.get_by_role("button", name="Moje směny").click()
+    page.get_by_role("button", name=TEXT["mine"]).click()
     page.wait_for_timeout(800)
     page.screenshot(path=out / "mobile-schedule.png")
 
 
 def shot_mobile_more(page: Page, base: str, out: Path) -> None:
     go(page, base, "/")
-    page.get_by_role("button", name="Více").click()
+    page.get_by_role("button", name=TEXT["more"]).click()
     page.wait_for_timeout(2500)
     page.screenshot(path=out / "mobile-more.png")
 
@@ -200,7 +210,10 @@ def main() -> int:
         choices=["fresh", "on"],
         help="demo-data scenario: a new owner (setup checklist + 'try demo data') or demo data on (banner)",
     )
+    ap.add_argument("--lang", default="cs", choices=["cs", "en", "sk", "uk"], help="UI language (default: cs)")
     args = ap.parse_args()
+    global TEXT
+    TEXT = UI_TEXT[args.lang]
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -212,14 +225,14 @@ def main() -> int:
 
         def run(shots: dict, ctx_opts: dict) -> None:
             ctx = browser.new_context(
-                locale="cs-CZ",
+                locale={"cs": "cs-CZ", "en": "en-GB", "sk": "sk-SK", "uk": "uk-UA"}[args.lang],
                 timezone_id="Europe/Prague",
                 color_scheme=theme,
                 reduced_motion="reduce",
                 service_workers="block",
                 **ctx_opts,
             )
-            ctx.add_init_script(PREFS_SCRIPT.replace("%THEME%", theme))
+            ctx.add_init_script(PREFS_SCRIPT.replace("%THEME%", theme).replace("%LANG%", args.lang))
             if args.billing:
                 ctx.add_init_script(f"try {{ localStorage.setItem('demo-billing', '{args.billing}'); }} catch (e) {{}}")
             if args.demo_org:

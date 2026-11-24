@@ -33,6 +33,8 @@ Deno.test('normalizeLang: cs/sk → cs, everything else en', () => {
     strictEqual(normalizeLang('CS-cz'), 'cs');
     strictEqual(normalizeLang('en'), 'en');
     strictEqual(normalizeLang('de'), 'en');
+    strictEqual(normalizeLang('uk'), 'en'); // the app speaks Ukrainian, server copy falls back to English
+    strictEqual(normalizeLang('sk-SK'), 'cs');
     strictEqual(normalizeLang(undefined), 'en');
     strictEqual(normalizeLang('csb'), 'en'); // Kashubian is not Czech
 });

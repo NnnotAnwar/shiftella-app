@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { PermissionArea, PermissionAction } from '@shared/types';
+import type { Language } from '@shared/i18n/translations';
 
 /** Every area a role can be granted, in the order the editor shows them. */
 export const AREAS: PermissionArea[] = ['rota', 'timesheets', 'requests', 'announcements', 'members', 'wages', 'locations', 'activity', 'roles'];
@@ -69,8 +70,12 @@ export function toggleGrant(g: Grants, area: PermissionArea, action: PermissionA
     return { ...g, [area]: cur };
 }
 
-/** Plural key for a head-count: 1 → _one, 2–4 → _few (Czech "lidé"), else the base ("lidí" / "people"). */
-export const peopleKey = (n: number) => (n === 1 ? 'roles.members_one' : n >= 2 && n <= 4 ? 'roles.members_few' : 'roles.members') as
-    | 'roles.members_one'
-    | 'roles.members_few'
-    | 'roles.members';
+/**
+ * Plural key for a head-count, by the language's CLDR plural rules:
+ * one → _one ("1 člověk", uk also 21, 31 …), few → _few ("2–4 lidé", uk 22–24 …),
+ * anything else → the base ("5 lidí" / "people").
+ */
+export const peopleKey = (n: number, language: Language = 'cs'): 'roles.members_one' | 'roles.members_few' | 'roles.members' => {
+    const cat = new Intl.PluralRules(language).select(n);
+    return cat === 'one' ? 'roles.members_one' : cat === 'few' ? 'roles.members_few' : 'roles.members';
+};

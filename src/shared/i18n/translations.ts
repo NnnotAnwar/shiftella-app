@@ -1,3 +1,6 @@
+import { sk } from './sk';
+import { uk } from './uk';
+
 /**
  * --- TRANSLATIONS ---
  * Flat key → string dictionaries. `en` is the source of truth; every other
@@ -483,7 +486,7 @@ export const en = {
     'roles.edit': 'Edit role',
     'roles.newHint': 'Name it and tick what it may do. It starts at the bottom — move it up in the list.',
     'roles.members': '{n} people',
-    'roles.members_one': '1 person',
+    'roles.members_one': '{n} person',
     'roles.members_few': '{n} people',
     'roles.org': 'Organization',
     'audit.roleCreated': 'Role created',
@@ -1849,7 +1852,7 @@ export const cs: Record<TranslationKey, string> = {
     'roles.edit': 'Upravit roli',
     'roles.newHint': 'Pojmenujte ji a zaškrtněte, co smí. Začne dole — v seznamu ji posuňte výš.',
     'roles.members': '{n} lidí',
-    'roles.members_one': '1 člověk',
+    'roles.members_one': '{n} člověk',
     'roles.members_few': '{n} lidé',
     'roles.org': 'Organizace',
     'audit.roleCreated': 'Role vytvořena',
@@ -2702,9 +2705,40 @@ export const cs: Record<TranslationKey, string> = {
     'import.maxRows': 'Načte se jen prvních {n} řádků.',
 };
 
-export const translations = { en, cs };
-export type Language = keyof typeof translations;
+/**
+ * UI languages. en + cs are complete (enforced by the types above); sk + uk
+ * live in their own files as partial dictionaries, so a key added to en/cs
+ * never breaks the build — it falls back until someone translates it
+ * (`i18nCoverage.test.ts` reports coverage and fails below its threshold).
+ */
+export type Language = 'en' | 'cs' | 'sk' | 'uk';
+export type PartialDictionary = Partial<Record<TranslationKey, string>>;
+
+export const translations = { en, cs, sk, uk } satisfies Record<Language, PartialDictionary>;
+
+/**
+ * The complete language a partial one falls back to — for missing UI keys and
+ * for everything that exists only in cs/en (landing copy, legal pages, holiday
+ * names, e-mails, push / Telegram copy). Slovaks read Czech; Ukrainian → English.
+ */
+export const BASE_LANGUAGE: Record<Language, 'en' | 'cs'> = { en: 'en', cs: 'cs', sk: 'cs', uk: 'en' };
+
+/** BCP 47 tag for Intl date / number formatting. */
+export const INTL_LOCALE: Record<Language, string> = { en: 'en-GB', cs: 'cs-CZ', sk: 'sk-SK', uk: 'uk-UA' };
+
 export const LANGUAGES: { code: Language; label: string }[] = [
     { code: 'en', label: 'English' },
     { code: 'cs', label: 'Čeština' },
+    { code: 'sk', label: 'Slovenčina' },
+    { code: 'uk', label: 'Українська' },
 ];
+
+export function isLanguage(v: unknown): v is Language {
+    return v === 'en' || v === 'cs' || v === 'sk' || v === 'uk';
+}
+
+/** Look a key up in `language`, then its base language, then English. */
+export function translate(language: Language, key: TranslationKey): string {
+    const dict: PartialDictionary = translations[language] ?? en;
+    return dict[key] ?? translations[BASE_LANGUAGE[language]][key] ?? en[key] ?? key;
+}

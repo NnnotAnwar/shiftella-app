@@ -8,6 +8,8 @@
  * simple; PreferencesProvider keeps them in sync and re-renders consumers.
  */
 
+import { INTL_LOCALE, isLanguage } from '@shared/i18n/translations';
+
 export type TimeFormat = '12h' | '24h';
 
 let timeFormat: TimeFormat = '24h';
@@ -18,7 +20,7 @@ export function setTimeFormatPreference(format: TimeFormat) {
 }
 
 export function setLocalePreference(language: string) {
-  locale = language === 'cs' ? 'cs-CZ' : 'en-GB';
+  locale = isLanguage(language) ? INTL_LOCALE[language] : 'en-GB';
 }
 
 const hour12 = () => timeFormat === '12h';
@@ -115,12 +117,12 @@ export function formatDateInText(isoString: string | null | undefined): string {
   }
 }
 
-/** "3. 2. 2027" (Czech) / "3 Feb 2027" — a date-only "YYYY-MM-DD" (validity dates). */
+/** "3. 2. 2027" (Czech / Slovak) / "3 Feb 2027" — a date-only "YYYY-MM-DD" (validity dates). */
 export function formatDayNumeric(day: string | null | undefined): string {
   if (!day) return '';
   const d = new Date(`${day.slice(0, 10)}T00:00:00`);
   if (Number.isNaN(d.getTime())) return '';
-  return locale === 'cs-CZ'
+  return locale === 'cs-CZ' || locale === 'sk-SK'
     ? `${d.getDate()}. ${d.getMonth() + 1}. ${d.getFullYear()}`
     : d.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' });
 }

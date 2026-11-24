@@ -18,7 +18,7 @@
 // Event → message mapping and the localized copy live in _shared/notify.ts.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { messagesFromWebhook, render, type Lang, type PrefCategory, type PushMessage } from '../_shared/notify.ts';
+import { messagesFromWebhook, normalizeLang, render, type Lang, type PrefCategory, type PushMessage } from '../_shared/notify.ts';
 import { sendTelegramNotification } from '../_shared/telegram.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -99,7 +99,7 @@ async function fetchPrefs(userId: string, category?: PrefCategory): Promise<{ al
         .select('push_enabled, shifts, account, requests, language')
         .eq('user_id', userId)
         .maybeSingle();
-    const lang: Lang = data?.language === 'cs' ? 'cs' : 'en';
+    const lang: Lang = normalizeLang(data?.language);
     if (!data) return { allow: true, lang };
     if (!data.push_enabled) return { allow: false, lang };
     const allow = category ? data[category] !== false : true;

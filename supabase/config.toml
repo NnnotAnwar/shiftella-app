@@ -398,6 +398,12 @@ verify_jwt = false
 enabled = true
 verify_jwt = false
 
+# Telegram bot (docs/telegram.md). Telegram calls it without a JWT — the
+# X-Telegram-Bot-Api-Secret-Token header (TELEGRAM_WEBHOOK_SECRET) is the auth.
+[functions.telegram-webhook]
+enabled = true
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

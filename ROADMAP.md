@@ -4,12 +4,20 @@ Living plan for **Shiftella**. Direction, not commitments — dates and scope
 change. Concrete work is tracked as **GitHub Issues** grouped into **Milestones**;
 this file is the high-level story, plus a large **idea backlog** to draw from.
 
-_Last updated: November 22, 2026 · current version 1.12.0 “Děčín”._
+_Last updated: November 24, 2026 · current version 1.13.0 “Ejpovice”._
 
 ---
 
 ## ✅ Shipped (recent highlights)
 
+- **v1.13.0 “Ejpovice”** — **Telegram bot** (link from Settings with a one-time
+  code; English commands with a button menu: shifts week by week with
+  confirm, today, hours month by month, announcements, approve / decline
+  requests; a copy of every push; never clock-in); **calendar subscription**
+  (ICS feed for Google / Apple / Outlook); **import members from Excel / CSV**;
+  **public landing page** with pricing, FAQ and Czech SEO; paid features
+  enforced in the database too; Superadmin can invite past a plan's limit;
+  translated server errors; plan upgrades apply only once paid.
 - **v1.12.0 “Děčín”** — rebrand to **Shiftella** (new name, S logo, app id
   `com.shiftella.app`, domain **shiftella.app**); **subscriptions** with Stripe —
   Free (≤ 5 people, 1 location), Team (flat 449 Kč/month, ≤ 15 people,
@@ -60,7 +68,7 @@ _Last updated: November 22, 2026 · current version 1.12.0 “Děčín”._
 
 ## 🔭 Next — approved plan (owner, 24 November 2026)
 
-Approved by the owner after v1.12.0 “Děčín” shipped. **Not started yet.**
+Approved by the owner after v1.12.0 “Děčín” shipped. ✅ = shipped in v1.13.0 “Ejpovice”.
 Deliberately left out: DPP/DPČ hour-cap tracking, because it could put off
 customers.
 
@@ -69,19 +77,19 @@ customers.
   the invoice template (the operator is not VAT-registered).
 - **Data processing agreement (DPA / zpracovatelská smlouva)** for business
   customers, plus terms for the paid service (payment, refunds, cancellation).
-- **Stricter failed payments** — an upgrade takes effect only after the payment
+- ✅ **Stricter failed payments** — an upgrade takes effect only after the payment
   succeeds (`payment_behavior: pending_if_incomplete`).
 - **Trial & billing emails** — trial day 1 / 20 / 27, “trial ended”, failed-payment
   (dunning) emails.
 
 ### 2. Fixes & tech debt
-- **Server-side plan gates** — templates, swaps, wages and coverage are gated in
+- ✅ **Server-side plan gates** — templates, swaps, wages and coverage are gated in
   the UI only; enforce them in RLS / the server, too.
-- **Live-board role badges** show the base role in English (MANAGER, EMPLOYEE) in
+- ✅ **Live-board role badges** show the base role in English (MANAGER, EMPLOYEE) in
   the Czech UI → show the organization's role name.
-- **Translate server errors** (e.g. “There is no active subscription…”).
-- **Superadmin can't invite into an org at its member limit** — allow it.
-- **Redeploy the remaining functions** with billing (`delete-account`, plan-aware
+- ✅ **Translate server errors** (e.g. “There is no active subscription…”).
+- ✅ **Superadmin can't invite into an org at its member limit** — allow it.
+- ✅ **Redeploy the remaining functions** with billing (`delete-account`, plan-aware
   `send-push`; push currently reaches Free orgs too).
 - **Database security** — #99 lock down SECURITY DEFINER helpers, #98 unused
   indexes, stop `org_plan()` revealing other orgs' plans.
@@ -92,7 +100,7 @@ customers.
 ### 3. Features
 - **Auto-scheduling** — suggest a rota from availability, 11 h rest, hour
   targets and coverage needs; the manager edits and publishes.
-- **Calendar sync** — your shifts as an ICS feed (Google / Apple Calendar).
+- ✅ **Calendar sync** — your shifts as an ICS feed (Google / Apple Calendar).
 - **Reminders** — push an hour before a shift, “you haven't clocked in”, a
   manager digest.
 - **Trusted clock-in** — kiosk mode (tablet + PIN / QR), geofence check, breaks.
@@ -102,11 +110,11 @@ customers.
 - **Shift notes & handover** for the next person.
 - **Targeted announcements** (per location / role) with read receipts.
 - **More languages** — Slovak, Ukrainian, later Polish.
-- **Import employees** from Excel / CSV.
+- ✅ **Import employees** from Excel / CSV.
 - **Owner analytics** — labour cost share, absences, lateness, busy days.
 
 ### 4. Growth
-- **Landing page on shiftella.app** — product, pricing, FAQ, Czech SEO
+- ✅ **Landing page on shiftella.app** — product, pricing, FAQ, Czech SEO
   (“plánování směn”, “docházka zaměstnanců”).
 - **Demo organization on sign-up** (reuse the `tools/screenshots` demo data).
 - **Promo video** redone on the real UI (screenshot harness + the existing voice-over).
@@ -271,6 +279,6 @@ Opinionated guidance for where to invest next.
 - **Issues** — one per concrete task, labelled by `area:*` and `priority:*`.
 - **Milestones** — group issues into shippable chunks.
 - **Releases** — semver tags (`vX.Y.Z`) + GitHub Releases with changelogs; notable
-  releases carry a Czech-town codename A→Z (v1.9.0 = _Adamov_, v1.10.0 = _Beroun_, v1.11.0 = _Cheb_, v1.12.0 = _Děčín_; next = _E_).
+  releases carry a Czech-town codename A→Z (v1.9.0 = _Adamov_, v1.10.0 = _Beroun_, v1.11.0 = _Cheb_, v1.12.0 = _Děčín_, v1.13.0 = _Ejpovice_; next = _F_).
 
 Have an idea or found a bug? Open an issue.

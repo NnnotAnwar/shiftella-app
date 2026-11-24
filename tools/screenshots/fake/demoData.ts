@@ -271,7 +271,8 @@ export function buildDemoData(): Tables {
                 starts_at: at(d, s),
                 ends_at: at(d, e),
                 all_day: false,
-                published: true,
+                // The month's last days are still a draft (rota cost labels the draft part).
+                published: d.getDate() < 28,
                 note: null,
                 created_by: P.petra,
                 created_at: daysAgo(18, '20:00'),
@@ -422,6 +423,11 @@ export function buildDemoData(): Tables {
         doc(4, P.eva, 'food_card', 'Potravinářský průkaz', addDays(today, 300), P.petra),
         doc(5, P.petra, 'contract', 'Smlouva jednatelky', null, P.petra),
     ];
+    // Leave / contract settings: a 40 h week, Lukáš part-time at 30 h (shows overtime in the rota).
+    const org_leave_settings: Row[] = [
+        { organization_id: ORG, enabled_kinds: ['vacation', 'sick', 'ocr', 'comp_time', 'unpaid', 'doctor', 'other'], weekly_hours: 40, vacation_weeks: 4, holiday_comp_time: true, updated_at: created },
+    ];
+    const member_leave: Row[] = [{ user_id: P.lukas, organization_id: ORG, weekly_hours: 30, vacation_hours: null, updated_at: created }];
 
     const shift_confirmations: Row[] = scheduled_shifts
         .filter((s) => s.user_id !== P.ondrej && Date.parse(s.starts_at as string) < now.getTime() + 4 * 86400000)
@@ -529,6 +535,8 @@ export function buildDemoData(): Tables {
         availability,
         member_wages,
         member_documents,
+        org_leave_settings,
+        member_leave,
         shift_confirmations,
         shift_audit_log,
         subscriptions,

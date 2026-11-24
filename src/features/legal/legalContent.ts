@@ -5,6 +5,8 @@
  * Supabase storage, FCM push) — review with a lawyer before relying on it.
  */
 
+import { APP_URL as SERVICE_URL, SUPPORT_EMAIL } from '@shared/brand';
+
 export type LegalDoc = 'privacy' | 'terms';
 export type LegalLang = 'en' | 'cs';
 
@@ -19,8 +21,6 @@ export interface LegalContent {
     sections: LegalSection[];
 }
 
-const SUPPORT_EMAIL = 'anuarkairulla@gmail.com';
-const SERVICE_URL = 'https://shiftella.app';
 const UPDATED_EN = 'Last updated: 2 July 2026';
 const UPDATED_CS = 'Naposledy aktualizováno: 2. července 2026';
 

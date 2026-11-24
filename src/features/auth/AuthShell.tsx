@@ -34,6 +34,34 @@ export function LanguageToggle() {
     );
 }
 
+/** Light/dark switch for the signed-out pages (auth screens and the landing page). */
+export function ThemeToggle() {
+    const { resolvedTheme, setTheme } = useTheme();
+    const isDark = resolvedTheme === 'dark';
+    const t = useTranslation();
+    return (
+        <button
+            type="button"
+            onClick={() => setTheme(isDark ? 'light' : 'dark')}
+            aria-label={t('common.toggleTheme')}
+            className="p-2 rounded-xl bg-white/60 dark:bg-white/5 border border-gray-200/60 dark:border-white/10 text-gray-500 dark:text-gray-300 backdrop-blur-md hover:bg-white/80 dark:hover:bg-white/10 active:scale-90 transition-all"
+        >
+            <AnimatePresence mode="wait" initial={false}>
+                <motion.span
+                    key={resolvedTheme}
+                    initial={{ y: -6, opacity: 0, rotate: -30 }}
+                    animate={{ y: 0, opacity: 1, rotate: 0 }}
+                    exit={{ y: 6, opacity: 0, rotate: 30 }}
+                    transition={{ duration: 0.2 }}
+                    className="block"
+                >
+                    {isDark ? <SunIcon weight="bold" className="size-4" /> : <MoonIcon weight="bold" className="size-4" />}
+                </motion.span>
+            </AnimatePresence>
+        </button>
+    );
+}
+
 /**
  * --- AUTH SHELL ---
  * The frame shared by the signed-out pages (sign in, create an organization):
@@ -41,10 +69,6 @@ export function LanguageToggle() {
  * the footer line. Pages pass their form (and anything under the card).
  */
 export function AuthShell({ title, eyebrow, children, below }: { title: string; eyebrow: string; children: ReactNode; below?: ReactNode }) {
-    const { resolvedTheme, setTheme } = useTheme();
-    const isDark = resolvedTheme === 'dark';
-    const t = useTranslation();
-
     return (
         <div className="relative min-h-dvh flex items-center justify-center overflow-hidden px-4 pb-6 pt-[calc(3.25rem+env(safe-area-inset-top,0px))] sm:pb-10 sm:pt-10">
             {/* Ambient brand glow */}
@@ -54,24 +78,7 @@ export function AuthShell({ title, eyebrow, children, below }: { title: string; 
             {/* Language + theme toggles */}
             <div className="absolute top-[calc(1rem+env(safe-area-inset-top,0px))] right-[calc(1rem+env(safe-area-inset-right,0px))] z-10 flex items-center gap-2">
                 <LanguageToggle />
-                <button
-                    onClick={() => setTheme(isDark ? 'light' : 'dark')}
-                    aria-label={t('common.toggleTheme')}
-                    className="p-2 rounded-xl bg-white/60 dark:bg-white/5 border border-gray-200/60 dark:border-white/10 text-gray-500 dark:text-gray-300 backdrop-blur-md hover:bg-white/80 dark:hover:bg-white/10 active:scale-90 transition-all"
-                >
-                    <AnimatePresence mode="wait" initial={false}>
-                        <motion.span
-                            key={resolvedTheme}
-                            initial={{ y: -6, opacity: 0, rotate: -30 }}
-                            animate={{ y: 0, opacity: 1, rotate: 0 }}
-                            exit={{ y: 6, opacity: 0, rotate: 30 }}
-                            transition={{ duration: 0.2 }}
-                            className="block"
-                        >
-                            {isDark ? <SunIcon weight="bold" className="size-4" /> : <MoonIcon weight="bold" className="size-4" />}
-                        </motion.span>
-                    </AnimatePresence>
-                </button>
+                <ThemeToggle />
             </div>
 
             <motion.div

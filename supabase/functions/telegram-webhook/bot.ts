@@ -10,7 +10,7 @@ export { pragueDate, pragueMidnight, TZ };
 
 // --- Commands ------------------------------------------------------------------
 
-export type Command = 'start' | 'help' | 'stop' | 'shifts' | 'today' | 'hours' | 'news' | 'requests' | 'unknown';
+export type Command = 'start' | 'help' | 'stop' | 'shifts' | 'today' | 'hours' | 'news' | 'requests' | 'language' | 'unknown';
 
 // English commands only (the same in every language; the menu and replies are localized).
 const ALIASES: Record<string, Command> = {
@@ -23,6 +23,8 @@ const ALIASES: Record<string, Command> = {
     hours: 'hours',
     news: 'news',
     requests: 'requests',
+    language: 'language',
+    lang: 'language',
 };
 
 /**
@@ -57,6 +59,9 @@ export interface ReplyKeyboard {
     input_field_placeholder?: string;
 }
 
+/** One-tap language switch in the menu: labelled with the OTHER language, in that language. */
+const LANGUAGE_BUTTON: Record<Lang, string> = { en: '🌐 Čeština', cs: '🌐 English' };
+
 /** The menu under the message box. Reviewers get a Requests button. */
 export function mainMenu(lang: Lang, canReview: boolean): ReplyKeyboard {
     const l = MENU_LABELS[lang];
@@ -64,7 +69,8 @@ export function mainMenu(lang: Lang, canReview: boolean): ReplyKeyboard {
         keyboard: [
             [{ text: l.shifts }, { text: l.today }],
             [{ text: l.hours }, { text: l.news }],
-            canReview ? [{ text: l.requests }, { text: l.help }] : [{ text: l.help }],
+            ...(canReview ? [[{ text: l.requests }]] : []),
+            [{ text: l.help }, { text: LANGUAGE_BUTTON[lang] }],
         ],
         resize_keyboard: true,
         is_persistent: true,
@@ -79,6 +85,22 @@ export function parseMenuButton(text: string | undefined | null): MenuCommand | 
     for (const lang of ['en', 'cs'] as Lang[]) {
         for (const [cmd, label] of Object.entries(MENU_LABELS[lang])) if (label === t) return cmd as MenuCommand;
     }
+    return null;
+}
+
+/** The 🌐 menu button → the language it switches TO; null for anything else. */
+export function parseLanguageButton(text: string | undefined | null): Lang | null {
+    const t = (text ?? '').trim();
+    if (t === LANGUAGE_BUTTON.en) return 'cs';
+    if (t === LANGUAGE_BUTTON.cs) return 'en';
+    return null;
+}
+
+/** `/language cs` / `/language en` (also čeština / english) → that language. */
+export function parseLanguageArg(arg: string): Lang | null {
+    const a = arg.trim().toLowerCase();
+    if (['cs', 'cz', 'czech', 'cestina', 'čeština'].includes(a)) return 'cs';
+    if (['en', 'english', 'anglictina', 'angličtina'].includes(a)) return 'en';
     return null;
 }
 
@@ -107,6 +129,7 @@ const S = {
             '/hours — hours worked this month',
             '/news — latest announcements',
             '/requests — requests waiting for your decision',
+            '/language — switch between English and Czech',
             '/stop — disconnect this chat',
             '',
             'Or just use the menu under the message box.',
@@ -122,6 +145,8 @@ const S = {
         thisWeek: 'This week',
         thisMonth: 'This month',
         refresh: '🔄 Refresh',
+        languageTitle: 'Bot language',
+        languageSet: 'Done — I\'ll speak English here now. Notifications in Telegram will be in English too.',
         confirmAll: 'Confirm shifts',
         allDay: 'all day',
         todayTitle: 'Today',
@@ -177,6 +202,7 @@ const S = {
             '/hours — odpracované hodiny tento měsíc',
             '/news — nejnovější oznámení',
             '/requests — žádosti, které čekají na vás',
+            '/language — přepnout mezi češtinou a angličtinou',
             '/stop — odpojit tento chat',
             '',
             'Nebo prostě použijte menu pod polem pro zprávu.',
@@ -192,6 +218,8 @@ const S = {
         thisWeek: 'Tento týden',
         thisMonth: 'Tento měsíc',
         refresh: '🔄 Obnovit',
+        languageTitle: 'Jazyk bota',
+        languageSet: 'Hotovo — teď s vámi mluvím česky. Oznámení v Telegramu budou také česky.',
         confirmAll: 'Potvrdit směny',
         allDay: 'celý den',
         todayTitle: 'Dnes',

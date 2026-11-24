@@ -52,6 +52,8 @@ import {
     mainMenu,
     monthWindow,
     parseCommand,
+    parseLanguageArg,
+    parseLanguageButton,
     parseMenuButton,
     SHIFTS_MAX_WEEKS,
     weekWindow,
@@ -312,6 +314,27 @@ async function redraw(chatId: number, messageId: number, v: View) {
     });
 }
 
+// --- Language ------------------------------------------------------------------------------
+
+/** Save the bot language, then answer in it and re-send the menu so its labels switch too. */
+async function setLanguage(chatId: number, lang: Lang) {
+    const { error } = await admin.rpc('telegram_set_language', { p_chat_id: chatId, p_language: lang });
+    if (error) throw new Error(`language: ${error.code ?? 'rpc'}`);
+    const ctx = await context(chatId);
+    return reply(chatId, copy(lang).languageSet, ctx ? menu(ctx) : {});
+}
+
+/** /language without an argument: two buttons, the current one marked ✓. */
+async function languagePicker(chatId: number, current: Lang) {
+    const opt = async (lang: Lang, label: string): Promise<InlineButton> => ({
+        text: `${label}${lang === current ? ' ✓' : ''}`,
+        callback_data: await nav(chatId, { type: 'lang', lang }),
+    });
+    return reply(chatId, `<b>${copy(current).languageTitle}</b>`, {
+        reply_markup: { inline_keyboard: [[await opt('cs', '🇨🇿 Čeština'), await opt('en', '🇬🇧 English')]] },
+    });
+}
+
 async function onNews(chatId: number, ctx: Ctx) {
     const { data, error } = await admin
         .from('announcements')
@@ -364,6 +387,13 @@ async function onMessage(msg: TgMessage) {
     if (parsed?.cmd === 'stop') return onStop(chatId, lang);
     if (parsed?.cmd === 'help') return ctx ? reply(chatId, c.help, menu(ctx)) : reply(chatId, `${c.help}\n\n${c.notLinked}`);
     if (!ctx) return reply(chatId, c.notLinked, { reply_markup: siteKeyboard() });
+    // Language works on every plan — it only changes how the bot talks.
+    const switchTo = parseLanguageButton(msg.text);
+    if (switchTo) return setLanguage(chatId, switchTo);
+    if (parsed?.cmd === 'language') {
+        const chosen = parseLanguageArg(parsed.arg);
+        return chosen ? setLanguage(chatId, chosen) : languagePicker(chatId, lang);
+    }
     if (!parsed || parsed.cmd === 'unknown') return reply(chatId, c.unknown, menu(ctx));
     if (!ctx.allowed) return reply(chatId, c.plan);
 
@@ -398,6 +428,14 @@ async function onCallback(q: TgCallbackQuery) {
     const c = copy(lang);
     if (!action) return answer(c.badButton);
     if (!ctx) return answer(c.notLinked.replace(/<[^>]+>/g, ''));
+
+    if (action.type === 'lang') {
+        await answer();
+        // Drop the picker's buttons, then confirm in the new language with the new menu.
+        await tgCall('editMessageReplyMarkup', { chat_id: chatId, message_id: msg.message_id, reply_markup: { inline_keyboard: [] } });
+        return setLanguage(chatId, action.lang);
+    }
+
     if (!ctx.allowed) return answer(c.plan.replace(/<[^>]+>/g, ''));
 
     if (action.type === 'nav') {

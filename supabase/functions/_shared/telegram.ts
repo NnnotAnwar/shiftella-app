@@ -63,6 +63,7 @@ export function appUrl(env: string | undefined = Deno.env.get('APP_URL')): strin
 //   c:<from base36 s>:<to base36 s>[:<week>] confirm my published shifts in [from, to);
 //                                   with <week> it came from the /shifts view, which
 //                                   is then redrawn (✓ marks) instead of just losing the button
+//   l:<cs|en>                       set the bot's language
 //   v:<s|h|t>:<offset>              page a view: shifts week (0…8 ahead), hours month
 //                                   (0…−12 back), today (0, refresh)
 // Each is followed by ":<sig>", sig = first 12 bytes of HMAC-SHA256(key,
@@ -83,7 +84,8 @@ const inRange = (view: NavView, n: number) => Number.isInteger(n) && n >= VIEW_R
 export type CallbackAction =
     | { type: 'decide'; kind: RequestKind; id: string; approve: boolean }
     | { type: 'confirm'; from: Date; to: Date; week?: number }
-    | { type: 'nav'; view: NavView; offset: number };
+    | { type: 'nav'; view: NavView; offset: number }
+    | { type: 'lang'; lang: Lang };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -91,6 +93,10 @@ export function encodeCallback(a: CallbackAction): string {
     if (a.type === 'decide') {
         if (!UUID_RE.test(a.id)) throw new Error('bad id');
         return `d:${KIND_CODE[a.kind]}:${a.id.replace(/-/g, '').toLowerCase()}:${a.approve ? 'a' : 'r'}`;
+    }
+    if (a.type === 'lang') {
+        if (a.lang !== 'cs' && a.lang !== 'en') throw new Error('bad lang');
+        return `l:${a.lang}`;
     }
     if (a.type === 'nav') {
         if (!inRange(a.view, a.offset)) throw new Error('bad offset');
@@ -117,6 +123,8 @@ export function decodeCallback(payload: string): CallbackAction | null {
         const week = Number(m[3]);
         return inRange('shifts', week) ? { type: 'confirm', from, to, week } : null;
     }
+    m = /^l:(cs|en)$/.exec(payload);
+    if (m) return { type: 'lang', lang: m[1] as Lang };
     m = /^v:([sht]):(-?\d{1,2})$/.exec(payload);
     if (m) {
         const view = CODE_VIEW[m[1]];
@@ -260,6 +268,8 @@ interface LinkRow {
     requests: boolean;
     announcements: boolean;
     language: string;
+    /** Picked in the bot (🌐 / /language) — then it beats the app's language. */
+    language_chosen?: boolean;
 }
 
 export interface TelegramSendResult {
@@ -285,7 +295,7 @@ export async function sendTelegramNotification(
     try {
         const { data: link } = await admin
             .from('telegram_links')
-            .select('chat_id, muted, shifts, account, requests, announcements, language')
+            .select('chat_id, muted, shifts, account, requests, announcements, language, language_chosen')
             .eq('user_id', msg.userId)
             .maybeSingle<LinkRow>();
         if (!link) return { sent: 0, skipped: 'not_linked' };
@@ -300,8 +310,12 @@ export async function sendTelegramNotification(
             if (!plan || plan === 'free') return { sent: 0, skipped: 'plan' };
         }
 
-        const { data: prefs } = await admin.from('notification_preferences').select('language').eq('user_id', msg.userId).maybeSingle();
-        const lang: Lang = prefs?.language === 'cs' || prefs?.language === 'en' ? prefs.language : normalizeLang(link.language);
+        // The language picked in the bot wins; otherwise the app's, then the link's.
+        let lang: Lang = normalizeLang(link.language);
+        if (!link.language_chosen) {
+            const { data: prefs } = await admin.from('notification_preferences').select('language').eq('user_id', msg.userId).maybeSingle();
+            if (prefs?.language === 'cs' || prefs?.language === 'en') lang = prefs.language;
+        }
 
         const secret = Deno.env.get('TELEGRAM_WEBHOOK_SECRET') ?? '';
         const confirmData =

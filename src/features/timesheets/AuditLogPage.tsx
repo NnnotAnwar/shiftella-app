@@ -106,6 +106,8 @@ const ACTION: Record<string, ActionMeta> = {
     name_requested: { labelKey: 'audit.a.name_requested', Icon: UserGearIcon, badge: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' },
     name_request_cancelled: { labelKey: 'audit.a.name_request_cancelled', Icon: XCircleIcon, badge: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300' },
     member_invited: { labelKey: 'audit.a.member_invited', Icon: UserPlusIcon, badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' },
+    members_imported: { labelKey: 'audit.a.members_imported', Icon: UsersThreeIcon, badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' },
+    calendar_link_reset: { labelKey: 'audit.a.calendar_link_reset', Icon: CalendarCheckIcon, badge: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300' },
     member_removed: { labelKey: 'audit.a.member_removed', Icon: UserMinusIcon, badge: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400' },
     member_left: { labelKey: 'audit.a.member_left', Icon: UserMinusIcon, badge: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300' },
     wage_changed: { labelKey: 'audit.a.wage_changed', Icon: CoinsIcon, badge: 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400' },
@@ -464,6 +466,7 @@ function GenericBody({ entry }: { entry: ShiftAuditLog }) {
     if (d.location_name) parts.push(d.location_name);
     if (d.role_name && (entry.action === 'member_invited' || entry.action.startsWith('request_'))) parts.push(d.role_name);
     if (d.email) parts.push(d.email);
+    if (entry.action === 'members_imported') parts.push(t('audit.importCounts', { sent: d.invited ?? 0, failed: d.failed ?? 0 }));
     if (d.to_name) parts.push(t('audit.offeredTo', { name: d.to_name }));
     if (d.auto) parts.push(t('audit.autoClosed'));
     if (d.pinned) parts.push(t('audit.pinned'));

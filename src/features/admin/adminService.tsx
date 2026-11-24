@@ -224,7 +224,23 @@ export const adminService = {
         });
         if (error) throw await toFunctionError(error);
     },
+
+    /** One activity-log summary after a bulk (Excel / CSV) import. */
+    async logMembersImported(organizationId: string, invited: number, failed: number): Promise<void> {
+        const { error } = await supabase.rpc('log_members_imported', { p_org: organizationId, p_invited: invited, p_failed: failed });
+        if (error) throw new Error(error.message);
+    },
 };
+
+/** An Edge Function error with the server's machine-readable `code` (e.g. PLAN_LIMIT_MEMBERS). */
+export class FunctionError extends Error {
+    code: string | null;
+    constructor(message: string, code: string | null = null) {
+        super(message);
+        this.name = 'FunctionError';
+        this.code = code;
+    }
+}
 
 /**
  * Edge Functions return their error body with a non-2xx status, which supabase-js
@@ -236,7 +252,7 @@ async function toFunctionError(error: unknown): Promise<Error> {
     if (context && typeof context.json === 'function') {
         try {
             const body = await context.json();
-            if (body?.error) return new Error(body.error);
+            if (body?.error) return new FunctionError(body.error, typeof body.code === 'string' ? body.code : null);
         } catch {
             // fall through to the generic message
         }

@@ -127,6 +127,22 @@ def shot_palette(page: Page, base: str, out: Path) -> None:
     page.screenshot(path=out / "command-palette.png")
 
 
+DEMO_EVA = "00000000-0000-4000-8001-000000000005"
+
+
+def shot_documents(page: Page, base: str, out: Path) -> None:
+    # The owner looks at a barista's documents (amber + red expiry chips).
+    go(page, base, f"/profile/{DEMO_EVA}")
+    scroll_to_text(page, "Dokumenty", 160)
+    page.screenshot(path=out / "documents.png")
+
+
+def shot_mobile_documents(page: Page, base: str, out: Path) -> None:
+    go(page, base, f"/profile/{DEMO_EVA}")
+    scroll_to_text(page, "Dokumenty", 120)
+    page.screenshot(path=out / "mobile-documents.png")
+
+
 def shot_mobile_home(page: Page, base: str, out: Path) -> None:
     go(page, base, "/")
     page.screenshot(path=out / "mobile-home.png")
@@ -156,11 +172,13 @@ DESKTOP_SHOTS = {
     "leave": shot_leave,
     "timeoff": shot_timeoff,
     "palette": shot_palette,
+    "documents": shot_documents,
 }
 MOBILE_SHOTS = {
     "mobile-home": shot_mobile_home,
     "mobile-schedule": shot_mobile_schedule,
     "mobile-more": shot_mobile_more,
+    "mobile-documents": shot_mobile_documents,
 }
 
 

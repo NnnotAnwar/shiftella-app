@@ -12,6 +12,7 @@ import { profileService } from './profileService';
 import { ProfileView } from './components/ProfileView';
 import { ProfileEditor } from './components/ProfileEditor';
 import { PageHeader } from '@shared/components/PageHeader';
+import { MemberDocuments } from '@features/documents/MemberDocuments';
 
 export default function ProfilePage() {
   const { userId } = useParams();
@@ -90,6 +91,9 @@ export default function ProfilePage() {
           showOrganization={showOrganization}
         />
       )}
+
+      {/* Own documents, or a managed member's (renders nothing otherwise). */}
+      {!isEditing && <MemberDocuments member={profile} />}
 
       {!isEditing && !isSelf && currentUser && canViewAdminPanel(currentUser) && (
         <Link

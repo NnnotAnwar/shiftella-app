@@ -497,6 +497,7 @@ export const supabase: any = {
             upload: () => ok({ path: 'demo' }),
             getPublicUrl: () => ({ data: { publicUrl: '' } }),
             remove: () => ok([]),
+            createSignedUrl: () => ok({ signedUrl: 'about:blank' }),
         }),
     },
 };

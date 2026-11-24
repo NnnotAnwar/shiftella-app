@@ -18,10 +18,12 @@ import {
     XIcon,
     ArrowsLeftRightIcon,
     ChatTextIcon,
+    HourglassMediumIcon,
     type Icon,
 } from '@phosphor-icons/react';
 import type { ShiftAuditLog, ShiftSnapshot } from '@shared/types';
-import { formatClock, formatDateTime, monthShort } from '@shared/utils/date';
+import { formatClock, formatDateTime, formatDayNumeric, monthShort } from '@shared/utils/date';
+import { docTypeKey } from '@features/documents/documentTypes';
 import { useTranslation } from '@shared/preferences/PreferencesContext';
 import type { TranslationKey } from '@shared/i18n/translations';
 import { useNotifications } from './useNotifications';
@@ -142,6 +144,20 @@ function describe(entry: ShiftAuditLog, t: Translate): { Icon: Icon; tint: strin
                 d.requests ? t('notif.digest.requests', { n: d.requests }) : null,
             ].filter(Boolean);
             return { Icon: CoffeeIcon, tint: 'text-amber-600', title: t('notif.dailyDigest'), detail: parts.join(' · ') };
+        }
+        case 'document_expiring': {
+            // Same entry for the member ("your …") and their managers (their name in the detail).
+            const what = d.doc_type === 'other' && d.subject_name ? d.subject_name : t(docTypeKey(d.doc_type ?? 'other'));
+            const days = d.days_left ?? 0;
+            const key = days < 0 ? 'notif.docExpired' : days === 0 ? 'notif.docExpiresToday' : 'notif.docExpiring';
+            const self = !entry.subject_id || entry.subject_id === entry.target_user_id;
+            const date = d.valid_until ? t('docs.chip.valid', { date: formatDayNumeric(d.valid_until) }) : null;
+            return {
+                Icon: HourglassMediumIcon,
+                tint: days <= 0 ? 'text-red-500' : 'text-amber-500',
+                title: t(key, { what }),
+                detail: [self ? null : d.target_name, date].filter(Boolean).join(' · ') || undefined,
+            };
         }
         case 'swap_taken':
         case 'swap_requested':

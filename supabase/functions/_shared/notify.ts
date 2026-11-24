@@ -109,6 +109,55 @@ export function digestBody(v: { shifts?: number; people?: number; open?: number;
     return parts.join(' · ');
 }
 
+// Employee document types (mirror DOC_TYPES in src/features/documents/documentTypes.ts).
+const DOC_TYPE: Record<Lang, Record<string, string>> = {
+    en: {
+        contract: 'Employment contract', agreement: 'DPP / DPČ agreement', health_card: 'Health certificate',
+        food_card: 'Food handler card', safety_training: 'Safety training (BOZP)', other: 'Document',
+    },
+    cs: {
+        contract: 'Pracovní smlouva', agreement: 'Dohoda DPP / DPČ', health_card: 'Zdravotní průkaz',
+        food_card: 'Potravinářský průkaz', safety_training: 'Školení BOZP', other: 'Dokument',
+    },
+};
+
+/** "3. 2. 2027" / "3 Feb 2027" from a date-only "2027-02-03". */
+export function docDate(isoDay: string, lang: Lang): string {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(isoDay);
+    if (!m) return isoDay;
+    const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+    if (lang === 'cs') return `${d}. ${mo}. ${y}`;
+    return `${d} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][mo - 1]} ${y}`;
+}
+
+/** A document reminder: who it's about (empty = the recipient), what, until when, days left. */
+export function documentExpiringCopy(
+    v: { who?: string; type?: string; name?: string; date?: string; days?: number },
+    lang: Lang,
+): { title: string; body: string } {
+    const cs = lang === 'cs';
+    const days = Number(v.days ?? 0);
+    const type = String(v.type ?? 'other');
+    // "Other" documents read better by their own name.
+    const what = type === 'other' && v.name ? String(v.name) : (DOC_TYPE[lang][type] ?? DOC_TYPE[lang].other);
+    const date = v.date ? docDate(String(v.date), lang) : '';
+    const lead = v.who ? `${v.who} — ${what}` : what;
+    if (days < 0)
+        return cs
+            ? { title: 'Dokument vypršel', body: `${lead}: platnost skončila ${date}.` }
+            : { title: 'Document expired', body: `${lead}: expired on ${date}.` };
+    if (days === 0)
+        return cs
+            ? { title: 'Dokument dnes vyprší', body: `${lead}: platí jen do dnes (${date}).` }
+            : { title: 'Document expires today', body: `${lead}: valid only until today (${date}).` };
+    const left = cs
+        ? `${csPlural(days, 'zbývá', 'zbývají', 'zbývá')} ${days} ${csPlural(days, 'den', 'dny', 'dní')}`
+        : `${days} day${days === 1 ? '' : 's'} left`;
+    return cs
+        ? { title: 'Dokument brzy vyprší', body: `${lead}: platí do ${date} (${left}).` }
+        : { title: 'Document expiring soon', body: `${lead}: valid until ${date} (${left}).` };
+}
+
 /** Render a notification's title + body for a recipient's language. */
 export function render(msg: PushMessage, lang: Lang): { title: string; body: string } {
     if (msg.title !== undefined || msg.body !== undefined) {
@@ -165,6 +214,11 @@ export function render(msg: PushMessage, lang: Lang): { title: string; body: str
                 title: cs ? 'Dnešní přehled' : 'Today at a glance',
                 body: digestBody({ shifts: Number(v.shifts), people: Number(v.people), open: Number(v.open), requests: Number(v.requests) }, lang),
             };
+        case 'document_expiring':
+            return documentExpiringCopy(
+                { who: v.who ? String(v.who) : '', type: String(v.type ?? 'other'), name: String(v.name ?? ''), date: String(v.date ?? ''), days: Number(v.days ?? 0) },
+                lang,
+            );
         case 'schedule_published':
             return cs
                 ? { title: 'Rozpis zveřejněn', body: `${actor} zveřejnil(a) váš rozpis — ${shiftsCount(n, 'cs')}.` }
@@ -377,6 +431,23 @@ export async function messagesFromWebhook(admin: SupabaseClient, table: string, 
                     route: '/',
                     category: 'shifts',
                 }];
+            case 'document_expiring': {
+                // The member gets "your …"; their managers get the name in front.
+                const self = !record.subject_id || record.subject_id === target;
+                return [{
+                    userId: target,
+                    key: 'document_expiring',
+                    vars: {
+                        who: self ? '' : (details.target_name as string) || '',
+                        type: (details.doc_type as string) || 'other',
+                        name: (details.subject_name as string) || '',
+                        date: (details.valid_until as string) || '',
+                        days: Number(details.days_left ?? 0),
+                    },
+                    route: self ? '/profile' : `/profile/${record.subject_id}`,
+                    category: 'account',
+                }];
+            }
             case 'schedule_published':
                 return [{
                     userId: target,

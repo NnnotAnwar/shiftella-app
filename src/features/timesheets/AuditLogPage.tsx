@@ -39,13 +39,16 @@ import {
     CreditCardIcon,
     GiftIcon,
     TelegramLogoIcon,
+    FileArrowUpIcon,
+    HourglassMediumIcon,
 } from '@phosphor-icons/react';
 
 import { useAuthContext } from '@features/auth/AuthContext';
 import { can } from '@shared/auth/permissions';
 import { UserProfileModal } from '@features/profile/components/UserProfileModal';
 import { type ShiftAuditLog, type ShiftSnapshot, type Profile } from '@shared/types';
-import { formatClock, formatDateTime, monthShort } from '@shared/utils/date';
+import { formatClock, formatDateTime, formatDayNumeric, monthShort } from '@shared/utils/date';
+import { docTypeKey } from '@features/documents/documentTypes';
 import { timesheetService, type AuditLogQuery } from './timesheetService';
 import { AUDIT_GROUPS, AUDIT_GROUP_KEYS, dedupeFanout, groupLabel, type AuditGroup } from './auditCatalog';
 import { useTimesheetRealtime } from './useTimesheetRealtime';
@@ -134,6 +137,9 @@ const ACTION: Record<string, ActionMeta> = {
     org_updated: { labelKey: 'audit.a.org_updated', Icon: BuildingsIcon, badge: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400' },
     leave_adjusted: { labelKey: 'audit.a.leave_adjusted', Icon: SunHorizonIcon, badge: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' },
     leave_settings_changed: { labelKey: 'audit.a.leave_settings_changed', Icon: SunHorizonIcon, badge: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400' },
+    document_uploaded: { labelKey: 'audit.a.document_uploaded', Icon: FileArrowUpIcon, badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' },
+    document_deleted: { labelKey: 'audit.a.document_deleted', Icon: TrashIcon, badge: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400' },
+    document_expiring: { labelKey: 'audit.a.document_expiring', Icon: HourglassMediumIcon, badge: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' },
     plan_changed: { labelKey: 'audit.a.plan_changed', Icon: CreditCardIcon, badge: 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400' },
     plan_granted: { labelKey: 'audit.a.plan_granted', Icon: GiftIcon, badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' },
     plan_grant_removed: { labelKey: 'audit.a.plan_grant_removed', Icon: GiftIcon, badge: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300' },
@@ -376,7 +382,12 @@ function AuditBody({ entry }: { entry: ShiftAuditLog }) {
         case 'timeoff_approved':
         case 'timeoff_declined': {
             const parts: string[] = [];
-            if (d.kind) parts.push(t((entry.action.startsWith('request_') ? `mreq.kind.${d.kind}` : `timeoff.${d.kind}`) as TranslationKey));
+            if (d.doc_type && entry.action.startsWith('document_')) {
+        parts.push(t(docTypeKey(d.doc_type)));
+        if (d.subject_name) parts.push(d.subject_name);
+        if (d.valid_until) parts.push(t('docs.chip.valid', { date: formatDayNumeric(d.valid_until) }));
+    }
+    if (d.kind) parts.push(t((entry.action.startsWith('request_') ? `mreq.kind.${d.kind}` : `timeoff.${d.kind}`) as TranslationKey));
             if (d.starts_on) {
                 const from = new Date(`${d.starts_on}T00:00`);
                 const range =

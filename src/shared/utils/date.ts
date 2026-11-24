@@ -115,6 +115,16 @@ export function formatDateInText(isoString: string | null | undefined): string {
   }
 }
 
+/** "3. 2. 2027" (Czech) / "3 Feb 2027" — a date-only "YYYY-MM-DD" (validity dates). */
+export function formatDayNumeric(day: string | null | undefined): string {
+  if (!day) return '';
+  const d = new Date(`${day.slice(0, 10)}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return '';
+  return locale === 'cs-CZ'
+    ? `${d.getDate()}. ${d.getMonth() + 1}. ${d.getFullYear()}`
+    : d.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
 /** Localised "Tuesday 3 Nov" / "úterý 3. lis" — the dashboard greeting's date line. */
 export function formatWeekdayDate(date: Date): string {
   return date.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'short' });

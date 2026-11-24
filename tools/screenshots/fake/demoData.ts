@@ -382,6 +382,20 @@ export function buildDemoData(): Tables {
         id: id(17, i + 1), organization_id: ORG, user_id: p.id, hourly_rate: rates[p.id as string], currency: 'CZK', effective_from: '2026-09-01', created_by: P.petra, updated_at: created,
     }));
 
+    // Employee documents: one health card about to expire, one expired training, a contract.
+    const dayStr = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const doc = (n: number, user: string, doc_type: string, name: string, valid: Date | null, by: string, mime = 'application/pdf'): Row => ({
+        id: id(19, n), organization_id: ORG, user_id: user, doc_type, name, file_path: `${ORG}/${user}/${id(19, n)}.pdf`,
+        mime_type: mime, size_bytes: 240_000, valid_until: valid ? dayStr(valid) : null, uploaded_by: by, created_at: daysAgo(40 - n),
+    });
+    const member_documents: Row[] = [
+        doc(1, P.eva, 'contract', 'Pracovní smlouva 2026', null, P.petra),
+        doc(2, P.eva, 'health_card', 'Zdravotní průkaz', addDays(today, 12), P.eva, 'image/jpeg'),
+        doc(3, P.eva, 'safety_training', 'Školení BOZP', addDays(today, -4), P.petra),
+        doc(4, P.eva, 'food_card', 'Potravinářský průkaz', addDays(today, 300), P.petra),
+        doc(5, P.petra, 'contract', 'Smlouva jednatelky', null, P.petra),
+    ];
+
     const shift_confirmations: Row[] = scheduled_shifts
         .filter((s) => s.user_id !== P.ondrej && Date.parse(s.starts_at as string) < now.getTime() + 4 * 86400000)
         .map((s) => ({ scheduled_shift_id: s.id, user_id: s.user_id, organization_id: ORG, confirmed_at: daysAgo(10) }));
@@ -476,6 +490,7 @@ export function buildDemoData(): Tables {
         public_holidays,
         availability,
         member_wages,
+        member_documents,
         shift_confirmations,
         shift_audit_log,
         subscriptions,

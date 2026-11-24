@@ -37,6 +37,7 @@ import { Heatmap, HeatLegend } from './components/Heatmap';
 import { BarList } from './components/BarList';
 import { LatenessBar } from './components/LatenessBar';
 import { LATE_BUCKETS, fmtPeople } from './components/chartStyles';
+import { INTL_LOCALE, isLanguage } from '@shared/i18n/translations';
 
 /**
  * --- OWNER ANALYTICS ---
@@ -57,7 +58,7 @@ const localToday = () => {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
-const localeOf = (lang: string) => (lang === 'cs' ? 'cs-CZ' : 'en-GB');
+const localeOf = (lang: string) => (isLanguage(lang) ? INTL_LOCALE[lang] : 'en-GB');
 
 function fmtMoney(v: number, currency: string, lang: string): string {
     try {

@@ -50,7 +50,8 @@ const R = {
  * Billing scenario for the subscription row: `localStorage['demo-billing']` =
  * 'trial' (20 days left) | 'trial3' (3 days left) | 'free' (trial ended) |
  * 'past_due' | 'ended' (the paid Stripe subscription was canceled → Free) |
- * 'cancel_scheduled' (switched to Free: ends at the period end); anything
+ * 'cancel_scheduled' (switched to Free: ends at the period end); 'beta' (an
+ * expired trial under the free beta — billing_free_beta() answers true); anything
  * else = a paid Business plan (the README shots).
  */
 function billingScenario(): string | null {
@@ -437,7 +438,7 @@ export function buildDemoData(): Tables {
             ? trial(20)
             : scenario === 'trial3'
               ? trial(2.5)
-              : scenario === 'free'
+              : scenario === 'free' || scenario === 'beta'
                 ? trial(-2)
                 : scenario === 'past_due'
                   ? { ...paid, status: 'past_due' }

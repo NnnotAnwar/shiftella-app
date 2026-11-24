@@ -289,7 +289,9 @@ class Query implements PromiseLike<Result> {
                     Object.assign(existing, p, { updated_at: now });
                     affected.push(existing);
                 } else {
-                    const row: Row = { id: uuid(), created_at: now, updated_at: now, ...p };
+                    // Column defaults the real tables have (e.g. a new clock-in has no end yet).
+                    const defaults: Row = this.table === 'shifts' ? { ended_at: null, previous_location_id: null } : {};
+                    const row: Row = { id: uuid(), created_at: now, updated_at: now, ...defaults, ...p };
                     rows.push(row);
                     affected.push(row);
                 }

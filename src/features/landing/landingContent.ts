@@ -50,6 +50,8 @@ export interface LandingCopy {
     };
     faq: { eyebrow: string; title: string; items: { q: string; a: string }[] };
     final: { title: string; sub: string; cta: string };
+    /** Free beta: replaces the trial wording on the sign-up buttons and the final call. */
+    beta: { cta: string; finalSub: string; trust: string };
     footer: { tagline: string; privacy: string; terms: string; contact: string; signIn: string; signUp: string };
 }
 
@@ -160,6 +162,7 @@ const cs: LandingCopy = {
         sub: '{days} dní všech funkcí zdarma. Bez karty, bez závazků.',
         cta: 'Vyzkoušet {days} dní zdarma',
     },
+    beta: { cta: 'Začít zdarma', finalSub: 'Během bety jsou všechny funkce zdarma. Bez karty, bez závazků.', trust: 'Zdarma během bety' },
     footer: {
         tagline: 'Rozpis směn, docházka a výkazy pro malé týmy.',
         privacy: 'Ochrana soukromí',
@@ -277,6 +280,7 @@ const en: LandingCopy = {
         sub: '{days} days of every feature, free. No card, no commitment.',
         cta: 'Try {days} days free',
     },
+    beta: { cta: 'Start free', finalSub: 'Every feature is free during the beta. No card, no commitment.', trust: 'Free during the beta' },
     footer: {
         tagline: 'Rota, time tracking and timesheets for small teams.',
         privacy: 'Privacy',
@@ -290,6 +294,16 @@ const en: LandingCopy = {
 export const LANDING: Record<Language, LandingCopy> = { cs, en };
 
 /** Fill `{name}` placeholders (numbers come from plans.ts). */
+/** The copy with the free-beta wording: "Start free" instead of "Try 30 days free". */
+export function withFreeBeta(c: LandingCopy, freeBeta: boolean): LandingCopy {
+    if (!freeBeta) return c;
+    return {
+        ...c,
+        hero: { ...c.hero, cta: c.beta.cta, trust: [c.beta.trust, ...c.hero.trust.slice(1)] },
+        final: { ...c.final, cta: c.beta.cta, sub: c.beta.finalSub },
+    };
+}
+
 export function fill(str: string, vars: Record<string, string | number>): string {
     return str.replace(/\{(\w+)\}/g, (m, k: string) => (k in vars ? String(vars[k]) : m));
 }

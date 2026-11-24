@@ -1,7 +1,7 @@
 import { supabase } from '@shared/api/supabaseClient';
 import { z } from 'zod';
 import { type User } from '@shared/types';
-import { AnnouncementSchema, type Announcement, type AnnouncementInput } from './types';
+import { AnnouncementReaderSchema, AnnouncementSchema, type Announcement, type AnnouncementInput, type AnnouncementReach, type AnnouncementReader } from './types';
 
 /**
  * --- ANNOUNCEMENT SERVICE ---
@@ -48,6 +48,7 @@ export const announcementService = {
         title: input.title.trim(),
         body: input.body.trim(),
         location_id: input.location_id ?? null,
+        org_role_id: input.org_role_id ?? null,
         pinned: input.pinned ?? false,
       })
       .select(SELECT_WITH_AUTHOR)
@@ -63,6 +64,7 @@ export const announcementService = {
     if (patch.title !== undefined) next.title = patch.title.trim();
     if (patch.body !== undefined) next.body = patch.body.trim();
     if (patch.location_id !== undefined) next.location_id = patch.location_id;
+    if (patch.org_role_id !== undefined) next.org_role_id = patch.org_role_id;
     if (patch.pinned !== undefined) next.pinned = patch.pinned;
 
     const { data, error } = await supabase
@@ -74,6 +76,32 @@ export const announcementService = {
 
     if (error) throw error;
     return AnnouncementSchema.parse(data);
+  },
+
+  /** "N people will see it" while composing (posters only). */
+  async audienceSize(locationId: string | null, roleId: string | null): Promise<number> {
+    const { data, error } = await supabase.rpc('announcement_audience_size', { p_location: locationId, p_role: roleId });
+    if (error) throw error;
+    return Number(data ?? 0);
+  },
+
+  /** Read / audience counts for these announcements (posters only; others get an empty map). */
+  async reach(ids: string[]): Promise<Record<string, AnnouncementReach>> {
+    if (ids.length === 0) return {};
+    const { data, error } = await supabase.rpc('announcement_reach', { p_ids: ids });
+    if (error) throw error;
+    const out: Record<string, AnnouncementReach> = {};
+    for (const r of (data ?? []) as { announcement_id: string; readers: number; audience: number }[]) {
+      out[r.announcement_id] = { readers: Number(r.readers), audience: Number(r.audience) };
+    }
+    return out;
+  },
+
+  /** Who of the audience has read an announcement (unread first). */
+  async readers(id: string): Promise<AnnouncementReader[]> {
+    const { data, error } = await supabase.rpc('announcement_readers', { p_id: id });
+    if (error) throw error;
+    return z.array(AnnouncementReaderSchema).parse(data ?? []);
   },
 
   /** Remove an announcement (manager only, enforced by RLS). */

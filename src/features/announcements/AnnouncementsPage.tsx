@@ -13,6 +13,12 @@ import {
 } from '@phosphor-icons/react';
 import { useTranslation } from '@shared/preferences/PreferencesContext';
 import { PageHeader } from '@shared/components/PageHeader';
+import { useOutletContext } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import type { AppOutletContext } from '@/app/layout/AppShell';
+import { useOrgRoles } from '@features/roles/useOrgRoles';
+import { announcementService } from './announcementService';
+import { AudienceLabel, AudiencePicker, ReachButton } from './AnnouncementAudience';
 
 export function AnnouncementsPage() {
   const { user } = useAuthContext();
@@ -24,30 +30,50 @@ export function AnnouncementsPage() {
   const [body, setBody] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  // Audience: a location's roster and / or a role; both empty = whole organization.
+  const [audience, setAudience] = useState<{ locationId: string | null; roleId: string | null }>({ locationId: null, roleId: null });
   // Posting, editing, pinning and deleting is an admin action (managers only read).
   const isManager = can(user, 'announcements.post');
+
+  const { locations } = useOutletContext<AppOutletContext>();
+  const roles = useOrgRoles(user?.organization_id).list.data ?? [];
+  const activeLocations = locations.filter((l) => !l.archived_at);
+  const locationName = (id?: string | null) => (id ? locations.find((l) => l.id === id)?.name : null);
+  const roleName = (id?: string | null) => (id ? roles.find((r) => r.id === id)?.name : null);
+
+  // Posters: read / audience per card. No realtime for reads — refresh every minute.
+  const ids = (list.data ?? []).map((a) => a.id);
+  const reach = useQuery({
+    queryKey: ['announcement-reach', ids],
+    queryFn: () => announcementService.reach(ids),
+    enabled: isManager && ids.length > 0,
+    refetchInterval: 60_000,
+  });
 
   const resetForm = () => {
     setEditingId(null);
     setTitle('');
     setBody('');
+    setAudience({ locationId: null, roleId: null });
   };
 
-  const startEdit = (a: { id: string; title: string; body: string }) => {
+  const startEdit = (a: { id: string; title: string; body: string; location_id?: string | null; org_role_id?: string | null }) => {
     setEditingId(a.id);
     setTitle(a.title);
     setBody(a.body);
+    setAudience({ locationId: a.location_id ?? null, roleId: a.org_role_id ?? null });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const submit = () => {
+    const target = { location_id: audience.locationId, org_role_id: audience.roleId };
     if (editingId) {
       update.mutate(
-        { id: editingId, patch: { title, body } },
+        { id: editingId, patch: { title, body, ...target } },
         { onSuccess: resetForm },
       );
     } else {
-      create.mutate({ title, body }, { onSuccess: resetForm });
+      create.mutate({ title, body, ...target }, { onSuccess: resetForm });
     }
   };
 
@@ -68,6 +94,13 @@ export function AnnouncementsPage() {
             onChange={(e) => setBody(e.target.value)}
             placeholder={t('announcements.bodyPlaceholder')}
             className="text-body min-h-20 w-full resize-none rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-emerald-500/40 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+          />
+          <AudiencePicker
+            locations={activeLocations.map((l) => ({ id: l.id, name: l.name }))}
+            roles={roles.map((r) => ({ id: r.id, name: r.name }))}
+            locationId={audience.locationId}
+            roleId={audience.roleId}
+            onChange={setAudience}
           />
           <div className="flex justify-end gap-2">
             {editingId && (
@@ -149,6 +182,11 @@ export function AnnouncementsPage() {
                     <h2 className="text-body-strong text-gray-900 dark:text-white">
                       {a.title}
                     </h2>
+                    {(a.location_id || a.org_role_id) && (
+                      <div className="mt-1">
+                        <AudienceLabel locationName={locationName(a.location_id)} roleName={roleName(a.org_role_id)} />
+                      </div>
+                    )}
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     <AnimatePresence>
@@ -169,13 +207,16 @@ export function AnnouncementsPage() {
                 <p className="text-body mt-1 whitespace-pre-wrap text-gray-600 dark:text-gray-300">
                   {a.body}
                 </p>
-                <div className="mt-2 flex items-center justify-between gap-2">
-                  <p className="text-micro text-gray-400">
-                    {a.author?.username
-                      ? t('announcements.postedBy', { name: a.author.username })
-                      : t('announcements.fallbackAuthor')}{' '}
-                    · {formatDateShort(a.created_at)}
-                  </p>
+                <div className="mt-2 flex items-start justify-between gap-2">
+                  <div className="flex min-w-0 flex-col gap-1">
+                    <p className="text-micro text-gray-400">
+                      {a.author?.username
+                        ? t('announcements.postedBy', { name: a.author.username })
+                        : t('announcements.fallbackAuthor')}{' '}
+                      · {formatDateShort(a.created_at)}
+                    </p>
+                    {isManager && <ReachButton id={a.id} reach={reach.data?.[a.id]} />}
+                  </div>
                   {isManager &&
                     (confirmDeleteId === a.id ? (
                       <div className="text-micro flex shrink-0 items-center gap-3">

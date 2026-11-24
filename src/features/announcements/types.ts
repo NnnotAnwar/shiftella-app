@@ -9,7 +9,8 @@ import { z } from 'zod';
 export const AnnouncementSchema = z.object({
   id: z.string(),
   organization_id: z.string(),
-  location_id: z.string().nullable().optional(), // null = whole organization
+  location_id: z.string().nullable().optional(), // null = whole organization (else: that location's roster)
+  org_role_id: z.string().nullable().optional(), // null = every role (else: people with that role)
   author_id: z.string().nullable().optional(), // null if the author left
   title: z.string(),
   body: z.string(),
@@ -34,5 +35,20 @@ export interface AnnouncementInput {
   title: string;
   body: string;
   location_id?: string | null; // omit / null = whole org
+  org_role_id?: string | null; // omit / null = every role
   pinned?: boolean;
 }
+
+/** How many of an announcement's audience have read it (posters only). */
+export interface AnnouncementReach {
+  readers: number;
+  audience: number;
+}
+
+/** One person of an announcement's audience; read_at null = not read yet. */
+export const AnnouncementReaderSchema = z.object({
+  user_id: z.string(),
+  name: z.string().nullable(),
+  read_at: z.string().nullable(),
+});
+export type AnnouncementReader = z.infer<typeof AnnouncementReaderSchema>;

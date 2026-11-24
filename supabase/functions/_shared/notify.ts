@@ -262,14 +262,21 @@ export async function messagesFromWebhook(admin: SupabaseClient, table: string, 
         const bodyText = (record.body as string) || '';
         const shortBody = bodyText.length > 140 ? `${bodyText.slice(0, 139)}…` : bodyText;
 
-        const { data: members } = await admin
-            .from('profiles')
-            .select('id')
-            .eq('organization_id', orgId);
+        // Only the announcement's audience (its location's roster / its role / everyone).
+        let ids: string[] = [];
+        const { data: audience, error: audienceErr } = await admin.rpc('announcement_audience_ids', { p_id: record.id });
+        if (!audienceErr) {
+            ids = ((audience ?? []) as (string | { announcement_audience_ids?: string })[]).map((r) =>
+                typeof r === 'string' ? r : String(r.announcement_audience_ids ?? ''),
+            );
+        } else if (!record.location_id && !record.org_role_id) {
+            // Audience function unavailable: a whole-organization notice can still go to everyone.
+            const { data: members } = await admin.from('profiles').select('id').eq('organization_id', orgId);
+            ids = (members ?? []).map((m: { id: string }) => m.id);
+        }
 
-        return (members ?? [])
-            .map((m: { id: string }) => m.id)
-            .filter((id) => id !== authorId)
+        return ids
+            .filter((id) => id && id !== authorId)
             .map((id) => ({
                 userId: id,
                 // User-authored content — passed pre-rendered (no localization).

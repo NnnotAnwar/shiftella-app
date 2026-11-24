@@ -36,3 +36,26 @@ Deno.test('webhook rows → messages for the targeted person', async () => {
     });
     deepStrictEqual(digest, [{ userId: 'a1', key: 'daily_digest', vars: { shifts: 3, people: 3, open: 0, requests: 1 }, route: '/', category: 'shifts' }]);
 });
+
+Deno.test('announcements: only the audience the database returns, never the author', async () => {
+    const admin = {
+        rpc: (fn: string, args: { p_id: string }) => {
+            strictEqual(fn, 'announcement_audience_ids');
+            strictEqual(args.p_id, 'a1');
+            return Promise.resolve({ data: ['u1', 'author', 'u2'], error: null });
+        },
+    };
+    const msgs = await messagesFromWebhook(admin as never, 'announcements', {
+        id: 'a1', organization_id: 'o1', author_id: 'author', title: 'Inventura', body: 'Zítra v 8:00', location_id: 'loc1',
+    });
+    deepStrictEqual(msgs.map((m) => m.userId), ['u1', 'u2']);
+    strictEqual(msgs[0].title, '📣 Inventura');
+});
+
+Deno.test('announcements: audience lookup failed → a targeted notice goes to nobody (never too wide)', async () => {
+    const admin = { rpc: () => Promise.resolve({ data: null, error: { message: 'x' } }), from: () => { throw new Error('must not widen'); } };
+    const msgs = await messagesFromWebhook(admin as never, 'announcements', {
+        id: 'a2', organization_id: 'o1', author_id: null, title: 'T', body: 'B', org_role_id: 'r1',
+    });
+    deepStrictEqual(msgs, []);
+});

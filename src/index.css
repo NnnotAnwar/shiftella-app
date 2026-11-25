@@ -24,8 +24,8 @@
  * (`--color-emerald-*` is re-pointed at runtime), so every scheme stays coherent.
  */
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-display: "Satoshi", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter Variable", "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Satoshi", "Inter Variable", "Inter", ui-sans-serif, system-ui, sans-serif;
 
   --color-ink: #1b1a2e;
   --color-ink-soft: #66637f;

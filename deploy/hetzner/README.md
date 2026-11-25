@@ -98,7 +98,7 @@ Before you start, the server is set up by the anwar.os repo (Docker plus the edg
 ## Headers and CSP
 
 - **Edge headers.** The edge `security_headers` snippet adds HSTS, nosniff, Referrer-Policy, `X-Frame-Options: DENY`, COOP `same-origin`, and a Permissions-Policy that turns off camera, mic, geolocation, payment and USB. All of these fit Shiftella: it uses no geolocation, and billing is a **redirect** to Stripe Checkout, not embedded Stripe.js.
-- **CSP.** `shiftella.caddy` adds only the CSP. It allows the environment's Supabase project (https + wss), Google Fonts, Fontshare, and `data:`/`blob:` for exports.
+- **CSP.** `shiftella.caddy` adds only the CSP. It allows the environment's Supabase project (https + wss) and `data:`/`blob:` for exports. Fonts are self-hosted (src/fonts.css), so no font CDN is allowed.
 - **Adding a third-party script** means changing the CSP first. For example, embedding Stripe.js needs `script-src https://js.stripe.com`, `frame-src https://js.stripe.com https://hooks.stripe.com` and `connect-src https://api.stripe.com`. It also needs a `payment=(self)` Permissions-Policy override in our block, plus a note to the anwar.os side.
 - **No eval.** zod used to probe `new Function` (one CSP report per page load); it now runs `jitless` (`src/shared/zodCsp.ts`). Never add `'unsafe-eval'`.
 - **Tested in CI.** The E2E job (`ci.yml` → `e2e`, docs/e2e.md) serves the app with the CSP line from `shiftella.caddy`, enforced, and fails on any violation — including exports and every main screen. Change the CSP → run `corepack yarn e2e`.

@@ -32,9 +32,11 @@ describe('legal content', () => {
             const text = JSON.stringify(LEGAL.privacy[lang]);
             expect(text, lang).toContain('support@shiftella.app');
             expect(text, lang).toContain('www.uoou.cz');
-            for (const name of ['Supabase', 'Hetzner', 'Resend', 'Firebase Cloud Messaging', 'Cloudflare', 'Telegram', 'Stripe', 'Google Fonts', 'Fontshare']) {
+            for (const name of ['Supabase', 'Hetzner', 'Resend', 'Firebase Cloud Messaging', 'Cloudflare', 'Telegram', 'Stripe']) {
                 expect(text, `${lang}: ${name}`).toContain(name);
             }
+            // Fonts are self-hosted (src/fonts.css): no font CDN is a recipient any more.
+            expect(text, lang).not.toMatch(/Google Fonts|Fontshare/);
         }
     });
 });

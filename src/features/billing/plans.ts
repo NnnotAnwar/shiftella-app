@@ -28,6 +28,7 @@ export type Feature =
     | 'push'
     // Business
     | 'activityLog'
+    | 'analytics' // owner analytics page + org_analytics RPC
     | 'coverage'
     | 'restRules'
     | 'prioritySupport'
@@ -36,7 +37,7 @@ export type Feature =
 export const PLAN_ORDER: readonly Plan[] = ['free', 'team', 'business'];
 
 const TEAM_FEATURES: readonly Feature[] = ['timesheets', 'exports', 'wages', 'customRoles', 'swaps', 'openShifts', 'templates', 'push'];
-const BUSINESS_FEATURES: readonly Feature[] = [...TEAM_FEATURES, 'activityLog', 'coverage', 'restRules', 'prioritySupport', 'earlyAccess'];
+const BUSINESS_FEATURES: readonly Feature[] = [...TEAM_FEATURES, 'activityLog', 'analytics', 'coverage', 'restRules', 'prioritySupport', 'earlyAccess'];
 
 export const PLAN_FEATURES: Record<Plan, ReadonlySet<Feature>> = {
     free: new Set(),

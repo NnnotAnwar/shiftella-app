@@ -134,8 +134,8 @@ export default function App() {
                           <Route path="admin" element={<AdminPage />} />
                           {/* Timesheets: managers+ view (rank >= 20); admins edit. */}
                           <Route path="timesheets" element={<GatedPage feature="timesheets" titleKey="nav.timesheets"><TimesheetsPage /></GatedPage>} />
-                          {/* Owner analytics: rota + timesheets read (the page self-guards; the RPC checks too). */}
-                          <Route path="analytics" element={<GatedPage feature="timesheets" titleKey="nav.analytics"><AnalyticsPage /></GatedPage>} />
+                          {/* Owner analytics: Business plan; rota + timesheets read (the page self-guards; the RPC checks both). */}
+                          <Route path="analytics" element={<GatedPage feature="analytics" titleKey="nav.analytics"><AnalyticsPage /></GatedPage>} />
                           {/* Shift notes per location + day: timesheet readers (self-guards; RLS too). Not plan-gated. */}
                           <Route path="notes" element={<ShiftNotesPage />} />
                           {/* Activity Log is admin-only (rank >= 30); the page self-guards too. */}

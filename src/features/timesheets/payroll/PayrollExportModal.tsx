@@ -17,28 +17,19 @@ import { holidayService } from '@features/schedule/holidays/holidayService';
 import { wageService } from '@features/wages/wageService';
 import { buildPayrollReport, monthRange, type PayrollWage } from './payrollAggregate';
 import { buildPayrollFile, type PayrollFormat } from './payrollExport';
+import { canSetPersonalNumber, usePersonalNumbers } from './personalNumbers';
 
 /**
  * --- PAYROLL EXPORT ("Podklady pro mzdy") ---
  * One dialog, three one-tap downloads for the month: Excel (any accountant),
- * CSV, and the Money S3 attendance XML. Money pairs people by osobní číslo,
- * which Shiftella doesn't store yet — the admin types them once here and they
- * stay on this device (localStorage, per organization).
+ * CSV, and the Money S3 attendance XML. Money pairs people by osobní číslo —
+ * stored on the member (member_payroll, see personalNumbers.ts); people who may
+ * manage a member can fill it in right here, saved when the field loses focus.
  *
  * Permissions: the page is timesheets.view; time off comes through RLS
  * (requests/rota read); hourly rates only for wages.edit holders on a plan
  * with wages — RLS still decides which rates come back.
  */
-
-const idsKey = (orgId: string) => `payroll-personal-numbers:${orgId}`;
-
-function readIds(orgId: string): Record<string, string> {
-    try {
-        return JSON.parse(localStorage.getItem(idsKey(orgId)) ?? '{}') as Record<string, string>;
-    } catch {
-        return {};
-    }
-}
 
 function memberName(m: Profile): string {
     return [m.first_name, m.last_name].filter(Boolean).join(' ') || m.username;
@@ -49,16 +40,34 @@ export function PayrollExportModal({ month, members, onClose }: { month: string;
     const t = useTranslation();
     const { language } = usePreferences();
     const ent = useEntitlements();
-    const orgId = user?.organization_id ?? 'none';
-    const [ids, setIds] = useState<Record<string, string>>(() => readIds(orgId));
+    const { numbers, save } = usePersonalNumbers();
+    // Edited, not yet confirmed values — the export uses them right away.
+    const [drafts, setDrafts] = useState<Record<string, string>>({});
     const [busy, setBusy] = useState<PayrollFormat | null>(null);
     const showWages = !!user && can(user, 'wages.edit') && ent.can('wages');
 
-    const setId = (userId: string, value: string) => {
-        const next = { ...ids, [userId]: value.slice(0, 10) };
-        if (!next[userId].trim()) delete next[userId];
-        setIds(next);
-        localStorage.setItem(idsKey(orgId), JSON.stringify(next));
+    const numberOf = (id: string) => (drafts[id] ?? numbers.get(id) ?? '').trim();
+
+    const commit = (userId: string) => {
+        const value = drafts[userId];
+        if (value === undefined) return;
+        const dropDraft = () =>
+            setDrafts((d) => {
+                const next = { ...d };
+                delete next[userId];
+                return next;
+            });
+        if (value.trim() === (numbers.get(userId) ?? '')) return dropDraft();
+        save.mutate(
+            { userId, value },
+            {
+                onSuccess: dropDraft,
+                onError: (e) => {
+                    dropDraft();
+                    toast(e instanceof Error && e.message === 'PERSONAL_NUMBER_TAKEN' ? t('payroll.numberTaken', { number: value.trim() }) : t('common.actionFailed'), 'error');
+                },
+            },
+        );
     };
 
     const run = async (format: PayrollFormat) => {
@@ -77,7 +86,7 @@ export function PayrollExportModal({ month, members, onClose }: { month: string;
 
             const report = buildPayrollReport({
                 month,
-                people: members.map((m) => ({ id: m.id, name: memberName(m), personalNumber: ids[m.id] ?? null })),
+                people: members.map((m) => ({ id: m.id, name: memberName(m), personalNumber: numberOf(m.id) || null })),
                 shifts,
                 timeOff,
                 holidays: new Set(holidays.map((h) => h.holiday_date)),
@@ -136,16 +145,21 @@ export function PayrollExportModal({ month, members, onClose }: { month: string;
                                 <label htmlFor={`pn-${m.id}`} className="flex-1 min-w-0 truncate text-small text-ink dark:text-slate-200">
                                     {memberName(m)}
                                 </label>
-                                <Input
-                                    id={`pn-${m.id}`}
-                                    className="w-28! h-9 text-right tabular-nums"
-                                    maxLength={10}
-                                    inputMode="text"
-                                    autoComplete="off"
-                                    value={ids[m.id] ?? ''}
-                                    onChange={(e) => setId(m.id, e.target.value)}
-                                    placeholder="—"
-                                />
+                                {canSetPersonalNumber(user, m) ? (
+                                    <Input
+                                        id={`pn-${m.id}`}
+                                        className="w-28! h-9 text-right tabular-nums"
+                                        maxLength={10}
+                                        autoComplete="off"
+                                        value={drafts[m.id] ?? numbers.get(m.id) ?? ''}
+                                        onChange={(e) => setDrafts((d) => ({ ...d, [m.id]: e.target.value }))}
+                                        onBlur={() => commit(m.id)}
+                                        onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+                                        placeholder="—"
+                                    />
+                                ) : (
+                                    <span className="w-28 text-right text-small tabular-nums text-ink-soft dark:text-slate-400">{numbers.get(m.id) ?? '—'}</span>
+                                )}
                             </li>
                         ))}
                     </ul>

@@ -41,6 +41,7 @@ import {
     TelegramLogoIcon,
     FileArrowUpIcon,
     HourglassMediumIcon,
+    IdentificationCardIcon,
 } from '@phosphor-icons/react';
 
 import { useAuthContext } from '@features/auth/AuthContext';
@@ -137,6 +138,7 @@ const ACTION: Record<string, ActionMeta> = {
     org_updated: { labelKey: 'audit.a.org_updated', Icon: BuildingsIcon, badge: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400' },
     leave_adjusted: { labelKey: 'audit.a.leave_adjusted', Icon: SunHorizonIcon, badge: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' },
     leave_settings_changed: { labelKey: 'audit.a.leave_settings_changed', Icon: SunHorizonIcon, badge: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400' },
+    personal_number_changed: { labelKey: 'audit.a.personal_number_changed', Icon: IdentificationCardIcon, badge: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400' },
     document_uploaded: { labelKey: 'audit.a.document_uploaded', Icon: FileArrowUpIcon, badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' },
     document_deleted: { labelKey: 'audit.a.document_deleted', Icon: TrashIcon, badge: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400' },
     document_expiring: { labelKey: 'audit.a.document_expiring', Icon: HourglassMediumIcon, badge: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' },
@@ -482,6 +484,7 @@ function GenericBody({ entry }: { entry: ShiftAuditLog }) {
         if (d.weekly_hours != null) parts.push(`${t('leave.weeklyHours')}: ${d.weekly_hours}`);
         if (d.vacation_hours != null) parts.push(`${t('leave.vacationHours')}: ${d.vacation_hours}`);
     }
+    if (entry.action === 'personal_number_changed') parts.push(`${t('profile.field.personalNumber')}: ${d.previous ?? '—'} → ${d.personal_number ?? '—'}`);
     if (d.kind) parts.push(t((entry.action.startsWith('request_') ? `mreq.kind.${d.kind}` : `timeoff.${d.kind}`) as TranslationKey));
     if (d.starts_at) parts.push(fmtRange(d.starts_at, d.ends_at, d.all_day));
     if (d.start_time) parts.push(`${d.start_time}–${d.end_time ?? ''}`);

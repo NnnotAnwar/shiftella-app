@@ -34,15 +34,23 @@ Rules: a shift belongs to the month it **started** in (as on the signed timeshee
 device's local time (Czech teams: Europe/Prague). Public holidays come from `public_holidays`.
 
 Permissions: the page needs `timesheets.view`. Time off is read through RLS (`requests` or `rota`
-read) — a custom role without either gets no absence columns. No DB changes.
+read) — a custom role without either gets no absence columns.
 
 ## Osobní číslo (personal number)
 
-Payroll programs pair people by their personal number. Shiftella does not store one yet, so the
-dialog has a field per person; values stay **on this device** (`localStorage`,
-`payroll-personal-numbers:<org id>`), max 10 characters (Money S3 limit). They appear in the
-Excel/CSV and are required for the Money S3 XML — people without one are left out of the XML and
-named in a toast. Follow-up: a `personal_number` on the member profile.
+Payroll programs pair people by their personal number. It is stored on the member, in
+`member_payroll` (migration `20261125120000_member_personal_number.sql`), not in `profiles`
+(profiles are readable by the whole organization):
+
+- **Where to enter it:** Team → edit employee → *Osobní číslo*, or straight in the payroll dialog
+  (saved when the field loses focus). Max 10 characters (the Money S3 limit), unique per organization
+  (`PERSONAL_NUMBER_TAKEN`).
+- **Who:** read — the member, Timesheets VIEW or Team VIEW in the org; write — only
+  `set_member_personal_number()`: Team CHANGE (`members.write`) over people below you, a Head Admin
+  also for themself, Superadmin always. Others see the number read-only in the dialog.
+- Every change writes `personal_number_changed` to the Activity Log (old → new).
+- It appears in the Excel/CSV and is required for the Money S3 XML. People without one are left out
+  of the XML and named in a toast.
 
 ## Money S3 — direct import
 

@@ -441,6 +441,15 @@ const rpcs: Record<string, (args: Row) => unknown> = {
     // Settings → Calendar: a fixed demo feed token.
     calendar_feed_token: () => 'd3m0'.replace(/[^a-f0-9]/g, '0').padEnd(64, 'a'),
     log_members_imported: () => null,
+    // Osobní číslo (payroll export): keep it in the in-memory table so a refetch sees it.
+    set_member_personal_number: (args) => {
+        if (!db.member_payroll) db.member_payroll = [];
+        const user = String(args.p_user);
+        const value = typeof args.p_number === 'string' ? args.p_number.trim() : '';
+        db.member_payroll = db.member_payroll.filter((r) => r.user_id !== user);
+        if (value) db.member_payroll.push({ user_id: user, personal_number: value });
+        return null;
+    },
     // Demo data: the harness already is demo data — adding / removing is a no-op.
     seed_demo_data: () => ({ batch: 'demo-batch-0001', people: 8, locations: 2 }),
     clear_demo_data: () => ({ people: 8, locations_kept: 0 }),

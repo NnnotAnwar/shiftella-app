@@ -237,10 +237,15 @@ body {
   padding-right: env(safe-area-inset-right, 0px);
 }
 
+/* iOS (Safari / the Capacitor web view): phones keep the top inset on the
+   whole app. From md up the layout places the inset itself (.App padding,
+   the sidebar card, the status-bar strip in AppShell), in every browser. */
 @supports (-webkit-touch-callout: none) {
-  .App {
-      padding-top: env(safe-area-inset-top, 12px);                                                                                                                        
-    }                                                                                                                                                                     
+  @media (width < 48rem) {
+    .App {
+      padding-top: env(safe-area-inset-top, 12px);
+    }
+  }
 }
 
 /* On phones the Start / End-shift dock sits above the tab bar; lift toasts

@@ -16,6 +16,7 @@ DECLARE
   n int;
   fails text := '';
   req uuid;
+  top_role uuid;
 BEGIN
   -- Two organizations that both have an ordinary member.
   SELECT p.organization_id INTO org_a FROM public.profiles p
@@ -36,6 +37,14 @@ BEGIN
   SELECT id INTO emp_a FROM public.profiles WHERE organization_id = org_a AND role <> 'Superadmin' AND public.profile_rank(id) < 40 LIMIT 1;
   SELECT id INTO emp_b FROM public.profiles WHERE organization_id = org_b AND role <> 'Superadmin' LIMIT 1;
   SELECT id INTO head_a FROM public.profiles WHERE organization_id = org_a AND public.profile_rank(id) >= 40 AND role <> 'Superadmin' LIMIT 1;
+
+  -- The self-promotion check needs A's custom roles. Organizations made by the
+  -- local seed.sql (triggers off) have none — seed them here (rolled back).
+  IF NOT EXISTS (SELECT 1 FROM public.org_roles WHERE organization_id = org_a) THEN
+    PERFORM public._seed_org_roles(org_a);
+    RAISE NOTICE 'RLS smoke: organization A had no roles; seeded them for this run';
+  END IF;
+  SELECT id INTO top_role FROM public.org_roles WHERE organization_id = org_a ORDER BY sort DESC LIMIT 1;
 
   PERFORM set_config('role', 'authenticated', true);
 
@@ -68,13 +77,20 @@ BEGIN
     fails := fails || ' org_roles(B insertable)';
   EXCEPTION WHEN insufficient_privilege OR check_violation OR others THEN NULL; END;
 
-  -- A member can't promote themself.
+  -- A member can't promote themself to the organization's top role. Judge by
+  -- the outcome, not ROW_COUNT: an UPDATE that changes nothing still counts a row.
   BEGIN
-    UPDATE public.profiles SET org_role_id = (SELECT id FROM public.org_roles WHERE organization_id = org_a AND sort = 40)
-     WHERE id = emp_a;
-    GET DIAGNOSTICS n = ROW_COUNT;
-    IF n > 0 THEN fails := fails || ' self-promotion'; END IF;
+    UPDATE public.profiles SET org_role_id = top_role WHERE id = emp_a;
   EXCEPTION WHEN others THEN NULL; END;
+  -- Read what is really stored (as postgres: profile_rank isn't granted to members).
+  PERFORM set_config('role', 'postgres', true);
+  IF top_role IS NULL THEN
+    fails := fails || ' self-promotion(no roles in A)';
+  ELSIF (SELECT org_role_id FROM public.profiles WHERE id = emp_a) IS NOT DISTINCT FROM top_role
+     OR public.profile_rank(emp_a) >= 40 THEN
+    fails := fails || ' self-promotion';
+  END IF;
+  PERFORM set_config('role', 'authenticated', true);
 
   -- Four eyes: nobody approves their own request.
   req := public.submit_member_request('other', 'RLS smoke', 'rolled back');

@@ -160,7 +160,7 @@ export function AppShell() {
   };
 
   return (
-    <div className="App min-h-dvh w-full font-sans md:flex md:flex-row transition-all duration-500 ease-in-out">
+    <div className="App min-h-dvh w-full font-sans md:flex md:flex-row md:pt-[env(safe-area-inset-top,0px)] transition-all duration-500 ease-in-out">
       {/* AMBIENT LIGHT — two soft accent orbs behind everything, so the glass
           surfaces have something to frost. Accent-derived, so they re-tint with
           the chosen colour scheme. */}
@@ -188,6 +188,11 @@ export function AppShell() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* STATUS-BAR STRIP (md+) — on a tablet the clock and battery sit over the
+          top safe area; frost it so scrolled content never runs under them.
+          Zero height where there is no inset (desktop browsers). */}
+      <div aria-hidden className="max-md:hidden fixed inset-x-0 top-0 z-45 h-[env(safe-area-inset-top,0px)] bg-white/75 backdrop-blur-xl dark:bg-slate-950/70" />
 
       {/* SIDEBAR — persistent dispatch board / navigation (desktop) + header (mobile) */}
       <Sidebar onLocationSelect={handleLocationSelect} onOpenSearch={() => setPaletteOpen(true)} />

@@ -396,6 +396,7 @@ export const sk: PartialDictionary = {
     'auth.resent': 'Odoslané. Skontrolujte schránku.',
     'auth.resendError': 'E-mail sa nepodarilo odoslať. Skúste to znova.',
     'auth.rateLimited': 'Príliš veľa pokusov. Počkajte minútu a skúste to znova.',
+    'auth.tooManyLogins': 'Príliš veľa pokusov o prihlásenie. Skúste to znova o 15 minút.',
     'auth.emailInvalid': 'Zadajte platnú e-mailovú adresu.',
     'auth.passwordHint': 'Aspoň {n} znakov',
     'auth.capsLock': 'Máte zapnutý Caps Lock',

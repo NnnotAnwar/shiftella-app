@@ -395,6 +395,7 @@ export const uk: PartialDictionary = {
     'auth.resent': 'Надіслано. Перевірте пошту.',
     'auth.resendError': 'Не вдалося надіслати лист. Спробуйте ще раз.',
     'auth.rateLimited': 'Забагато спроб. Зачекайте хвилину і спробуйте ще раз.',
+    'auth.tooManyLogins': 'Забагато спроб входу. Спробуйте ще раз за 15 хвилин.',
     'auth.emailInvalid': 'Введіть дійсну адресу е-пошти.',
     'auth.passwordHint': 'Щонайменше {n} символів',
     'auth.capsLock': 'Увімкнено Caps Lock',

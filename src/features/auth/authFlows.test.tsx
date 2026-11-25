@@ -73,6 +73,13 @@ describe('signInWithUsername error mapping', () => {
         expect(isEmailNotConfirmed(err)).toBe(false);
     });
 
+    it('reports the sign-in lock as rate limited, not as a wrong password', async () => {
+        invoke.mockResolvedValue({ data: null, error: { context: { json: async () => ({ error: 'Too many sign-in attempts.', code: 'too_many_attempts' }) } } });
+        const err = await authService.signInWithUsername('anna', 'bad').catch((e) => e);
+        expect(isRateLimited(err)).toBe(true);
+        expect(isEmailNotConfirmed(err)).toBe(false);
+    });
+
     it('survives an unreadable error body', async () => {
         invoke.mockResolvedValue({ data: null, error: { context: { json: async () => { throw new Error('not json'); } } } });
         const err = await authService.signInWithUsername('anna', 'bad').catch((e) => e);

@@ -100,6 +100,10 @@ export const authService = {
     // password checked out (so it reveals nothing to someone without it).
     if (error || !data?.access_token || !data?.refresh_token) {
       const body = await readFunctionErrorBody(error);
+      // Too many failed attempts: the function locks the IP / username for 15 minutes.
+      if (body?.code === 'too_many_attempts') {
+        throw Object.assign(new Error('Too many sign-in attempts.'), { code: 'too_many_attempts', status: 429 });
+      }
       throw Object.assign(new Error('Invalid username or password.'), {
         code: body?.code === EMAIL_NOT_CONFIRMED ? EMAIL_NOT_CONFIRMED : undefined,
       });

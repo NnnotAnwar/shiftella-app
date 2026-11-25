@@ -9,7 +9,7 @@ import { authService } from './authService';
 import { AuthShell } from './AuthShell';
 import { PasswordField } from './PasswordField';
 import { ResendButton } from './ResendButton';
-import { carryEmail, emailFromState, isEmailNotConfirmed } from './authFlows';
+import { carryEmail, emailFromState, isEmailNotConfirmed, isRateLimited } from './authFlows';
 
 /**
  * --- LOGIN PAGE ---
@@ -19,7 +19,7 @@ import { carryEmail, emailFromState, isEmailNotConfirmed } from './authFlows';
  */
 
 /** Why the last attempt failed: wrong credentials, or an email still unconfirmed. */
-type Failure = { kind: 'invalid' } | { kind: 'unconfirmed'; email: string | null };
+type Failure = { kind: 'invalid' } | { kind: 'rateLimited' } | { kind: 'unconfirmed'; email: string | null };
 
 export function LoginPage() {
   const location = useLocation();
@@ -54,7 +54,13 @@ export function LoginPage() {
       console.error(error);
       // "Email not confirmed" only comes back after the password matched, so it
       // is safe to say so; everything else stays one generic message.
-      setFailure(isEmailNotConfirmed(error) ? { kind: 'unconfirmed', email: isEmail ? input : null } : { kind: 'invalid' });
+      setFailure(
+        isEmailNotConfirmed(error)
+          ? { kind: 'unconfirmed', email: isEmail ? input : null }
+          : isRateLimited(error)
+            ? { kind: 'rateLimited' }
+            : { kind: 'invalid' },
+      );
       setIsLoading(false);
     }
   };
@@ -112,6 +118,7 @@ export function LoginPage() {
             </div>
 
             {failure?.kind === 'invalid' && <FormError message={t('auth.invalidCredentials')} />}
+            {failure?.kind === 'rateLimited' && <FormError message={t('auth.tooManyLogins')} />}
 
             {failure?.kind === 'unconfirmed' && (
               <div

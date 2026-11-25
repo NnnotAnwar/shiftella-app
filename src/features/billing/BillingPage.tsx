@@ -38,7 +38,7 @@ import {
 const CARD_FEATURES: Record<Plan, Feature[]> = {
     free: [],
     team: ['timesheets', 'swaps', 'templates', 'push', 'wages', 'customRoles'],
-    business: ['activityLog', 'coverage', 'restRules', 'prioritySupport', 'earlyAccess'],
+    business: ['analytics', 'activityLog', 'coverage', 'restRules', 'prioritySupport', 'earlyAccess'],
 };
 
 /**

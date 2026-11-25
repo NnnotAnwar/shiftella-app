@@ -610,6 +610,7 @@ export const sk: PartialDictionary = {
     'billing.feature.templates': 'Šablóny zmien a kopírovanie mesiaca',
     'billing.feature.push': 'Push upozornenia',
     'billing.feature.activityLog': 'História aktivít',
+    'billing.feature.analytics': 'Analytika pre vedenie',
     'billing.feature.coverage': 'Požadované obsadenie',
     'billing.feature.restRules': 'Upozornenia na odpočinok',
     'billing.feature.prioritySupport': 'Prednostná podpora',

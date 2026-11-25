@@ -69,6 +69,7 @@ describe('Landing pricing (from billing/plans.ts)', () => {
         expect(within(team).getByText(translations.cs['billing.feature.swaps'])).toBeInTheDocument();
         const business = screen.getByTestId('plan-business');
         expect(within(business).getByText(translations.cs['billing.feature.activityLog'])).toBeInTheDocument();
+        expect(within(business).getByText(translations.cs['billing.feature.analytics'])).toBeInTheDocument();
         expect(within(business).queryByText(translations.cs['billing.feature.swaps'])).not.toBeInTheDocument();
         expect(screen.getAllByText(`${TRIAL_DAYS} dní zdarma, bez karty`)).toHaveLength(2);
         expect(screen.getByText('Ceny jsou konečné, DPH se nepřipočítává.')).toBeInTheDocument();

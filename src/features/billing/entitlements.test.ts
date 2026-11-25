@@ -201,17 +201,18 @@ describe('features by plan', () => {
     it('Team unlocks timesheets, exports, swaps, templates, push, wages, custom roles — not Business extras', () => {
         const e = at('team');
         for (const f of ['timesheets', 'exports', 'swaps', 'openShifts', 'templates', 'push', 'wages', 'customRoles'] as const) expect(e.can(f), f).toBe(true);
-        for (const f of ['activityLog', 'coverage', 'restRules'] as const) expect(e.can(f), f).toBe(false);
+        for (const f of ['activityLog', 'analytics', 'coverage', 'restRules'] as const) expect(e.can(f), f).toBe(false);
     });
 
     it('Business unlocks everything', () => {
         const e = at('business');
-        for (const f of ['timesheets', 'activityLog', 'coverage', 'restRules', 'prioritySupport', 'earlyAccess'] as const) expect(e.can(f), f).toBe(true);
+        for (const f of ['timesheets', 'activityLog', 'analytics', 'coverage', 'restRules', 'prioritySupport', 'earlyAccess'] as const) expect(e.can(f), f).toBe(true);
     });
 
     it('names the cheapest plan for a feature', () => {
         expect(requiredPlan('timesheets')).toBe('team');
         expect(requiredPlan('activityLog')).toBe('business');
+        expect(requiredPlan('analytics')).toBe('business');
     });
 
     it('free beta: Business for everyone — no trial, no ended state, no limits', () => {
@@ -225,6 +226,7 @@ describe('features by plan', () => {
         expect(e.plan).toBe('business');
         expect([e.isTrial, e.trialExpired, e.planEnded]).toEqual([false, false, false]);
         expect(e.can('activityLog')).toBe(true);
+        expect(e.can('analytics')).toBe(true);
         expect(e.canAdd('members')).toBe(true);
         expect(e.overLimit('locations')).toBe(false);
         // Off: the same row is an expired trial on Free.

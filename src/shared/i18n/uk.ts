@@ -609,6 +609,7 @@ export const uk: PartialDictionary = {
     'billing.feature.templates': 'Шаблони змін і копіювання місяця',
     'billing.feature.push': 'Push-сповіщення',
     'billing.feature.activityLog': 'Журнал дій',
+    'billing.feature.analytics': 'Аналітика для керівництва',
     'billing.feature.coverage': 'Потрібне покриття змін',
     'billing.feature.restRules': 'Попередження про відпочинок',
     'billing.feature.prioritySupport': 'Пріоритетна підтримка',

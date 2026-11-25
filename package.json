@@ -1,6 +1,8 @@
 {
   "name": "shiftella",
   "private": true,
+  "license": "UNLICENSED",
+  "author": "Anuar Kairulla",
   "version": "1.14.10",
   "type": "module",
   "scripts": {

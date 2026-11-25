@@ -149,3 +149,21 @@ DROP TRIGGER IF EXISTS app_feedback_notify ON public.app_feedback;
 CREATE TRIGGER app_feedback_notify
   AFTER INSERT ON public.app_feedback
   FOR EACH ROW EXECUTE FUNCTION public._app_feedback_notify();
+
+-- --- Keep the alert private ---------------------------------------------------------
+-- feedback_new rows sit in the Superadmin's own organization (the audit pipeline
+-- needs one), so the org-wide "activity read" branch must not see them: they
+-- carry another customer's name, organization and message excerpt. Only the
+-- Superadmin (and the row's target, which is the Superadmin) reads them.
+DROP POLICY IF EXISTS sal_select ON public.shift_audit_log;
+CREATE POLICY sal_select ON public.shift_audit_log FOR SELECT TO authenticated
+USING (
+  (SELECT public.is_superadmin())
+  OR target_user_id = (SELECT auth.uid())
+  OR ((SELECT public.has_permission('activity', 'read'))
+      AND organization_id = public.get_my_org_id()
+      AND action <> 'feedback_new'
+      AND (details->>'kind' IS DISTINCT FROM 'complaint'
+           OR action NOT LIKE 'request\_%'
+           OR (SELECT public.has_permission('requests', 'write'))))
+);

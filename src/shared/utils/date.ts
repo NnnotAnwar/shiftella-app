@@ -127,9 +127,10 @@ export function formatDayNumeric(day: string | null | undefined): string {
     : d.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-/** Localised "Tuesday 3 Nov" / "úterý 3. lis" — the dashboard greeting's date line. */
+/** Localised "Tuesday 3 November" / "úterý 3. listopadu" — the dashboard greeting's date line.
+ *  Full month: short forms read badly in some languages (uk "лист." = "letter"). */
 export function formatWeekdayDate(date: Date): string {
-  return date.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'short' });
+  return date.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
 /** Localised short month for a Date (e.g. "Jun" / "čvn"). */

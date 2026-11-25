@@ -73,8 +73,17 @@ export function ShiftNoteCard() {
                     )}
                 </div>
                 {!open && (
-                    <Button size="sm" variant="ghost" icon={PlusIcon} className="shrink-0" onClick={() => setOpen(true)}>
-                        {t('notes.add')}
+                    <Button
+                        size="sm"
+                        variant="ghost"
+                        icon={PlusIcon}
+                        className="shrink-0"
+                        aria-label={t('notes.add')}
+                        title={t('notes.add')}
+                        onClick={() => setOpen(true)}
+                    >
+                        {/* Phones get the bare "+" so the title + hint keep their width. */}
+                        <span className="hidden sm:inline">{t('notes.add')}</span>
                     </Button>
                 )}
             </div>

@@ -22,7 +22,10 @@ const readStorage = (store: () => Storage, key: string): string | null => {
         return null;
     }
 };
-let e2eAuth: string | null = readStorage(() => localStorage, E2E_AUTH_KEY);
+// Replaced at build time by tools/screenshots/vite.config.ts (`define`).
+const DEMO = (import.meta as ImportMeta & { env: { VITE_DEMO_BUILD?: string } }).env.VITE_DEMO_BUILD === '1';
+// The public demo (shiftella.app/demo/) is always the signed-in owner, in memory only.
+let e2eAuth: string | null = DEMO ? null : readStorage(() => localStorage, E2E_AUTH_KEY);
 const e2e = e2eAuth !== null;
 
 function loadDb(): Tables {
@@ -588,6 +591,8 @@ const authImpl: Record<string, unknown> = {
     },
     signOut: () => {
         if (e2e) signInAs(null, 'SIGNED_OUT');
+        // Demo: "log out" means leaving it — back to the landing page; the data goes with the tab.
+        if (DEMO) setTimeout(() => window.location.assign('/'), 0);
         return ok();
     },
     signInWithPassword: ({ email, password }: { email: string; password: string }) => {

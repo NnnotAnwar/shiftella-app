@@ -157,6 +157,9 @@ jobs:
           fi
           corepack yarn build
           test -f dist/index.html
+          # The in-browser demo (in-memory fake backend, no keys) at /demo/.
+          corepack yarn build:demo
+          test -f dist/demo/index.html
 
       - name: Configure SSH
         env:
@@ -207,6 +210,8 @@ jobs:
           curl -fsS "${auth[@]}" -o /dev/null "$SITE_URL$asset"
           # ... and deep links must fall back to the SPA.
           curl -fsS "${auth[@]}" "$SITE_URL/login" | cmp -s - dist/index.html || { echo "::error::SPA fallback broken"; exit 1; }
+          # The demo is a directory index (hash-routed, so no fallback of its own).
+          curl -fsS "${auth[@]}" "$SITE_URL/demo/" | cmp -s - dist/demo/index.html || echo "::warning::$SITE_URL/demo/ does not serve the new demo build"
           echo "Smoke test passed for $SITE_URL" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Summary

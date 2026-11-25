@@ -1,2 +1,5 @@
 /* Shown by iOS before the app lock first uses Face ID. */
 "NSFaceIDUsageDescription" = "Shiftella používá Face ID k odemknutí aplikace.";
+
+/* Shown by iOS the first time "Take Photo" is used to upload a document. */
+"NSCameraUsageDescription" = "Shiftella používá fotoaparát, když vyfotíte dokument k nahrání.";

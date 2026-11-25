@@ -36,8 +36,8 @@ export interface LegalContent {
     sections: LegalSection[];
 }
 
-/** Privacy contact. Same address as SUPPORT_EMAIL once brand.ts switches to it. */
-const PRIVACY_EMAIL = 'support@shiftella.app';
+/** Privacy contact (support@shiftella.app). */
+const PRIVACY_EMAIL = SUPPORT_EMAIL;
 
 /**
  * OWNER TODO — the law (GDPR art. 13(1)(a)) requires the operator's identity.
@@ -92,7 +92,7 @@ const PRIVACY_CS: LegalContent = {
                 'Záznam aktivit: kdo co v organizaci změnil a kdy (např. úprava směny, schválení žádosti, odchod člena).',
                 'Přehledy pro majitele: odpracované a plánované hodiny, náklady, absence, pozdní příchody a přesčasy, vypočtené z údajů výše.',
             ],
-            note: 'Polohu (GPS) nesbíráme, pobočku při příchodu volíte sami. Čas příchodu a odchodu se bere z vašeho zařízení v okamžiku klepnutí. Každou pozdější úpravu, kterou udělá vedoucí, zapíše záznam aktivit.',
+            note: 'Polohu (GPS) nesbíráme, pobočku při příchodu volíte sami. Čas příchodu a odchodu zapisuje server podle svých hodin, ne podle hodin vašeho zařízení. Začátek směny nejde posunout a ukončenou směnu může změnit jen vedoucí. Každou jeho úpravu zapíše záznam aktivit.',
         },
         {
             h: 'Zdravotní údaje',
@@ -103,7 +103,7 @@ const PRIVACY_CS: LegalContent = {
             h: 'Údaje, za které odpovídáme my',
             p: 'Jako správce zpracováváme:',
             items: [
-                'Účet a přihlášení: e-mail, heslo (ukládá se jen jako hash), časy přihlášení a technické záznamy poskytovatele databáze, např. IP adresu a typ prohlížeče, kvůli zabezpečení.',
+                'Účet a přihlášení: e-mail, heslo (ukládá se jen jako hash), časy přihlášení a technické záznamy poskytovatele databáze, např. IP adresu a typ prohlížeče, kvůli zabezpečení. Neúspěšné pokusy o přihlášení počítáme podle IP adresy a uživatelského jména, obojí ukládáme jen jako hash SHA-256.',
                 'Organizaci a předplatné: název organizace, tarif a stav zkušební doby. Až spustíme placené tarify, přibude fakturační jméno, e-mail, adresa, DIČ a identifikátor zákazníka u Stripe. Údaje o kartě zadáváte přímo u Stripe, my je nevidíme.',
                 'Zpětnou vazbu z aplikace: druh a text zprávy, zda vás smíme kontaktovat, stránku aplikace (bez parametrů), verzi aplikace, jazyk a údaj o prohlížeči (user agent). Upozornění na novou zprávu s vaším jménem, organizací a textem dostává provozovatel jako push oznámení a přes Telegram.',
                 'Komunikaci s podporou: e-maily, které nám pošlete, a naše odpovědi.',
@@ -116,7 +116,7 @@ const PRIVACY_CS: LegalContent = {
             items: [
                 'Služba pro organizaci: jako zpracovatel na pokyn organizace a na jejím právním základě, obvykle plnění pracovní smlouvy, právní povinnost (např. evidence pracovní doby) a oprávněný zájem na organizaci práce.',
                 'Účet, přihlášení a servisní e-maily (pozvánka, potvrzení, obnova hesla): plnění smlouvy, písm. b).',
-                'Zabezpečení, prevence zneužití, záznam aktivit a oprava chyb: oprávněný zájem, písm. f).',
+                'Zabezpečení, prevence zneužití (včetně limitu pokusů o přihlášení), záznam aktivit a oprava chyb: oprávněný zájem, písm. f).',
                 'Zpětná vazba a podpora: oprávněný zájem na zlepšování služby a na odpovědi na vaše dotazy, písm. f).',
                 'Volitelné funkce (push, Telegram, kalendář): na vaši žádost, když je zapnete. Kdykoli je můžete vypnout.',
                 'Fakturace, až spustíme placené tarify: plnění smlouvy a povinnosti podle účetních a daňových předpisů, písm. b) a c).',
@@ -177,13 +177,13 @@ const PRIVACY_CS: LegalContent = {
                 'Organizaci smažeme na žádost jejího majitele, až z ní odejdou všichni členové. Smaže se s ní vše, co k ní patří.',
                 'E-maily podpory uchováváme po dobu nutnou k vyřízení věci a k ochraně našich práv.',
                 'Fakturační doklady (po spuštění placených tarifů) uchováváme po dobu, kterou ukládají účetní a daňové předpisy, nejvýš 10 let.',
-                'Kódy pro Telegram platí 10 minut. Záznam o odeslaném ranním přehledu mažeme po 7 dnech.',
+                'Kódy pro Telegram platí 10 minut. Počítadla neúspěšných přihlášení zapomínáme po jednom dni, záznam o odeslaném ranním přehledu po 7 dnech.',
                 'Zálohy databáze dělá Supabase automaticky a drží je omezenou dobu. Smazané údaje z nich zmizí, jakmile se zálohy obmění.',
             ],
         },
         {
             h: 'Zabezpečení',
-            p: 'Komunikace je šifrovaná (HTTPS s HSTS) a uložená data šifruje poskytovatel databáze. Každá organizace vidí jen svá data a přístup uvnitř ní řídí role. Hlídá to přímo databáze (Row Level Security), ne jen aplikace. Hesla a kódy pro Telegram ukládáme jen jako hash, dokumenty v neveřejném úložišti s krátkodobými odkazy. Web má přísnou bezpečnostní politiku obsahu (CSP), změny v organizaci se zapisují do záznamu aktivit a správci si mohou v mobilní aplikaci zapnout biometrický zámek.',
+            p: 'Komunikace je šifrovaná (HTTPS s HSTS) a uložená data šifruje poskytovatel databáze. Každá organizace vidí jen svá data a přístup uvnitř ní řídí role. Hlídá to přímo databáze (Row Level Security), ne jen aplikace. Hesla (nejméně 8 znaků) a kódy pro Telegram ukládáme jen jako hash, dokumenty v neveřejném úložišti s krátkodobými odkazy. Po opakovaných neúspěšných pokusech o přihlášení se přihlášení na 15 minut zablokuje. Čas příchodu a odchodu určuje server. Push oznámení odesílá jen naše vlastní databáze, nikdo zvenčí. Web má přísnou bezpečnostní politiku obsahu (CSP), změny v organizaci se zapisují do záznamu aktivit a správci si mohou v mobilní aplikaci zapnout biometrický zámek.',
             note: 'Pokud dojde k porušení zabezpečení, oznámíme ho bez zbytečného odkladu organizaci a v zákonné lhůtě i ÚOOÚ a dotčeným osobám.',
         },
         {
@@ -241,7 +241,7 @@ const PRIVACY_EN: LegalContent = {
                 'Activity log: who changed what in the organization and when (e.g. a shift edit, a request approval, a member leaving).',
                 'Owner analytics: worked vs. planned hours, costs, absences, late arrivals and overtime, calculated from the data above.',
             ],
-            note: 'We don’t collect location (GPS); you pick the location when clocking in. Clock-in and clock-out times come from your device at the moment you tap. Any later change made by a manager is recorded in the activity log.',
+            note: 'We don’t collect location (GPS); you pick the location when clocking in. Clock-in and clock-out times are set by the server’s clock, not your device’s. The start of a shift can’t be moved, and only a manager can change a finished shift. Every such change is recorded in the activity log.',
         },
         {
             h: 'Health data',
@@ -252,7 +252,7 @@ const PRIVACY_EN: LegalContent = {
             h: 'Data we are responsible for',
             p: 'As controller we process:',
             items: [
-                'Account and sign-in: email, password (stored only as a hash), sign-in times and the database provider’s technical logs, e.g. IP address and browser type, for security.',
+                'Account and sign-in: email, password (stored only as a hash), sign-in times and the database provider’s technical logs, e.g. IP address and browser type, for security. Failed sign-in attempts are counted per IP address and per username, both stored only as SHA-256 hashes.',
                 'Organization and subscription: organization name, plan and trial status. Once paid plans start: billing name, email, address, VAT ID and the Stripe customer ID. You enter card details directly at Stripe; we never see them.',
                 'In-app feedback: the type and text of the message, whether we may contact you, the app page (without parameters), app version, language and browser details (user agent). The operator is alerted to a new message, with your name, organization and the text, by push notification and via Telegram.',
                 'Support communication: emails you send us and our replies.',
@@ -265,7 +265,7 @@ const PRIVACY_EN: LegalContent = {
             items: [
                 'The service for your organization: as a processor, on the organization’s instructions and its legal basis, usually performance of the employment contract, a legal obligation (e.g. working-time records) and its legitimate interest in organizing work.',
                 'Your account, sign-in and service emails (invitation, confirmation, password reset): performance of a contract, point (b).',
-                'Security, abuse prevention, the activity log and fixing bugs: legitimate interest, point (f).',
+                'Security, abuse prevention (including the sign-in attempt limit), the activity log and fixing bugs: legitimate interest, point (f).',
                 'Feedback and support: legitimate interest in improving the service and answering you, point (f).',
                 'Optional features (push, Telegram, calendar): at your request when you turn them on. You can turn them off at any time.',
                 'Billing, once paid plans start: performance of a contract and obligations under accounting and tax law, points (b) and (c).',
@@ -326,13 +326,13 @@ const PRIVACY_EN: LegalContent = {
                 'We delete an organization at its owner’s request once all members have left. Everything that belongs to it is deleted with it.',
                 'Support emails are kept as long as needed to resolve the matter and to protect our rights.',
                 'Billing records (once paid plans start) are kept for the period required by accounting and tax law, at most 10 years.',
-                'Telegram codes expire after 10 minutes. The record of a sent morning digest is deleted after 7 days.',
+                'Telegram codes expire after 10 minutes. Failed sign-in counters are forgotten after a day, the record of a sent morning digest after 7 days.',
                 'Supabase makes database backups automatically and keeps them for a limited time. Deleted data disappears from them as the backups rotate.',
             ],
         },
         {
             h: 'Security',
-            p: 'Traffic is encrypted (HTTPS with HSTS) and the database provider encrypts stored data. Each organization sees only its own data, and roles control access inside it. The database itself enforces this (Row Level Security), not just the app. Passwords and Telegram codes are stored only as hashes, documents in private storage with short-lived links. The website has a strict Content Security Policy, changes in an organization are written to the activity log, and admins can turn on a biometric lock in the mobile app.',
+            p: 'Traffic is encrypted (HTTPS with HSTS) and the database provider encrypts stored data. Each organization sees only its own data, and roles control access inside it. The database itself enforces this (Row Level Security), not just the app. Passwords (at least 8 characters) and Telegram codes are stored only as hashes, documents in private storage with short-lived links. After repeated failed sign-in attempts, sign-in is locked for 15 minutes. Clock-in and clock-out times are set by the server. Push notifications can be triggered only by our own database, not from outside. The website has a strict Content Security Policy, changes in an organization are written to the activity log, and admins can turn on a biometric lock in the mobile app.',
             note: 'If a security breach occurs, we inform the organization without undue delay and, within the legal deadline, the Czech data protection authority (ÚOOÚ) and the people affected.',
         },
         {
@@ -392,7 +392,7 @@ const PRIVACY_SK: LegalContent = {
                 'Záznam aktivít: kto čo v organizácii zmenil a kedy (napr. úprava zmeny, schválenie žiadosti, odchod člena).',
                 'Prehľady pre majiteľa: odpracované a plánované hodiny, náklady, absencie, neskoré príchody a nadčasy, vypočítané z údajov vyššie.',
             ],
-            note: 'Polohu (GPS) nezbierame, pobočku pri príchode volíte sami. Čas príchodu a odchodu sa berie z vášho zariadenia v okamihu ťuknutia. Každú neskoršiu úpravu, ktorú urobí vedúci, zapíše záznam aktivít.',
+            note: 'Polohu (GPS) nezbierame, pobočku pri príchode volíte sami. Čas príchodu a odchodu zapisuje server podľa svojich hodín, nie podľa hodín vášho zariadenia. Začiatok zmeny nemožno posunúť a ukončenú zmenu môže zmeniť len vedúci. Každú jeho úpravu zapíše záznam aktivít.',
         },
         {
             h: 'Údaje o zdraví',
@@ -403,7 +403,7 @@ const PRIVACY_SK: LegalContent = {
             h: 'Údaje, za ktoré zodpovedáme my',
             p: 'Ako prevádzkovateľ spracúvame:',
             items: [
-                'Účet a prihlásenie: e-mail, heslo (ukladá sa len ako hash), časy prihlásenia a technické záznamy poskytovateľa databázy, napr. IP adresu a typ prehliadača, kvôli zabezpečeniu.',
+                'Účet a prihlásenie: e-mail, heslo (ukladá sa len ako hash), časy prihlásenia a technické záznamy poskytovateľa databázy, napr. IP adresu a typ prehliadača, kvôli zabezpečeniu. Neúspešné pokusy o prihlásenie počítame podľa IP adresy a používateľského mena, oboje ukladáme len ako hash SHA-256.',
                 'Organizáciu a predplatné: názov organizácie, tarifu a stav skúšobnej doby. Keď spustíme platené tarify, pribudne fakturačné meno, e-mail, adresa, DIČ a identifikátor zákazníka v Stripe. Údaje o karte zadávate priamo v Stripe, my ich nevidíme.',
                 'Spätnú väzbu z aplikácie: druh a text správy, či vás smieme kontaktovať, stránku aplikácie (bez parametrov), verziu aplikácie, jazyk a údaj o prehliadači (user agent). Upozornenie na novú správu s vaším menom, organizáciou a textom dostáva poskytovateľ ako push oznámenie a cez Telegram.',
                 'Komunikáciu s podporou: e-maily, ktoré nám pošlete, a naše odpovede.',
@@ -416,7 +416,7 @@ const PRIVACY_SK: LegalContent = {
             items: [
                 'Služba pre organizáciu: ako sprostredkovateľ na pokyn organizácie a na jej právnom základe, zvyčajne plnenie pracovnej zmluvy, zákonná povinnosť (napr. evidencia pracovného času) a oprávnený záujem na organizácii práce.',
                 'Účet, prihlásenie a servisné e-maily (pozvánka, potvrdenie, obnova hesla): plnenie zmluvy, písm. b).',
-                'Zabezpečenie, prevencia zneužitia, záznam aktivít a oprava chýb: oprávnený záujem, písm. f).',
+                'Zabezpečenie, prevencia zneužitia (vrátane limitu pokusov o prihlásenie), záznam aktivít a oprava chýb: oprávnený záujem, písm. f).',
                 'Spätná väzba a podpora: oprávnený záujem na zlepšovaní služby a na odpovedi na vaše otázky, písm. f).',
                 'Voliteľné funkcie (push, Telegram, kalendár): na vašu žiadosť, keď ich zapnete. Kedykoľvek ich môžete vypnúť.',
                 'Fakturácia, keď spustíme platené tarify: plnenie zmluvy a povinnosti podľa účtovných a daňových predpisov, písm. b) a c).',
@@ -477,13 +477,13 @@ const PRIVACY_SK: LegalContent = {
                 'Organizáciu zmažeme na žiadosť jej majiteľa, keď z nej odídu všetci členovia. Zmaže sa s ňou všetko, čo k nej patrí.',
                 'E-maily podpory uchovávame po dobu potrebnú na vybavenie veci a na ochranu našich práv.',
                 'Fakturačné doklady (po spustení platených taríf) uchovávame po dobu, ktorú ukladajú účtovné a daňové predpisy, najviac 10 rokov.',
-                'Kódy pre Telegram platia 10 minút. Záznam o odoslanom rannom prehľade mažeme po 7 dňoch.',
+                'Kódy pre Telegram platia 10 minút. Počítadlá neúspešných prihlásení zabúdame po jednom dni, záznam o odoslanom rannom prehľade po 7 dňoch.',
                 'Zálohy databázy robí Supabase automaticky a drží ich obmedzený čas. Zmazané údaje z nich zmiznú, keď sa zálohy obmenia.',
             ],
         },
         {
             h: 'Zabezpečenie',
-            p: 'Komunikácia je šifrovaná (HTTPS s HSTS) a uložené údaje šifruje poskytovateľ databázy. Každá organizácia vidí len svoje údaje a prístup v nej riadia roly. Stráži to priamo databáza (Row Level Security), nie len aplikácia. Heslá a kódy pre Telegram ukladáme len ako hash, dokumenty v neverejnom úložisku s krátkodobými odkazmi. Web má prísnu bezpečnostnú politiku obsahu (CSP), zmeny v organizácii sa zapisujú do záznamu aktivít a správcovia si môžu v mobilnej aplikácii zapnúť biometrický zámok.',
+            p: 'Komunikácia je šifrovaná (HTTPS s HSTS) a uložené údaje šifruje poskytovateľ databázy. Každá organizácia vidí len svoje údaje a prístup v nej riadia roly. Stráži to priamo databáza (Row Level Security), nie len aplikácia. Heslá (najmenej 8 znakov) a kódy pre Telegram ukladáme len ako hash, dokumenty v neverejnom úložisku s krátkodobými odkazmi. Po opakovaných neúspešných pokusoch o prihlásenie sa prihlásenie na 15 minút zablokuje. Čas príchodu a odchodu určuje server. Push oznámenia odosiela len naša vlastná databáza, nikto zvonku. Web má prísnu bezpečnostnú politiku obsahu (CSP), zmeny v organizácii sa zapisujú do záznamu aktivít a správcovia si môžu v mobilnej aplikácii zapnúť biometrický zámok.',
             note: 'Ak dôjde k porušeniu ochrany údajov, oznámime ho bez zbytočného odkladu organizácii a v zákonnej lehote aj dozornému úradu (ÚOOÚ) a dotknutým osobám.',
         },
         {
@@ -541,7 +541,7 @@ const PRIVACY_UK: LegalContent = {
                 'Журнал дій: хто що змінив в організації і коли (напр. редагування зміни, схвалення запиту, вихід учасника).',
                 'Аналітика для власника: відпрацьовані й заплановані години, витрати, відсутності, запізнення та понаднормові, розраховані з даних вище.',
             ],
-            note: 'Геолокацію (GPS) ми не збираємо — філію під час приходу ви обираєте самі. Час приходу та відходу береться з вашого пристрою в момент натискання. Кожну пізнішу зміну, яку вносить керівник, фіксує журнал дій.',
+            note: 'Геолокацію (GPS) ми не збираємо — філію під час приходу ви обираєте самі. Час приходу та відходу записує сервер за своїм годинником, а не за годинником вашого пристрою. Початок зміни перенести не можна, а завершену зміну може змінити лише керівник. Кожну таку зміну фіксує журнал дій.',
         },
         {
             h: 'Дані про здоров’я',
@@ -552,7 +552,7 @@ const PRIVACY_UK: LegalContent = {
             h: 'Дані, за які відповідаємо ми',
             p: 'Як контролер ми обробляємо:',
             items: [
-                'Обліковий запис і вхід: e-mail, пароль (зберігається лише як хеш), час входу та технічні журнали постачальника бази даних, напр. IP-адресу і тип браузера, для безпеки.',
+                'Обліковий запис і вхід: e-mail, пароль (зберігається лише як хеш), час входу та технічні журнали постачальника бази даних, напр. IP-адресу і тип браузера, для безпеки. Невдалі спроби входу ми рахуємо за IP-адресою та ім’ям користувача; обидва значення зберігаються лише як хеш SHA-256.',
                 'Організацію та підписку: назву організації, тариф і стан пробного періоду. Коли запрацюють платні тарифи — платіжне ім’я, e-mail, адресу, податковий номер і ідентифікатор клієнта в Stripe. Дані картки ви вводите безпосередньо на сторінці Stripe, ми їх не бачимо.',
                 'Відгуки із застосунку: тип і текст повідомлення, чи можна з вами зв’язатися, сторінку застосунку (без параметрів), версію застосунку, мову та дані браузера (user agent). Сповіщення про нове повідомлення з вашим ім’ям, організацією і текстом постачальник отримує як push-сповіщення та через Telegram.',
                 'Листування з підтримкою: листи, які ви нам надсилаєте, і наші відповіді.',
@@ -565,7 +565,7 @@ const PRIVACY_UK: LegalContent = {
             items: [
                 'Сервіс для організації: як обробник, за вказівками організації та на її правовій підставі — зазвичай виконання трудового договору, юридичний обов’язок (напр. облік робочого часу) і її законний інтерес в організації роботи.',
                 'Обліковий запис, вхід і службові листи (запрошення, підтвердження, відновлення пароля): виконання договору, п. (b).',
-                'Безпека, запобігання зловживанням, журнал дій і виправлення помилок: законний інтерес, п. (f).',
+                'Безпека, запобігання зловживанням (зокрема ліміт спроб входу), журнал дій і виправлення помилок: законний інтерес, п. (f).',
                 'Відгуки та підтримка: законний інтерес у покращенні сервісу та відповідях вам, п. (f).',
                 'Додаткові функції (push, Telegram, календар): на ваше прохання, коли ви їх вмикаєте. Вимкнути їх можна будь-коли.',
                 'Виставлення рахунків, коли запрацюють платні тарифи: виконання договору та обов’язки за бухгалтерським і податковим законодавством, пп. (b) і (c).',
@@ -626,13 +626,13 @@ const PRIVACY_UK: LegalContent = {
                 'Організацію ми видаляємо на прохання її власника, коли з неї вийдуть усі учасники. Разом з нею видаляється все, що їй належить.',
                 'Листи підтримки зберігаємо стільки, скільки потрібно для вирішення питання та захисту наших прав.',
                 'Платіжні документи (після запуску платних тарифів) зберігаємо стільки, скільки вимагає бухгалтерське і податкове законодавство, щонайбільше 10 років.',
-                'Коди для Telegram діють 10 хвилин. Запис про надісланий ранковий огляд видаляється через 7 днів.',
+                'Коди для Telegram діють 10 хвилин. Лічильники невдалих входів видаляються через добу, запис про надісланий ранковий огляд — через 7 днів.',
                 'Резервні копії бази даних Supabase створює автоматично і зберігає обмежений час. Видалені дані зникають з них під час оновлення копій.',
             ],
         },
         {
             h: 'Безпека',
-            p: 'З’єднання зашифровані (HTTPS з HSTS), а збережені дані шифрує постачальник бази даних. Кожна організація бачить лише свої дані, а доступ усередині неї визначають ролі. Це забезпечує сама база даних (Row Level Security), а не лише застосунок. Паролі та коди для Telegram зберігаються лише як хеші, документи — у закритому сховищі з короткочасними посиланнями. Сайт має сувору політику безпеки вмісту (CSP), зміни в організації записуються в журнал дій, а адміністратори можуть увімкнути біометричне блокування в мобільному застосунку.',
+            p: 'З’єднання зашифровані (HTTPS з HSTS), а збережені дані шифрує постачальник бази даних. Кожна організація бачить лише свої дані, а доступ усередині неї визначають ролі. Це забезпечує сама база даних (Row Level Security), а не лише застосунок. Паролі (щонайменше 8 символів) та коди для Telegram зберігаються лише як хеші, документи — у закритому сховищі з короткочасними посиланнями. Після кількох невдалих спроб входу вхід блокується на 15 хвилин. Час приходу та відходу визначає сервер. Push-сповіщення може ініціювати лише наша власна база даних, а не хтось ззовні. Сайт має сувору політику безпеки вмісту (CSP), зміни в організації записуються в журнал дій, а адміністратори можуть увімкнути біометричне блокування в мобільному застосунку.',
             note: 'У разі порушення безпеки даних ми без зайвої затримки повідомимо організацію, а в строк, визначений законом, — також чеський орган захисту даних (ÚOOÚ) і осіб, яких це стосується.',
         },
         {

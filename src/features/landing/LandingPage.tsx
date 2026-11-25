@@ -71,7 +71,8 @@ function Brand() {
             <span className="flex size-8 items-center justify-center rounded-lg bg-linear-to-br from-emerald-400 to-emerald-600 shadow-md shadow-emerald-500/30">
                 <BrandGlyph className="size-full text-white" />
             </span>
-            <span className="font-display text-base font-bold tracking-tight text-ink dark:text-white">{APP_NAME}</span>
+            {/* Narrow phones: the mark alone, so the language switch and sign-in still fit. */}
+            <span className="hidden font-display text-base font-bold tracking-tight text-ink min-[420px]:inline dark:text-white">{APP_NAME}</span>
         </span>
     );
 }
@@ -168,15 +169,17 @@ function Hero({ c }: { c: LandingCopy }) {
                         className="block h-auto w-full rounded-xl dark:brightness-95"
                     />
                 </div>
-                <div className="absolute -bottom-2 -left-2 w-[29%] max-w-44 rounded-[1.4rem] bg-ink p-1 shadow-2xl shadow-ink/40 ring-1 ring-white/15 sm:-left-5 sm:rounded-[1.8rem] sm:p-1.5">
-                    <img
-                        src="/landing/mobile-home-480.webp"
-                        width={480}
-                        height={1039}
-                        alt={h.phoneAlt}
-                        className="block h-auto w-full rounded-[1.15rem] sm:rounded-[1.4rem] dark:brightness-95"
-                    />
-                </div>
+                {/* A real iPhone frame (status bar, Dynamic Island, home indicator) around the app
+                    captured with the iPhone's safe areas — the same frame as the promo video. */}
+                <img
+                    src="/landing/mobile-home-framed-360.webp"
+                    srcSet="/landing/mobile-home-framed-360.webp 360w, /landing/mobile-home-framed-720.webp 720w"
+                    sizes="(min-width: 640px) 192px, 31vw"
+                    width={720}
+                    height={1487}
+                    alt={h.phoneAlt}
+                    className="absolute -bottom-4 -left-3 block h-auto w-[31%] max-w-48 drop-shadow-[0_24px_40px_rgba(20,14,60,0.45)] sm:-left-6 dark:brightness-95"
+                />
             </div>
         </section>
     );

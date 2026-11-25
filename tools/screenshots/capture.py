@@ -32,12 +32,12 @@ MOBILE = {
     ),
 }
 
-# Czech UI, default theme (light) + default colour scheme, via the app's own
+# Czech UI (or --lang), default theme (light) + default colour scheme, via the app's own
 # localStorage preferences (PreferencesContext / ThemeContext).
 PREFS_SCRIPT = """
 (() => {
   try {
-    localStorage.setItem('language', 'cs');
+    localStorage.setItem('language', '%LANG%');
     localStorage.setItem('time-format', '24h');
     localStorage.setItem('theme', '%THEME%');
     localStorage.setItem('combo-key', 'lilac-indigo');
@@ -68,6 +68,16 @@ def go(page: Page, base: str, path: str) -> None:
 
 
 # --- Shots ---------------------------------------------------------------------
+# UI text the shots look for, per --lang (keep in sync with src/shared/i18n).
+UI_TEXT = {
+    "cs": {"brush": "Klepnutím na prázdné políčko", "balances": "Zůstatky", "mine": "Moje směny", "more": "Více"},
+    "en": {"brush": "Tap an empty cell", "balances": "Balances", "mine": "My shifts", "more": "More"},
+    "sk": {"brush": "Ťuknutím na prázdne políčko", "balances": "Zostatky", "mine": "Moje zmeny", "more": "Viac"},
+    "uk": {"brush": "Натисніть на порожню клітинку", "balances": "Залишки", "mine": "Мої зміни", "more": "Більше"},
+}
+TEXT = UI_TEXT["cs"]
+
+
 def shot_dashboard(page: Page, base: str, out: Path) -> None:
     go(page, base, "/")
     page.screenshot(path=out / "desktop-dashboard.png")
@@ -83,7 +93,7 @@ def scroll_to_text(page: Page, text: str, offset: int = 24) -> None:
 def shot_schedule(page: Page, base: str, out: Path) -> None:
     go(page, base, "/schedule")
     # The roster grid sits under the team / leave / open-shift cards.
-    scroll_to_text(page, "Klepnutím na prázdné políčko")
+    scroll_to_text(page, TEXT["brush"])
     page.screenshot(path=out / "schedule-grid.png")
 
 
@@ -97,9 +107,38 @@ def shot_requests(page: Page, base: str, out: Path) -> None:
     page.screenshot(path=out / "requests.png")
 
 
+def shot_announcements(page: Page, base: str, out: Path) -> None:
+    go(page, base, "/announcements")
+    page.screenshot(path=out / "announcements.png")
+
+
+def shot_leave(page: Page, base: str, out: Path) -> None:
+    go(page, base, "/schedule")
+    page.get_by_role("button", name=TEXT["balances"]).first.click()
+    page.wait_for_timeout(800)
+    page.screenshot(path=out / "leave-balances.png")
+
+
+def shot_timeoff(page: Page, base: str, out: Path) -> None:
+    go(page, base, "/schedule")
+    scroll_to_text(page, TEXT["balances"], 120)
+    page.screenshot(path=out / "timeoff-card.png")
+
+
+def shot_help(page: Page, base: str, out: Path) -> None:
+    # Help centre with one article open (deep link), e.g. --only help
+    go(page, base, "/help?a=leave-balances")
+    page.screenshot(path=out / "help.png")
+
+
 def shot_billing(page: Page, base: str, out: Path) -> None:
     go(page, base, "/billing")
     page.screenshot(path=out / "billing.png")
+
+
+def shot_analytics(page: Page, base: str, out: Path) -> None:
+    go(page, base, "/analytics")
+    page.screenshot(path=out / "analytics.png", full_page=True)
 
 
 def shot_palette(page: Page, base: str, out: Path) -> None:
@@ -109,6 +148,22 @@ def shot_palette(page: Page, base: str, out: Path) -> None:
     page.screenshot(path=out / "command-palette.png")
 
 
+DEMO_EVA = "00000000-0000-4000-8001-000000000005"
+
+
+def shot_documents(page: Page, base: str, out: Path) -> None:
+    # The owner looks at a barista's documents (amber + red expiry chips).
+    go(page, base, f"/profile/{DEMO_EVA}")
+    scroll_to_text(page, "Dokumenty", 160)
+    page.screenshot(path=out / "documents.png")
+
+
+def shot_mobile_documents(page: Page, base: str, out: Path) -> None:
+    go(page, base, f"/profile/{DEMO_EVA}")
+    scroll_to_text(page, "Dokumenty", 120)
+    page.screenshot(path=out / "mobile-documents.png")
+
+
 def shot_mobile_home(page: Page, base: str, out: Path) -> None:
     go(page, base, "/")
     page.screenshot(path=out / "mobile-home.png")
@@ -116,16 +171,21 @@ def shot_mobile_home(page: Page, base: str, out: Path) -> None:
 
 def shot_mobile_schedule(page: Page, base: str, out: Path) -> None:
     go(page, base, "/schedule")
-    page.get_by_role("button", name="Moje směny").click()
+    page.get_by_role("button", name=TEXT["mine"]).click()
     page.wait_for_timeout(800)
     page.screenshot(path=out / "mobile-schedule.png")
 
 
 def shot_mobile_more(page: Page, base: str, out: Path) -> None:
     go(page, base, "/")
-    page.get_by_role("button", name="Více").click()
+    page.get_by_role("button", name=TEXT["more"]).click()
     page.wait_for_timeout(2500)
     page.screenshot(path=out / "mobile-more.png")
+
+
+def shot_mobile_analytics(page: Page, base: str, out: Path) -> None:
+    go(page, base, "/analytics")
+    page.screenshot(path=out / "mobile-analytics.png", full_page=True)
 
 
 DESKTOP_SHOTS = {
@@ -133,13 +193,21 @@ DESKTOP_SHOTS = {
     "schedule": shot_schedule,
     "my-hours": shot_my_hours,
     "requests": shot_requests,
+    "announcements": shot_announcements,
     "billing": shot_billing,
+    "leave": shot_leave,
+    "timeoff": shot_timeoff,
+    "analytics": shot_analytics,
     "palette": shot_palette,
+    "documents": shot_documents,
+    "help": shot_help,
 }
 MOBILE_SHOTS = {
     "mobile-home": shot_mobile_home,
     "mobile-schedule": shot_mobile_schedule,
     "mobile-more": shot_mobile_more,
+    "mobile-documents": shot_mobile_documents,
+    "mobile-analytics": shot_mobile_analytics,
 }
 
 
@@ -155,7 +223,16 @@ def main() -> int:
         choices=["trial", "trial3", "free", "past_due", "ended", "cancel_scheduled", "beta"],
         help="subscription scenario in the demo data (default: paid Business)",
     )
+    ap.add_argument(
+        "--demo-org",
+        default=None,
+        choices=["fresh", "on"],
+        help="demo-data scenario: a new owner (setup checklist + 'try demo data') or demo data on (banner)",
+    )
+    ap.add_argument("--lang", default="cs", choices=["cs", "en", "sk", "uk"], help="UI language (default: cs)")
     args = ap.parse_args()
+    global TEXT
+    TEXT = UI_TEXT[args.lang]
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -167,16 +244,18 @@ def main() -> int:
 
         def run(shots: dict, ctx_opts: dict) -> None:
             ctx = browser.new_context(
-                locale="cs-CZ",
+                locale={"cs": "cs-CZ", "en": "en-GB", "sk": "sk-SK", "uk": "uk-UA"}[args.lang],
                 timezone_id="Europe/Prague",
                 color_scheme=theme,
                 reduced_motion="reduce",
                 service_workers="block",
                 **ctx_opts,
             )
-            ctx.add_init_script(PREFS_SCRIPT.replace("%THEME%", theme))
+            ctx.add_init_script(PREFS_SCRIPT.replace("%THEME%", theme).replace("%LANG%", args.lang))
             if args.billing:
                 ctx.add_init_script(f"try {{ localStorage.setItem('demo-billing', '{args.billing}'); }} catch (e) {{}}")
+            if args.demo_org:
+                ctx.add_init_script(f"try {{ localStorage.setItem('demo-org', '{args.demo_org}'); }} catch (e) {{}}")
 
             def guard(route):
                 host = urlparse(route.request.url).hostname or ""

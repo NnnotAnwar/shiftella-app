@@ -33,27 +33,32 @@ export type Capability =
     | 'rota.edit' // plan / publish the rota, templates, coverage, open shifts, teams
     | 'timesheets.view'
     | 'timesheets.edit'
+    | 'timesheets.delete' // e.g. remove anyone's shift note (mirrors the shift_notes delete policy)
     | 'requests.view'
     | 'requests.decide' // approve or decline time off, name changes, swaps
     | 'announcements.post' // post, edit, pin and delete announcements
     | 'members.view'
     | 'members.manage' // invite and edit members below your level
+    | 'members.delete' // remove members (and their documents) below your level
     | 'wages.edit'
     | 'locations.manage' // create, edit and archive locations
     | 'activity.view'
     | 'roles.view'
-    | 'roles.manage'; // create, edit, reorder roles below your own
+    | 'roles.manage' // create, edit, reorder roles below your own
+    | 'analytics.view'; // owner analytics: needs both rota.view and timesheets.view (mirrors org_analytics)
 
-const CAP: Record<Exclude<Capability, 'team.view'>, [PermissionArea, PermissionAction, number]> = {
+const CAP: Record<Exclude<Capability, 'team.view' | 'analytics.view'>, [PermissionArea, PermissionAction, number]> = {
     'rota.view': ['rota', 'read', RANK.MANAGER],
     'rota.edit': ['rota', 'write', RANK.ADMIN],
     'timesheets.view': ['timesheets', 'read', RANK.MANAGER],
     'timesheets.edit': ['timesheets', 'write', RANK.ADMIN],
+    'timesheets.delete': ['timesheets', 'delete', RANK.ADMIN],
     'requests.view': ['requests', 'read', RANK.MANAGER],
     'requests.decide': ['requests', 'write', RANK.ADMIN],
     'announcements.post': ['announcements', 'write', RANK.ADMIN],
     'members.view': ['members', 'read', RANK.MANAGER],
     'members.manage': ['members', 'write', RANK.ADMIN],
+    'members.delete': ['members', 'delete', RANK.ADMIN],
     'wages.edit': ['wages', 'write', RANK.ADMIN],
     'locations.manage': ['locations', 'write', RANK.OWNER],
     'activity.view': ['activity', 'read', RANK.ADMIN],
@@ -76,6 +81,7 @@ export function can(user: Pick<User, 'role' | 'permissions' | 'org_role'> | null
     if (!user) return false;
     if (isSuperAdmin(user) || rankOf(user as Pick<Profile, 'role' | 'org_role'>) >= RANK.OWNER) return true;
     if (cap === 'team.view') return (['rota.view', 'timesheets.view', 'members.view', 'requests.view'] as const).some((c) => can(user, c));
+    if (cap === 'analytics.view') return can(user, 'rota.view') && can(user, 'timesheets.view');
     const [area, action, minRank] = CAP[cap];
     if (user.permissions) return !!user.permissions[area]?.[action];
     return rankOf(user as Pick<Profile, 'role' | 'org_role'>) >= minRank;

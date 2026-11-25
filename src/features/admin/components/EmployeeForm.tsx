@@ -11,10 +11,12 @@ import { useTranslation } from '@shared/preferences/PreferencesContext';
 import { useWages } from '@features/wages/useWages';
 import { useEntitlements } from '@features/billing/useBilling';
 import { planFeatureMessage } from '@features/billing/planErrors';
+import { canSetPersonalNumber, usePersonalNumbers } from '@features/timesheets/payroll/personalNumbers';
 
 /**
- * Edit an employee's name, role and (for people below you) hourly rate. The
- * rate is private: RLS lets only the member and the people above them read it.
+ * Edit an employee's name, role and (for people below you) hourly rate and
+ * osobní číslo (the payroll program's personal number, for the payroll export).
+ * The rate is private: RLS lets only the member and the people above them read it.
  *
  * Note: creating an employee is intentionally not here — accounts are created
  * through sign-up/invitation (Supabase Auth), not from the admin client. This
@@ -42,6 +44,16 @@ export function EmployeeForm({ employee, onClose }: { employee: Profile; onClose
     if (!rateSeeded && !wages.org.isLoading) {
         setRateSeeded(true);
         setRate(currentRate ? String(currentRate.hourly_rate) : '');
+    }
+    // Osobní číslo — same seeding as the rate (the numbers query may land later).
+    const canSetNumber = canSetPersonalNumber(user, employee);
+    const personal = usePersonalNumbers(canSetNumber);
+    const currentNumber = personal.numbers.get(employee.id) ?? '';
+    const [personalNumber, setPersonalNumber] = useState(currentNumber);
+    const [numberSeeded, setNumberSeeded] = useState(!personal.isLoading);
+    if (!numberSeeded && !personal.isLoading) {
+        setNumberSeeded(true);
+        setPersonalNumber(currentNumber);
     }
     const [isBusy, setIsBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -76,8 +88,16 @@ export function EmployeeForm({ employee, onClose }: { employee: Profile; onClose
             if (canSetRate && nextRate !== null && Number.isFinite(nextRate) && nextRate >= 0 && nextRate !== currentRate?.hourly_rate) {
                 await wages.setRate.mutateAsync({ user_id: employee.id, hourly_rate: Math.round(nextRate * 100) / 100 });
             }
+            if (canSetNumber && personalNumber.trim() !== currentNumber) {
+                await personal.save.mutateAsync({ userId: employee.id, value: personalNumber });
+            }
             onClose();
         } catch (err) {
+            if (err instanceof Error && err.message === 'PERSONAL_NUMBER_TAKEN') {
+                setError(t('payroll.numberTaken', { number: personalNumber.trim() }));
+                setIsBusy(false);
+                return;
+            }
             setError(planFeatureMessage(err, t) ?? (err instanceof Error ? err.message : t('admin.employeeUpdateError')));
             setIsBusy(false);
         }
@@ -131,6 +151,21 @@ export function EmployeeForm({ employee, onClose }: { employee: Profile; onClose
                             />
                         </Field>
                         <p className="text-caption text-ink-soft dark:text-slate-400">{t('wage.rateHint')}</p>
+                    </div>
+                )}
+
+                {canSetNumber && (
+                    <div className="space-y-1">
+                        <Field label={t('profile.field.personalNumber')}>
+                            <Input
+                                value={personalNumber}
+                                onChange={(e) => setPersonalNumber(e.target.value)}
+                                maxLength={10}
+                                autoComplete="off"
+                                placeholder="—"
+                            />
+                        </Field>
+                        <p className="text-caption text-ink-soft dark:text-slate-400">{t('profile.field.personalNumberHint')}</p>
                     </div>
                 )}
 

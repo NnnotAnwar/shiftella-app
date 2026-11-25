@@ -12,9 +12,12 @@ import { boardRole } from '@features/shifts/boardRole';
 import { MobileLocationField } from '@features/locations/components/MobileLocationField';
 import { UserProfileModal } from '@features/profile/components/UserProfileModal';
 import { AnnouncementBanner } from '@features/announcements/AnnouncementBanner';
+import { HandoverCard } from '@features/shiftNotes/HandoverCard';
+import { ShiftNoteCard } from '@features/shiftNotes/ShiftNoteCard';
 import { useTranslation } from '@shared/preferences/PreferencesContext';
 import { DashboardHeader } from './DashboardHeader';
 import { GettingStarted } from './GettingStarted';
+import { DemoDataBanner } from '@features/demo/DemoDataBanner';
 import { usePullToRefresh } from '@shared/hooks/usePullToRefresh';
 import { shiftKeys } from '@features/shifts/shiftKeys';
 import { type ShiftDisplayData } from '@shared/types';
@@ -120,8 +123,11 @@ export function HomePage() {
       {/* 1. GREETING + DATE (+ live clock on desktop) */}
       <DashboardHeader firstName={user.first_name || user.username} />
 
-      {/* New owners: a three-step setup checklist until the org is up. */}
-      <GettingStarted user={user} locationCount={activeLocations.length} />
+      {/* Owner with demo data on: say so + one-tap remove. */}
+      <DemoDataBanner user={user} />
+
+      {/* New owners: a four-step setup checklist until the org is up (demo locations don't count). */}
+      <GettingStarted user={user} locationCount={activeLocations.filter((l) => !l.demo_batch).length} />
 
       <AnnouncementBanner />
 
@@ -129,6 +135,10 @@ export function HomePage() {
           so starting a shift reads as the same card waking up. */}
       <ActiveShift onPickLocation={handleLocationSelect} />
       <CheckIn onPickLocation={handleLocationSelect} />
+
+      {/* HANDOVER from the previous shift(s) here (unread, last 24 h) + your own shift note. */}
+      <HandoverCard />
+      <ShiftNoteCard />
 
       {/* NEXT ROSTERED SHIFT — quick glance + link to the schedule. */}
       <NextShiftCard />

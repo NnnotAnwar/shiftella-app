@@ -16,7 +16,6 @@ export type Tables = Record<string, Row[]>;
 const id = (kind: number, n: number) => `00000000-0000-4000-8${String(kind).padStart(3, '0')}-${String(n).padStart(12, '0')}`;
 
 const ORG = id(0, 1);
-export const DEMO_USER_ID = id(1, 1);
 
 // --- People -----------------------------------------------------------------------
 const P = {
@@ -33,6 +32,20 @@ const P = {
     veronika: id(1, 11),
     david: id(1, 12),
 };
+
+/**
+ * Who is signed in: Petra (the owner) by default; `localStorage['demo-user']` =
+ * a key of P (e.g. 'eva') signs in someone else — an ordinary employee view.
+ */
+export const DEMO_USER_ID: string = (() => {
+    try {
+        const k = localStorage.getItem('demo-user') as keyof typeof P | null;
+        if (k && P[k]) return P[k];
+    } catch {
+        /* no storage */
+    }
+    return P.petra;
+})();
 
 const L = { mala: id(2, 1), karlin: id(2, 2), vino: id(2, 3) };
 
@@ -57,6 +70,20 @@ const R = {
 function billingScenario(): string | null {
     try {
         return localStorage.getItem('demo-billing');
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Demo-data scenario (features/demo): `localStorage['demo-org']` = 'fresh' (a new
+ * owner: only they and nothing planned count, so Home shows the setup checklist
+ * with "Try it with demo data") | 'on' (the org holds demo data: everyone else,
+ * the rota and two locations are tagged → the demo banner + the checklist).
+ */
+function demoOrgScenario(): string | null {
+    try {
+        return localStorage.getItem('demo-org');
     } catch {
         return null;
     }
@@ -218,12 +245,12 @@ export function buildDemoData(): Tables {
     // --- Leave (approved leave clears planned shifts, like the DB trigger) ---------
     const md = (day: number, monthOffset = 0) => ymd(new Date(today.getFullYear(), today.getMonth() + monthOffset, day));
     const time_off: Row[] = [
-        { id: id(5, 1), user_id: P.tereza, organization_id: ORG, kind: 'vacation', starts_on: md(21), ends_on: md(27), note: 'Vánoce u rodiny v Brně', status: 'pending', reviewed_by: null, review_note: null, reviewed_at: null, created_at: daysAgo(3, '18:12') },
-        { id: id(5, 2), user_id: P.ondrej, organization_id: ORG, kind: 'other', starts_on: md(31), ends_on: md(31), note: 'Stěhování do nového bytu', status: 'pending', reviewed_by: null, review_note: null, reviewed_at: null, created_at: daysAgo(1, '21:40') },
+        { id: id(5, 1), user_id: P.tereza, organization_id: ORG, kind: 'vacation', starts_on: md(21), ends_on: md(27), hours: 40, hours_auto: true, note: 'Vánoce u rodiny v Brně', status: 'pending', reviewed_by: null, review_note: null, reviewed_at: null, created_at: daysAgo(3, '18:12') },
+        { id: id(5, 2), user_id: P.ondrej, organization_id: ORG, kind: 'comp_time', starts_on: md(31), ends_on: md(31), hours: 8, hours_auto: true, note: 'Za práci na Štědrý den', status: 'pending', reviewed_by: null, review_note: null, reviewed_at: null, created_at: daysAgo(1, '21:40') },
         { id: id(5, 3), user_id: P.lukas, organization_id: ORG, kind: 'sick', starts_on: md(8), ends_on: md(9), note: 'Angína, neschopenka do středy', status: 'approved', reviewed_by: P.petra, review_note: 'Brzy se uzdrav!', reviewed_at: daysAgo(2, '07:15'), created_at: daysAgo(2, '06:48') },
-        { id: id(5, 4), user_id: P.eva, organization_id: ORG, kind: 'vacation', starts_on: md(28), ends_on: md(31), note: 'Hory s rodinou', status: 'approved', reviewed_by: P.petra, review_note: null, reviewed_at: daysAgo(14, '10:02'), created_at: daysAgo(16, '15:30') },
+        { id: id(5, 4), user_id: P.eva, organization_id: ORG, kind: 'vacation', starts_on: md(28), ends_on: md(31), hours: 32, hours_auto: true, note: 'Hory s rodinou', status: 'approved', reviewed_by: P.petra, review_note: null, reviewed_at: daysAgo(14, '10:02'), created_at: daysAgo(16, '15:30') },
         { id: id(5, 5), user_id: P.jakub, organization_id: ORG, kind: 'vacation', starts_on: md(19), ends_on: md(20), note: 'Prodloužený víkend', status: 'declined', reviewed_by: P.petra, review_note: 'Ten víkend máme firemní večírek na Vinohradech – zkusíme jiný termín?', reviewed_at: daysAgo(5, '11:20'), created_at: daysAgo(6, '19:05') },
-        { id: id(5, 6), user_id: P.petra, organization_id: ORG, kind: 'vacation', starts_on: md(4, 1), ends_on: md(8, 1), note: 'Lyže', status: 'approved', reviewed_by: P.petra, review_note: null, reviewed_at: daysAgo(20, '08:30'), created_at: daysAgo(20, '08:29') },
+        { id: id(5, 6), user_id: P.petra, organization_id: ORG, kind: 'vacation', starts_on: md(4, 1), ends_on: md(8, 1), hours: 40, hours_auto: true, note: 'Lyže', status: 'approved', reviewed_by: P.petra, review_note: null, reviewed_at: daysAgo(20, '08:30'), created_at: daysAgo(20, '08:29') },
     ];
     const onLeave = (uid: string, day: string) =>
         time_off.some((t) => t.status === 'approved' && t.user_id === uid && (t.starts_on as string) <= day && day <= (t.ends_on as string));
@@ -244,7 +271,8 @@ export function buildDemoData(): Tables {
                 starts_at: at(d, s),
                 ends_at: at(d, e),
                 all_day: false,
-                published: true,
+                // The month's last days are still a draft (rota cost labels the draft part).
+                published: d.getDate() < 28,
                 note: null,
                 created_by: P.petra,
                 created_at: daysAgo(18, '20:00'),
@@ -295,6 +323,22 @@ export function buildDemoData(): Tables {
             role: baseRole(plan.user),
         });
     }
+
+    // --- Shift notes & handover ------------------------------------------------------------
+    // Last night's closers left handovers at Malá Strana + Karlín (unread, so Home shows the
+    // card while on shift); one older manager-only note; one on the owner's own last shift.
+    const hoursAgo = (h: number) => new Date(now.getTime() - h * 3600000).toISOString();
+    const petraLast = shifts.filter((x) => x.user_id === P.petra && x.ended_at).at(-1);
+    const shift_notes: Row[] = [
+        { id: id(20, 1), organization_id: ORG, shift_id: id(20, 101), location_id: L.mala, author_id: P.eva, body: 'Dorazilo mléko, je ve skladu. Kávovar odvápněný, do mlýnku ráno doplnit zrna.', handover: true, demo_batch: null, created_at: hoursAgo(13), updated_at: hoursAgo(13) },
+        { id: id(20, 2), organization_id: ORG, shift_id: id(20, 101), location_id: L.mala, author_id: P.eva, body: 'Došly kelímky 0,3 l — objednáno, přijdou zítra do 10. Do té doby berte 0,4 l.', handover: true, demo_batch: null, created_at: hoursAgo(12.8), updated_at: hoursAgo(12.8) },
+        { id: id(20, 3), organization_id: ORG, shift_id: id(20, 102), location_id: L.karlin, author_id: P.tereza, body: 'Myčka hlásí chybu E4 — restart pomohl, ale ať se na ni někdo ráno podívá.', handover: true, demo_batch: null, created_at: hoursAgo(14), updated_at: hoursAgo(14) },
+        { id: id(20, 4), organization_id: ORG, shift_id: id(20, 103), location_id: L.mala, author_id: P.ondrej, body: 'Zákazník reklamoval dort (suchý korpus), vráceno 85 Kč, účtenka v šuplíku.', handover: false, demo_batch: null, created_at: hoursAgo(38), updated_at: hoursAgo(38) },
+        { id: id(20, 6), organization_id: ORG, shift_id: id(20, 104), location_id: L.mala, author_id: P.tomas, body: 'Pokladna sedí, tržba z rána odvezená do banky.', handover: false, demo_batch: null, created_at: hoursAgo(0.02), updated_at: hoursAgo(0.02) },
+        ...(petraLast
+            ? [{ id: id(20, 5), organization_id: ORG, shift_id: petraLast.id, location_id: L.mala, author_id: P.petra, body: 'Inventura baru hotová, chybí 2 lahve sirupu.', handover: false, demo_batch: null, created_at: petraLast.ended_at, updated_at: petraLast.ended_at }]
+            : []),
+    ];
 
     // --- Swaps ---------------------------------------------------------------------------
     const swapShift = planned(P.eva, 12) ?? scheduled_shifts.find((s) => s.user_id === P.eva && Date.parse(s.starts_at as string) > now.getTime())!;
@@ -382,6 +426,25 @@ export function buildDemoData(): Tables {
         id: id(17, i + 1), organization_id: ORG, user_id: p.id, hourly_rate: rates[p.id as string], currency: 'CZK', effective_from: '2026-09-01', created_by: P.petra, updated_at: created,
     }));
 
+    // Employee documents: one health card about to expire, one expired training, a contract.
+    const dayStr = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const doc = (n: number, user: string, doc_type: string, name: string, valid: Date | null, by: string, mime = 'application/pdf'): Row => ({
+        id: id(19, n), organization_id: ORG, user_id: user, doc_type, name, file_path: `${ORG}/${user}/${id(19, n)}.pdf`,
+        mime_type: mime, size_bytes: 240_000, valid_until: valid ? dayStr(valid) : null, uploaded_by: by, created_at: daysAgo(40 - n),
+    });
+    const member_documents: Row[] = [
+        doc(1, P.eva, 'contract', 'Pracovní smlouva 2026', null, P.petra),
+        doc(2, P.eva, 'health_card', 'Zdravotní průkaz', addDays(today, 12), P.eva, 'image/jpeg'),
+        doc(3, P.eva, 'safety_training', 'Školení BOZP', addDays(today, -4), P.petra),
+        doc(4, P.eva, 'food_card', 'Potravinářský průkaz', addDays(today, 300), P.petra),
+        doc(5, P.petra, 'contract', 'Smlouva jednatelky', null, P.petra),
+    ];
+    // Leave / contract settings: a 40 h week, Lukáš part-time at 30 h (shows overtime in the rota).
+    const org_leave_settings: Row[] = [
+        { organization_id: ORG, enabled_kinds: ['vacation', 'sick', 'ocr', 'comp_time', 'unpaid', 'doctor', 'other'], weekly_hours: 40, vacation_weeks: 4, holiday_comp_time: true, updated_at: created },
+    ];
+    const member_leave: Row[] = [{ user_id: P.lukas, organization_id: ORG, weekly_hours: 30, vacation_hours: null, updated_at: created }];
+
     const shift_confirmations: Row[] = scheduled_shifts
         .filter((s) => s.user_id !== P.ondrej && Date.parse(s.starts_at as string) < now.getTime() + 4 * 86400000)
         .map((s) => ({ scheduled_shift_id: s.id, user_id: s.user_id, organization_id: ORG, confirmed_at: daysAgo(10) }));
@@ -453,6 +516,17 @@ export function buildDemoData(): Tables {
         { user_id: P.petra, push_enabled: true, shifts: true, account: true, requests: true, language: 'cs', updated_at: created },
     ];
 
+    const demoOrg = demoOrgScenario();
+    if (demoOrg === 'fresh' || demoOrg === 'on') {
+        const batch = 'demo-batch-0001';
+        for (const p of profiles) if (p.id !== P.petra) p.demo_batch = batch;
+        for (const s of scheduled_shifts) s.demo_batch = batch;
+        if (demoOrg === 'on') {
+            organizations[0].demo_batch = batch;
+            for (const l of locations) if (l.id !== L.mala) l.demo_batch = batch;
+        }
+    }
+
     return {
         organizations,
         locations,
@@ -469,6 +543,8 @@ export function buildDemoData(): Tables {
         name_change_requests,
         announcements,
         announcement_reads,
+        shift_notes,
+        shift_note_reads: [],
         open_shifts,
         shift_templates,
         coverage_requirements,
@@ -476,6 +552,9 @@ export function buildDemoData(): Tables {
         public_holidays,
         availability,
         member_wages,
+        member_documents,
+        org_leave_settings,
+        member_leave,
         shift_confirmations,
         shift_audit_log,
         subscriptions,

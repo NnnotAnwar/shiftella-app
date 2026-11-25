@@ -2,7 +2,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useState } from 'react';
 import { useAuthContext } from '@features/auth/AuthContext';
 import { supabase } from '@shared/api/supabaseClient';
-import { translations, type Language, type TranslationKey } from '@shared/i18n/translations';
+import { isLanguage, translate, type Language, type TranslationKey } from '@shared/i18n/translations';
 import { setTimeFormatPreference, setLocalePreference, type TimeFormat } from '@shared/utils/date';
 import { browserLanguages, detectLanguage } from './detectLanguage';
 
@@ -30,8 +30,8 @@ const defaultLocationKey = (userId: string) => `default-location-id:${userId}`;
 
 function readLanguage(): Language {
     const v = localStorage.getItem(STORAGE.language);
-    // No saved choice yet → follow the browser (cs/sk → Czech, else English).
-    return v === 'en' || v === 'cs' ? v : detectLanguage(browserLanguages());
+    // No saved choice yet → follow the browser (cs / sk / uk, else English).
+    return isLanguage(v) ? v : detectLanguage(browserLanguages());
 }
 function readTimeFormat(): TimeFormat {
     return localStorage.getItem(STORAGE.timeFormat) === '12h' ? '12h' : '24h';
@@ -96,8 +96,7 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
 
     const t = useCallback<PreferencesContextType['t']>(
         (key, vars) => {
-            const dict = translations[language] ?? translations.en;
-            let str: string = dict[key] ?? translations.en[key] ?? key;
+            let str = translate(language, key);
             if (vars) {
                 for (const [k, v] of Object.entries(vars)) str = str.replaceAll(`{${k}}`, String(v));
             }

@@ -7,7 +7,8 @@ import { formatTime } from '@shared/utils/date';
 import { Clock } from '@shared/components/Clock';
 import { BrandGlyph } from '@shared/components/BrandGlyph';
 import { APP_NAME } from '@shared/brand';
-import { MapPinIcon, SignOutIcon, MagnifyingGlassIcon, SidebarSimpleIcon } from '@phosphor-icons/react';
+import { MapPinIcon, SignOutIcon, MagnifyingGlassIcon, SidebarSimpleIcon, ChatCircleTextIcon } from '@phosphor-icons/react';
+import { openFeedback } from '@features/feedback/feedbackSignal';
 
 import { useAuthContext } from '@features/auth/AuthContext';
 import { useShiftContext } from '@features/shifts/ShiftContext';
@@ -448,6 +449,11 @@ function CollapsedRail({
           </Link>
         </RailTip>
       )}
+      <RailTip label={t('feedback.open')}>
+        <button onClick={() => openFeedback()} aria-label={t('feedback.open')} className={`${RAIL_BTN} ${RAIL_IDLE}`}>
+          <ChatCircleTextIcon weight="bold" className="size-4.5" />
+        </button>
+      </RailTip>
       <RailTip label={t('nav.logout')}>
         <button onClick={logout} aria-label={t('nav.logout')} className={`${RAIL_BTN} text-rose-600 dark:text-rose-400 hover:bg-rose-500/8`}>
           <SignOutIcon weight="bold" className="size-4.5" />
@@ -602,8 +608,15 @@ export function Sidebar({ onLocationSelect, onOpenSearch }: SidebarProps) {
               ))}
             </div>
 
-            {/* FOOTER — log out, aligned with the nav rows */}
+            {/* FOOTER — feedback + log out, aligned with the nav rows */}
             <div className="pt-2 border-t border-ink/6 dark:border-white/6 shrink-0">
+              <button
+                onClick={() => openFeedback()}
+                className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-meta text-ink-soft dark:text-slate-400 hover:bg-white/60 dark:hover:bg-white/5 hover:text-ink dark:hover:text-white transition-colors"
+              >
+                <ChatCircleTextIcon weight="bold" className="size-4" />
+                <span>{t('feedback.open')}</span>
+              </button>
               <button
                 onClick={logout}
                 className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-meta text-rose-600 dark:text-rose-400 hover:bg-rose-500/8 transition-colors"

@@ -56,7 +56,8 @@ Deno.serve(async (req) => {
         ]);
         const orgId = profile?.organization_id as string | null | undefined;
         if (!orgId) return plain(404, 'Not found.');
-        const language: FeedLanguage = prefs?.language === 'cs' ? 'cs' : 'en';
+        // Feed copy is cs/en only: Slovak → Czech, Ukrainian (and anything else) → English.
+        const language: FeedLanguage = /^(cs|sk)\b/i.test(prefs?.language ?? '') ? 'cs' : 'en';
 
         // 2. Their published rota + approved time off in the window — this user, this org only.
         const win = feedWindow(Date.now());

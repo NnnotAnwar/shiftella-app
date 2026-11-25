@@ -1,0 +1,16 @@
+{
+  // Type-check the Playwright suites + configs on their own (`corepack yarn tsc -p e2e`).
+  // Not referenced from the root tsconfig, so the app build never sees them.
+  "extends": "../tsconfig.node.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "../node_modules/.tmp/tsconfig.e2e.tsbuildinfo",
+    "lib": ["ES2023", "DOM"],
+    "paths": {
+      "@shared/*": ["../src/shared/*"],
+      "@features/*": ["../src/features/*"],
+      "@app/*": ["../src/app/*"],
+      "@/*": ["../src/*"]
+    }
+  },
+  "include": ["local", "remote", "../playwright.config.ts", "../playwright.remote.config.ts"]
+}

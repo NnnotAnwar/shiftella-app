@@ -39,13 +39,17 @@ import {
     CreditCardIcon,
     GiftIcon,
     TelegramLogoIcon,
+    FileArrowUpIcon,
+    HourglassMediumIcon,
+    IdentificationCardIcon,
 } from '@phosphor-icons/react';
 
 import { useAuthContext } from '@features/auth/AuthContext';
 import { can } from '@shared/auth/permissions';
 import { UserProfileModal } from '@features/profile/components/UserProfileModal';
 import { type ShiftAuditLog, type ShiftSnapshot, type Profile } from '@shared/types';
-import { formatClock, formatDateTime, monthShort } from '@shared/utils/date';
+import { formatClock, formatDateTime, formatDayNumeric, monthShort } from '@shared/utils/date';
+import { docTypeKey } from '@features/documents/documentTypes';
 import { timesheetService, type AuditLogQuery } from './timesheetService';
 import { AUDIT_GROUPS, AUDIT_GROUP_KEYS, dedupeFanout, groupLabel, type AuditGroup } from './auditCatalog';
 import { useTimesheetRealtime } from './useTimesheetRealtime';
@@ -53,6 +57,7 @@ import { useTranslation } from '@shared/preferences/PreferencesContext';
 import { Select } from '@shared/components/Select';
 import { Skeleton } from '@shared/components/Skeleton';
 import type { TranslationKey } from '@shared/i18n/translations';
+import { fmtLeaveHours } from '@features/schedule/timeOffShared';
 import { PageHeader } from '@shared/components/PageHeader';
 
 const PAGE = 50;
@@ -131,6 +136,12 @@ const ACTION: Record<string, ActionMeta> = {
     request_declined: { labelKey: 'audit.a.request_declined', Icon: XCircleIcon, badge: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400' },
     request_cancelled: { labelKey: 'audit.a.request_cancelled', Icon: XCircleIcon, badge: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300' },
     org_updated: { labelKey: 'audit.a.org_updated', Icon: BuildingsIcon, badge: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400' },
+    leave_adjusted: { labelKey: 'audit.a.leave_adjusted', Icon: SunHorizonIcon, badge: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' },
+    leave_settings_changed: { labelKey: 'audit.a.leave_settings_changed', Icon: SunHorizonIcon, badge: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400' },
+    personal_number_changed: { labelKey: 'audit.a.personal_number_changed', Icon: IdentificationCardIcon, badge: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400' },
+    document_uploaded: { labelKey: 'audit.a.document_uploaded', Icon: FileArrowUpIcon, badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' },
+    document_deleted: { labelKey: 'audit.a.document_deleted', Icon: TrashIcon, badge: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400' },
+    document_expiring: { labelKey: 'audit.a.document_expiring', Icon: HourglassMediumIcon, badge: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' },
     plan_changed: { labelKey: 'audit.a.plan_changed', Icon: CreditCardIcon, badge: 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400' },
     plan_granted: { labelKey: 'audit.a.plan_granted', Icon: GiftIcon, badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' },
     plan_grant_removed: { labelKey: 'audit.a.plan_grant_removed', Icon: GiftIcon, badge: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300' },
@@ -373,7 +384,12 @@ function AuditBody({ entry }: { entry: ShiftAuditLog }) {
         case 'timeoff_approved':
         case 'timeoff_declined': {
             const parts: string[] = [];
-            if (d.kind) parts.push(t((entry.action.startsWith('request_') ? `mreq.kind.${d.kind}` : `timeoff.${d.kind}`) as TranslationKey));
+            if (d.doc_type && entry.action.startsWith('document_')) {
+        parts.push(t(docTypeKey(d.doc_type)));
+        if (d.subject_name) parts.push(d.subject_name);
+        if (d.valid_until) parts.push(t('docs.chip.valid', { date: formatDayNumeric(d.valid_until) }));
+    }
+    if (d.kind) parts.push(t((entry.action.startsWith('request_') ? `mreq.kind.${d.kind}` : `timeoff.${d.kind}`) as TranslationKey));
             if (d.starts_on) {
                 const from = new Date(`${d.starts_on}T00:00`);
                 const range =
@@ -460,6 +476,15 @@ function GenericBody({ entry }: { entry: ShiftAuditLog }) {
     const t = useTranslation();
     const d = entry.details;
     const parts: string[] = [];
+    if (entry.action === 'leave_adjusted' && d.bucket) {
+        const h = d.hours ?? 0;
+        parts.push(`${t(`leave.bucket.${d.bucket}` as TranslationKey)} ${h > 0 ? '+' : '−'}${fmtLeaveHours(Math.abs(h))}${d.year ? ` · ${d.year}` : ''}`);
+    }
+    if (entry.action === 'leave_settings_changed') {
+        if (d.weekly_hours != null) parts.push(`${t('leave.weeklyHours')}: ${d.weekly_hours}`);
+        if (d.vacation_hours != null) parts.push(`${t('leave.vacationHours')}: ${d.vacation_hours}`);
+    }
+    if (entry.action === 'personal_number_changed') parts.push(`${t('profile.field.personalNumber')}: ${d.previous ?? '—'} → ${d.personal_number ?? '—'}`);
     if (d.kind) parts.push(t((entry.action.startsWith('request_') ? `mreq.kind.${d.kind}` : `timeoff.${d.kind}`) as TranslationKey));
     if (d.starts_at) parts.push(fmtRange(d.starts_at, d.ends_at, d.all_day));
     if (d.start_time) parts.push(`${d.start_time}–${d.end_time ?? ''}`);
@@ -506,11 +531,22 @@ function AuditCard({ entry, onOpenUser }: { entry: ShiftAuditLog; onOpenUser: (u
     // Who/what the entry is about: a role, a place/announcement/template, or a person.
     const personId = entry.subject_id ?? entry.target_user_id;
     const isRequest = entry.action.startsWith('request_');
+    // Swap entries are logged once per notified person, so the row's user is the
+    // recipient, not who the swap is about: name the shift's owner (taken/requested)
+    // or the taker (approved/declined) from the details instead.
+    const swapName = entry.action === 'swap_taken' || entry.action === 'swap_requested'
+        ? entry.details.from_name
+        : entry.action === 'swap_approved' || entry.action === 'swap_declined'
+          ? entry.details.taker_name
+          : undefined;
+    const isSwap = swapName !== undefined;
     const target = entry.action.startsWith('role_')
         ? (entry.details.role_name ?? '—')
-        : isRequest
-          ? (entry.details.target_name ?? (entry.details.anonymous ? t('audit.anonymous') : null))
-          : (entry.details.subject_name ?? entry.details.target_name ?? (personId ? t('audit.member') : null));
+        : isSwap
+          ? swapName
+          : isRequest
+            ? (entry.details.target_name ?? (entry.details.anonymous ? t('audit.anonymous') : null))
+            : (entry.details.subject_name ?? entry.details.target_name ?? (personId ? t('audit.member') : null));
     const when = formatDateTime(entry.created_at);
 
     return (
@@ -525,7 +561,7 @@ function AuditCard({ entry, onOpenUser }: { entry: ShiftAuditLog; onOpenUser: (u
                         {t(meta.labelKey)}
                         {target ? ' ·' : ''}
                     </span>
-                    {target && <PersonButton name={target} userId={entry.details.subject_name && !isRequest ? null : personId} onOpenUser={onOpenUser} strong />}
+                    {target && <PersonButton name={target} userId={(entry.details.subject_name && !isRequest) || isSwap ? null : personId} onOpenUser={onOpenUser} strong />}
                 </div>
                 {/* Who did it + when — own line so nothing gets squeezed off-screen. */}
                 <p className="text-micro text-gray-400">

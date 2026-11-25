@@ -2,6 +2,8 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import {
+    AlarmIcon,
+    CoffeeIcon,
     BellIcon,
     PlusIcon,
     PencilSimpleIcon,
@@ -16,14 +18,18 @@ import {
     XIcon,
     ArrowsLeftRightIcon,
     ChatTextIcon,
+    HourglassMediumIcon,
+    ChatCircleTextIcon,
     type Icon,
 } from '@phosphor-icons/react';
 import type { ShiftAuditLog, ShiftSnapshot } from '@shared/types';
-import { formatClock, formatDateTime, monthShort } from '@shared/utils/date';
+import { formatClock, formatDateTime, formatDayNumeric, monthShort } from '@shared/utils/date';
+import { docTypeKey } from '@features/documents/documentTypes';
 import { useTranslation } from '@shared/preferences/PreferencesContext';
 import type { TranslationKey } from '@shared/i18n/translations';
 import { useNotifications } from './useNotifications';
 import { subscribeOpenNotifications } from './notificationsPanel';
+import { KIND_LABEL as FEEDBACK_KIND_KEYS, type FeedbackKind } from '@features/feedback/feedbackLogic';
 
 
 function fmtClock(iso?: string | null): string {
@@ -125,6 +131,47 @@ function describe(entry: ShiftAuditLog, t: Translate): { Icon: Icon; tint: strin
                 title: t(entry.action === 'late_60' ? 'notif.late60' : 'notif.late15', { name: d.target_name || '—' }),
                 detail: [d.location_name, d.scheduled_start ? fmtClock(d.scheduled_start) : null].filter(Boolean).join(' · ') || undefined,
             };
+        case 'shift_reminder':
+            return {
+                Icon: AlarmIcon,
+                tint: 'text-sky-500',
+                title: t('notif.shiftReminder', { time: d.scheduled_start ? fmtClock(d.scheduled_start) : '—' }),
+                detail: d.location_name || undefined,
+            };
+        case 'daily_digest': {
+            const parts = [
+                t('notif.digest.shifts', { n: d.shifts ?? 0 }),
+                t('notif.digest.people', { n: d.people ?? 0 }),
+                d.open ? t('notif.digest.open', { n: d.open }) : null,
+                d.requests ? t('notif.digest.requests', { n: d.requests }) : null,
+            ].filter(Boolean);
+            return { Icon: CoffeeIcon, tint: 'text-amber-600', title: t('notif.dailyDigest'), detail: parts.join(' · ') };
+        }
+        case 'feedback_new': {
+            // Platform Superadmin: a user sent in-app feedback (read it on /feedback).
+            const kind = d.kind && d.kind in FEEDBACK_KIND_KEYS ? t(FEEDBACK_KIND_KEYS[d.kind as FeedbackKind]) : null;
+            const who = d.target_name && d.subject_name ? `${d.target_name} (${d.subject_name})` : d.target_name;
+            return {
+                Icon: ChatCircleTextIcon,
+                tint: 'text-emerald-500',
+                title: t('notif.feedbackNew'),
+                detail: [kind, who, d.note].filter(Boolean).join(' · ') || undefined,
+            };
+        }
+        case 'document_expiring': {
+            // Same entry for the member ("your …") and their managers (their name in the detail).
+            const what = d.doc_type === 'other' && d.subject_name ? d.subject_name : t(docTypeKey(d.doc_type ?? 'other'));
+            const days = d.days_left ?? 0;
+            const key = days < 0 ? 'notif.docExpired' : days === 0 ? 'notif.docExpiresToday' : 'notif.docExpiring';
+            const self = !entry.subject_id || entry.subject_id === entry.target_user_id;
+            const date = d.valid_until ? t('docs.chip.valid', { date: formatDayNumeric(d.valid_until) }) : null;
+            return {
+                Icon: HourglassMediumIcon,
+                tint: days <= 0 ? 'text-red-500' : 'text-amber-500',
+                title: t(key, { what }),
+                detail: [self ? null : d.target_name, date].filter(Boolean).join(' · ') || undefined,
+            };
+        }
         case 'swap_taken':
         case 'swap_requested':
         case 'swap_approved':

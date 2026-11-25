@@ -4,13 +4,14 @@ import { LockSimpleIcon, PlusIcon, CaretUpIcon, CaretDownIcon, UsersThreeIcon } 
 import { Button } from '@shared/components/Button';
 import { Skeleton } from '@shared/components/Skeleton';
 import { Select } from '@shared/components/Select';
-import { useTranslation } from '@shared/preferences/PreferencesContext';
+import { usePreferences } from '@shared/preferences/PreferencesContext';
 import type { TranslationKey } from '@shared/i18n/translations';
 import { useAuthContext } from '@features/auth/AuthContext';
 import { can, isSuperAdmin, rankOf } from '@shared/auth/permissions';
 import { useOrgRoles } from './useOrgRoles';
 import { RoleEditor } from './RoleEditor';
 import { ACTIONS, AREAS, emptyGrants, isDefaultRole, isLockedTop, peopleKey, type Grants, type OrgRole } from './types';
+import { HelpLink } from '@features/help/HelpLink';
 
 /**
  * --- ROLES (Discord-style hierarchy) ---
@@ -27,7 +28,7 @@ export function RolesPanel({
     /** Superadmin: every organization (picks whose roles to edit). */
     organizations?: { id: string; name: string; people: number }[];
 }) {
-    const t = useTranslation();
+    const { t, language } = usePreferences();
     const { user } = useAuthContext();
     // A Superadmin edits any organization's roles — start on the busiest one.
     const [orgId, setOrgId] = useState(() =>
@@ -99,6 +100,7 @@ export function RolesPanel({
                         </div>
                     )}
                     <p className="hidden text-meta text-ink-soft sm:block dark:text-slate-400">{t('roles.lead')}</p>
+                    <HelpLink article="roles-permissions" />
                 </div>
                 {mayManage && (
                     <Button size="sm" icon={PlusIcon} onClick={() => setEditing('new')} className="shrink-0">
@@ -149,7 +151,7 @@ export function RolesPanel({
                                     <span className="line-clamp-2 text-caption text-ink-soft sm:line-clamp-1 dark:text-slate-400">{summary(r)}</span>
                                 </span>
                                 <span className="shrink-0 text-caption tabular-nums text-ink-soft dark:text-slate-400">
-                                    {t(peopleKey(counts[r.id] ?? 0), { n: counts[r.id] ?? 0 })}
+                                    {t(peopleKey(counts[r.id] ?? 0, language), { n: counts[r.id] ?? 0 })}
                                 </span>
                             </button>
                         </li>

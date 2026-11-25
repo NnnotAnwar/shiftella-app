@@ -6,6 +6,7 @@ import { useAuthContext } from '@/features/auth/AuthContext';
 import { isSuperAdmin as isSuper, rankOf } from '@shared/auth/permissions';
 import { useOrgRoles } from '@features/roles/useOrgRoles';
 import { usePreferences, useTranslation } from '@shared/preferences/PreferencesContext';
+import { BASE_LANGUAGE } from '@shared/i18n/translations';
 import { inviteErrorMessage } from '../inviteErrors';
 
 /**
@@ -58,7 +59,8 @@ export function InviteEmployeeForm({ onClose }: { onClose: () => void }) {
                 org_role_id: orgRoleId || undefined,
                 first_name: firstName.trim() || null,
                 last_name: lastName.trim() || null,
-                language,
+                // E-mails exist in cs/en only (sk → cs, uk → en).
+                language: BASE_LANGUAGE[language],
             });
             onClose();
         } catch (err) {

@@ -5,7 +5,7 @@ import { Button } from '@shared/components/Button';
 import { Input } from '@shared/components/Input';
 import { Select } from '@shared/components/Select';
 import { FormError } from '@shared/components/FormError';
-import { useTranslation } from '@shared/preferences/PreferencesContext';
+import { usePreferences } from '@shared/preferences/PreferencesContext';
 import type { TranslationKey } from '@shared/i18n/translations';
 import { ACTIONS, AREAS, ROLE_COLORS, emptyGrants, grantsOf, isDefaultRole, isLockedTop, peopleKey, toggleGrant, type Grants, type OrgRole } from './types';
 
@@ -44,7 +44,7 @@ export function RoleEditor({
     /** Roles a new role can start from (copies permissions). */
     templates?: OrgRole[];
 }) {
-    const t = useTranslation();
+    const { t, language } = usePreferences();
     const locked = !!role && isLockedTop(role);
     const isDefault = !!role && isDefaultRole(role);
     const frozen = locked || readOnly;
@@ -93,7 +93,7 @@ export function RoleEditor({
     };
 
     return (
-        <Modal title={role ? (frozen ? role.name : t('roles.edit')) : t('roles.new')} subtitle={role ? t(peopleKey(memberCount), { n: memberCount }) : t('roles.newHint')} onClose={onClose}>
+        <Modal title={role ? (frozen ? role.name : t('roles.edit')) : t('roles.new')} subtitle={role ? t(peopleKey(memberCount, language), { n: memberCount }) : t('roles.newHint')} onClose={onClose}>
             <form onSubmit={submit} className="space-y-4">
                 {!role && templates.length > 0 && (
                     <div className="space-y-1.5">

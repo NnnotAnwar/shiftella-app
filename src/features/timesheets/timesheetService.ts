@@ -11,6 +11,9 @@ import {
 } from '@shared/types';
 import { z } from 'zod';
 
+/** Audit rows that only notify someone (bell / push / Telegram); never shown in the Activity Log. */
+export const NOTIFICATION_ONLY_ACTIONS = ['shift_reminder', 'daily_digest', 'feedback_new'] as const;
+
 /**
  * --- TIMESHEET SERVICE ---
  * Data access for the Timesheets surface (managers+) and the Activity Log
@@ -159,6 +162,8 @@ export const timesheetService = {
         // About this person, or notifying them (older entries have no subject).
         if (targetUserId) query = query.or(`subject_id.eq.${targetUserId},target_user_id.eq.${targetUserId}`);
         if (actions && actions.length > 0) query = query.in('action', [...actions]);
+        // Reminders and the morning digest are notifications, not activity.
+        else query = query.not('action', 'in', `(${NOTIFICATION_ONLY_ACTIONS.join(',')})`);
         query = query
             .order('created_at', { ascending: sort === 'asc' })
             .range(offset, offset + limit - 1);

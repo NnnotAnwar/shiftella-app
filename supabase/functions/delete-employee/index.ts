@@ -15,6 +15,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { syncSeats } from '../_shared/billing.ts';
+import { memberDocumentPaths, removeDocumentFiles } from '../_shared/documents.ts';
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -96,6 +97,8 @@ Deno.serve(async (req) => {
 
         // 6. Log it while the name still resolves, then delete the auth user —
         //    cascades to profiles + shifts. A failed delete takes the entry back.
+        //    Their documents' files are listed first (the rows cascade away).
+        const docPaths = await memberDocumentPaths(admin, targetId, targetProfile.organization_id);
         const { data: logId } = await admin.rpc('log_member_event', {
             p_org: targetProfile.organization_id,
             p_action: 'member_removed',
@@ -107,6 +110,9 @@ Deno.serve(async (req) => {
             if (logId) await admin.from('shift_audit_log').delete().eq('id', logId);
             return json({ error: delErr.message }, 400);
         }
+
+        // GDPR: their contracts / certificates go with them.
+        await removeDocumentFiles(admin, docPaths);
 
         // Business bills per member — keep the Stripe quantity in step (best effort).
         await syncSeats(admin, targetProfile.organization_id);

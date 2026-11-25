@@ -15,7 +15,7 @@
 // =============================================================================
 
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { render, type Lang, type PushMessage } from './notify.ts';
+import { normalizeLang, render, type Lang, type PushMessage } from './notify.ts';
 
 export type { Lang };
 
@@ -30,10 +30,8 @@ export function escapeHtml(s: unknown): string {
         .replace(/"/g, '&quot;');
 }
 
-/** Czech (and Slovak) speakers get Czech; everyone else English. */
-export function normalizeLang(code: string | null | undefined): Lang {
-    return /^(cs|sk)\b/i.test(code ?? '') ? 'cs' : 'en';
-}
+// Czech (and Slovak) speakers get Czech; everyone else English.
+export { normalizeLang };
 
 /** Cut to `max` characters with an ellipsis (counts code points, never splits an emoji). */
 export function truncate(s: string, max: number): string {
@@ -314,7 +312,7 @@ export async function sendTelegramNotification(
         let lang: Lang = normalizeLang(link.language);
         if (!link.language_chosen) {
             const { data: prefs } = await admin.from('notification_preferences').select('language').eq('user_id', msg.userId).maybeSingle();
-            if (prefs?.language === 'cs' || prefs?.language === 'en') lang = prefs.language;
+            if (prefs?.language) lang = normalizeLang(prefs.language);
         }
 
         const secret = Deno.env.get('TELEGRAM_WEBHOOK_SECRET') ?? '';

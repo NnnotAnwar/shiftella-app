@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { pendingDeletes } from '@features/documents/pendingDeletes';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Outlet, useLocation, useSearchParams } from 'react-router-dom';
 import { WarningCircleIcon, CheckCircleIcon, InfoIcon, XIcon, MapPinIcon, WifiSlashIcon } from '@phosphor-icons/react';
@@ -18,6 +20,7 @@ import { BottomNav } from './BottomNav';
 import { BiometricLock } from '@features/auth/BiometricLock';
 import { useBiometricEnabled } from '@features/auth/biometricSetting';
 import { CommandPalette } from '../CommandPalette';
+import { FeedbackHost } from '@features/feedback/FeedbackDialog';
 import { TrialBanner } from '@features/billing/TrialBanner';
 import { PlanEndedDialog } from '@features/billing/PlanEndedDialog';
 import { LocationPopup, type LocationPopupVariant } from '@features/locations/components/LocationPopup';
@@ -58,6 +61,14 @@ export function AppShell() {
 
   // Register for push notifications (native only; no-op on web / when signed out).
   usePushNotifications(user?.id);
+
+  // Document deletes a previous page left inside their Undo window (reload,
+  // closed tab) are finished once someone is signed in.
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    if (!user?.id) return;
+    pendingDeletes.replay(() => void queryClient.invalidateQueries({ queryKey: ['member-documents'] }));
+  }, [user?.id, queryClient]);
 
   // Deep link: a tapped push may ask to open the notifications bell (used for
   // events with no dedicated screen). Read + clear the flag, fire the signal.
@@ -287,6 +298,9 @@ export function AppShell() {
         selectedLocationId={selectedLocationId}
         onSelectLocation={handleLocationSelect}
       />
+
+      {/* SEND FEEDBACK — opened from anywhere via openFeedback() */}
+      <FeedbackHost />
 
       {/* GLOBAL OVERLAYS */}
       <AnimatePresence>

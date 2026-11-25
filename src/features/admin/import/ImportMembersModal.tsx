@@ -7,7 +7,7 @@ import { useOrgRoles } from '@features/roles/useOrgRoles';
 import { billingKeys, useEntitlements, useUpgradeNudge } from '@features/billing/useBilling';
 import { isSuperAdmin as isSuper, rankOf } from '@shared/auth/permissions';
 import { usePreferences, useTranslation } from '@shared/preferences/PreferencesContext';
-import type { TranslationKey } from '@shared/i18n/translations';
+import { BASE_LANGUAGE, type TranslationKey } from '@shared/i18n/translations';
 import { Button } from '@shared/components/Button';
 import { Select } from '@shared/components/Select';
 import { FormError } from '@shared/components/FormError';
@@ -146,8 +146,8 @@ export function ImportMembersModal({ onClose }: { onClose: () => void }) {
     };
 
     const downloadTemplate = async () => {
-        const csv = templateCsv(language);
-        const stem = language === 'cs' ? 'sablona-import-clenu' : 'member-import-template';
+        const csv = templateCsv(BASE_LANGUAGE[language]);
+        const stem = BASE_LANGUAGE[language] === 'cs' ? 'sablona-import-clenu' : 'member-import-template';
         if (Capacitor.isNativePlatform() && (await shareNative('csv', stem, t('import.template'), { text: csv }))) return;
         const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
         const a = document.createElement('a');
@@ -188,7 +188,8 @@ export function ImportMembersModal({ onClose }: { onClose: () => void }) {
                     org_role_id: role?.id,
                     first_name: row.firstName,
                     last_name: row.lastName,
-                    language,
+                    // E-mails exist in cs/en only (sk → cs, uk → en).
+                    language: BASE_LANGUAGE[language],
                 });
                 sent++;
                 setStatus(row.line, { status: 'sent' });

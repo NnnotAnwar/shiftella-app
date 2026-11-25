@@ -180,7 +180,11 @@ const S = {
         } as Record<string, string>,
         badButton: 'This button has expired.',
         confirmed: (n: number) => (n === 0 ? 'Everything was already confirmed.' : `Confirmed ${n} shift${n === 1 ? '' : 's'}.`),
-        kind: { vacation: 'Vacation', sick: 'Sick leave', other: 'Leave' } as Record<string, string>,
+        kind: {
+            vacation: 'Vacation', sick: 'Sick leave', other: 'Leave', ocr: 'Family care (OČR)', comp_time: 'Time off in lieu',
+            unpaid: 'Unpaid leave', doctor: 'Doctor', sick_day: 'Sick day', business_trip: 'Business trip', home_office: 'Home office',
+            parental: 'Parental leave', obstacle: 'Employer-side obstacle',
+        } as Record<string, string>,
         reqKind: { name: 'Name change', swap: 'Shift swap', role: 'Role request', complaint: 'Complaint', other: 'Request' } as Record<string, string>,
         anonymous: 'Anonymous',
     },
@@ -254,7 +258,11 @@ const S = {
         badButton: 'Platnost tlačítka vypršela.',
         confirmed: (n: number) =>
             n === 0 ? 'Vše už bylo potvrzené.' : `${csPlural(n, 'Potvrzena', 'Potvrzeny', 'Potvrzeno')} ${n} ${csPlural(n, 'směna', 'směny', 'směn')}.`,
-        kind: { vacation: 'Dovolená', sick: 'Nemocenská', other: 'Volno' } as Record<string, string>,
+        kind: {
+            vacation: 'Dovolená', sick: 'Nemocenská', other: 'Volno', ocr: 'OČR', comp_time: 'Náhradní volno',
+            unpaid: 'Neplacené volno', doctor: 'Lékař', sick_day: 'Sick day', business_trip: 'Služební cesta', home_office: 'Home office',
+            parental: 'Mateřská / rodičovská', obstacle: 'Překážka na straně zaměstnavatele',
+        } as Record<string, string>,
         reqKind: { name: 'Změna jména', swap: 'Výměna směny', role: 'Žádost o roli', complaint: 'Stížnost', other: 'Žádost' } as Record<string, string>,
         anonymous: 'Anonymně',
     },

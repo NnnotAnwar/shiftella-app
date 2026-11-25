@@ -12,11 +12,12 @@ import { Skeleton } from '@shared/components/Skeleton';
 import { toast } from '@shared/toast/toastStore';
 import { formatDateInText, formatDateShort } from '@shared/utils/date';
 import { APP_NAME } from '@shared/brand';
-import type { TranslationKey } from '@shared/i18n/translations';
+import { INTL_LOCALE, type TranslationKey } from '@shared/i18n/translations';
 import { BillingError, billingService } from './billingService';
 import { billingErrorMessage } from './planErrors';
 import { canManageBilling, isNativeApp, useEntitlements, useOrgUsage, useSubscription } from './useBilling';
 import { useRedirectAction } from './useRedirectAction';
+import { HelpLink } from '@features/help/HelpLink';
 import {
     BUSINESS_MIN_SEATS,
     LIMITS,
@@ -37,7 +38,7 @@ import {
 const CARD_FEATURES: Record<Plan, Feature[]> = {
     free: [],
     team: ['timesheets', 'swaps', 'templates', 'push', 'wages', 'customRoles'],
-    business: ['activityLog', 'coverage', 'restRules', 'prioritySupport', 'earlyAccess'],
+    business: ['analytics', 'activityLog', 'coverage', 'restRules', 'prioritySupport', 'earlyAccess'],
 };
 
 /**
@@ -151,9 +152,9 @@ function BillingInner() {
     const cancelScheduled = liveStripe && !!sub?.cancel_at_period_end;
     const periodEnd = sub?.current_period_end ?? null;
 
-    const num = (n: number) => n.toLocaleString(language === 'cs' ? 'cs-CZ' : 'en-GB');
+    const num = (n: number) => n.toLocaleString(INTL_LOCALE[language]);
     const czk = (n: number) => `${num(n)} Kč`;
-    const eur = (n: number) => n.toLocaleString(language === 'cs' ? 'cs-CZ' : 'en-GB', { style: 'currency', currency: 'EUR' });
+    const eur = (n: number) => n.toLocaleString(INTL_LOCALE[language], { style: 'currency', currency: 'EUR' });
     const planName = (p: Plan) => t(`billing.plan.${p}` as TranslationKey);
     const intervalWord = (iv: BillingInterval) => t(iv === 'year' ? 'billing.yearly' : 'billing.monthly').toLocaleLowerCase(language);
 
@@ -294,6 +295,7 @@ function BillingInner() {
             <PageHeader
                 eyebrow={t('billing.eyebrow')}
                 title={t('billing.title')}
+                help={<HelpLink article="billing-beta" />}
                 description={native ? t('billing.manageOnWeb', { app: APP_NAME }) : t('billing.description')}
                 actions={
                     !native &&

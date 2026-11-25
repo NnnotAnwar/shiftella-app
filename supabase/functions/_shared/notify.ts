@@ -11,7 +11,17 @@ import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { pragueDate, pragueMidnight } from './prague.ts';
 
 export type PrefCategory = 'shifts' | 'account' | 'requests';
+/** The languages server copy is written in. */
 export type Lang = 'en' | 'cs';
+
+/**
+ * A stored / client language code → the copy language. The app also speaks
+ * Slovak and Ukrainian, but server copy (push, Telegram, calendar) exists in
+ * cs + en only: Slovak falls back to Czech, everything else to English.
+ */
+export function normalizeLang(code: string | null | undefined): Lang {
+    return /^(cs|sk)\b/i.test(code ?? '') ? 'cs' : 'en';
+}
 
 /**
  * A notification to deliver. `key` + `vars` are localized per recipient at send
@@ -49,14 +59,131 @@ function shiftsCount(n: number, lang: Lang): string {
     return lang === 'cs' ? `${n} ${csPlural(n, 'směna', 'směny', 'směn')}` : `${n} shift${n === 1 ? '' : 's'}`;
 }
 
+// Absence types (mirror KIND_KEYS in src/features/schedule/timeOffShared.ts).
 const KIND_ACC: Record<Lang, Record<string, string>> = {
-    en: { vacation: 'vacation', sick: 'sick leave', other: 'leave' },
-    cs: { vacation: 'dovolenou', sick: 'nemocenskou', other: 'volno' },
+    en: {
+        vacation: 'vacation', sick: 'sick leave', other: 'leave', ocr: 'family care leave (OČR)', comp_time: 'time off in lieu',
+        unpaid: 'unpaid leave', doctor: 'a doctor\'s visit', sick_day: 'a sick day', business_trip: 'a business trip',
+        home_office: 'home office', parental: 'parental leave', obstacle: 'an employer-side obstacle',
+    },
+    cs: {
+        vacation: 'dovolenou', sick: 'nemocenskou', other: 'volno', ocr: 'OČR', comp_time: 'náhradní volno',
+        unpaid: 'neplacené volno', doctor: 'návštěvu lékaře', sick_day: 'sick day', business_trip: 'služební cestu',
+        home_office: 'home office', parental: 'mateřskou / rodičovskou', obstacle: 'překážku na straně zaměstnavatele',
+    },
 };
 const KIND_NOM: Record<Lang, Record<string, string>> = {
-    en: { vacation: 'vacation', sick: 'sick leave', other: 'leave' },
-    cs: { vacation: 'dovolená', sick: 'nemocenská', other: 'volno' },
+    en: {
+        vacation: 'vacation', sick: 'sick leave', other: 'leave', ocr: 'family care leave (OČR)', comp_time: 'time off in lieu',
+        unpaid: 'unpaid leave', doctor: 'doctor\'s visit', sick_day: 'sick day', business_trip: 'business trip',
+        home_office: 'home office', parental: 'parental leave', obstacle: 'employer-side obstacle',
+    },
+    cs: {
+        vacation: 'dovolená', sick: 'nemocenská', other: 'volno', ocr: 'OČR', comp_time: 'náhradní volno',
+        unpaid: 'neplacené volno', doctor: 'lékař', sick_day: 'sick day', business_trip: 'služební cesta',
+        home_office: 'home office', parental: 'mateřská / rodičovská', obstacle: 'překážka na straně zaměstnavatele',
+    },
 };
+
+/** "8:00" / "08:00" — a time of day in Prague (the app's business time zone). */
+export function pragueClock(iso: string, lang: Lang): string {
+    try {
+        return new Intl.DateTimeFormat(lang === 'cs' ? 'cs-CZ' : 'en-GB', {
+            timeZone: 'Europe/Prague',
+            hour: lang === 'cs' ? 'numeric' : '2-digit',
+            minute: '2-digit',
+            hourCycle: 'h23',
+        }).format(new Date(iso));
+    } catch {
+        return '';
+    }
+}
+
+/** The morning digest's body: "5 shifts · 4 people · 1 open shift · 2 requests waiting". */
+export function digestBody(v: { shifts?: number; people?: number; open?: number; requests?: number }, lang: Lang): string {
+    const cs = lang === 'cs';
+    const n = (k: unknown) => Math.max(0, Number(k) || 0);
+    const parts: string[] = [];
+    const shifts = n(v.shifts);
+    const people = n(v.people);
+    const open = n(v.open);
+    const req = n(v.requests);
+    if (shifts > 0) {
+        parts.push(shiftsCount(shifts, lang));
+        parts.push(cs ? `${people} ${csPlural(people, 'člověk', 'lidé', 'lidí')}` : `${people} ${people === 1 ? 'person' : 'people'}`);
+    } else {
+        parts.push(cs ? 'dnes žádné směny' : 'no shifts today');
+    }
+    if (open > 0) parts.push(cs ? `${open} ${csPlural(open, 'volná směna', 'volné směny', 'volných směn')}` : `${open} open shift${open === 1 ? '' : 's'}`);
+    if (req > 0) parts.push(cs ? `${req} ${csPlural(req, 'žádost čeká', 'žádosti čekají', 'žádostí čeká')}` : `${req} request${req === 1 ? '' : 's'} waiting`);
+    return parts.join(' · ');
+}
+
+// Employee document types (mirror DOC_TYPES in src/features/documents/documentTypes.ts).
+const DOC_TYPE: Record<Lang, Record<string, string>> = {
+    en: {
+        contract: 'Employment contract', agreement: 'DPP / DPČ agreement', health_card: 'Health certificate',
+        food_card: 'Food handler card', safety_training: 'Safety training (BOZP)', other: 'Document',
+    },
+    cs: {
+        contract: 'Pracovní smlouva', agreement: 'Dohoda DPP / DPČ', health_card: 'Zdravotní průkaz',
+        food_card: 'Potravinářský průkaz', safety_training: 'Školení BOZP', other: 'Dokument',
+    },
+};
+
+/** "3. 2. 2027" / "3 Feb 2027" from a date-only "2027-02-03". */
+export function docDate(isoDay: string, lang: Lang): string {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(isoDay);
+    if (!m) return isoDay;
+    const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+    if (lang === 'cs') return `${d}. ${mo}. ${y}`;
+    return `${d} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][mo - 1]} ${y}`;
+}
+
+/** A document reminder: who it's about (empty = the recipient), what, until when, days left. */
+export function documentExpiringCopy(
+    v: { who?: string; type?: string; name?: string; date?: string; days?: number },
+    lang: Lang,
+): { title: string; body: string } {
+    const cs = lang === 'cs';
+    const days = Number(v.days ?? 0);
+    const type = String(v.type ?? 'other');
+    // "Other" documents read better by their own name.
+    const what = type === 'other' && v.name ? String(v.name) : (DOC_TYPE[lang][type] ?? DOC_TYPE[lang].other);
+    const date = v.date ? docDate(String(v.date), lang) : '';
+    const lead = v.who ? `${v.who} — ${what}` : what;
+    if (days < 0)
+        return cs
+            ? { title: 'Dokument vypršel', body: `${lead}: platnost skončila ${date}.` }
+            : { title: 'Document expired', body: `${lead}: expired on ${date}.` };
+    if (days === 0)
+        return cs
+            ? { title: 'Dokument dnes vyprší', body: `${lead}: platí jen do dnes (${date}).` }
+            : { title: 'Document expires today', body: `${lead}: valid only until today (${date}).` };
+    const left = cs
+        ? `${csPlural(days, 'zbývá', 'zbývají', 'zbývá')} ${days} ${csPlural(days, 'den', 'dny', 'dní')}`
+        : `${days} day${days === 1 ? '' : 's'} left`;
+    return cs
+        ? { title: 'Dokument brzy vyprší', body: `${lead}: platí do ${date} (${left}).` }
+        : { title: 'Document expiring soon', body: `${lead}: valid until ${date} (${left}).` };
+}
+
+// In-app feedback types (mirror FEEDBACK_KINDS in src/features/feedback/feedbackLogic.ts).
+const FEEDBACK_KIND: Record<Lang, Record<string, string>> = {
+    en: { idea: 'Idea', bug: 'Bug', question: 'Question', praise: 'Praise' },
+    cs: { idea: 'Nápad', bug: 'Chyba', question: 'Dotaz', praise: 'Pochvala' },
+};
+
+/** The owner's alert for new in-app feedback: "💬 Feedback · Bug" / "Jana (Café) — It crashes…". */
+export function feedbackCopy(v: { kind?: string; who?: string; org?: string; text?: string }, lang: Lang): { title: string; body: string } {
+    const cs = lang === 'cs';
+    const kind = FEEDBACK_KIND[lang][String(v.kind ?? '')];
+    const who = [v.who || (cs ? 'Uživatel' : 'A user'), v.org ? `(${v.org})` : ''].filter(Boolean).join(' ');
+    return {
+        title: `💬 ${cs ? 'Zpětná vazba' : 'Feedback'}${kind ? ` · ${kind}` : ''}`,
+        body: v.text ? `${who} — ${v.text}` : who,
+    };
+}
 
 /** Render a notification's title + body for a recipient's language. */
 export function render(msg: PushMessage, lang: Lang): { title: string; body: string } {
@@ -71,6 +198,9 @@ export function render(msg: PushMessage, lang: Lang): { title: string; body: str
     const atLoc = loc ? (cs ? ` v ${loc}` : ` at ${loc}`) : '';
     const n = Number(v.count ?? 1);
     const kind = String(v.kind ?? 'other');
+    // Czech: "žádost o <accusative>" agrees with every kind (dovolenou, náhradní volno, návštěvu lékaře …).
+    const kindAcc = (l: Lang) => KIND_ACC[l][kind] ?? KIND_ACC[l].other;
+    const kindNom = (l: Lang) => KIND_NOM[l][kind] ?? KIND_NOM[l].other;
     const range = String(v.range ?? '');
 
     switch (msg.key) {
@@ -100,6 +230,24 @@ export function render(msg: PushMessage, lang: Lang): { title: string; body: str
                 ? { title: 'Směna nezahájena', body: `${who} se nepřihlásil(a)${atLoc} — ${mins} zpoždění.` }
                 : { title: 'Shift not started', body: `${who} hasn't clocked in${atLoc} — ${mins} late.` };
         }
+        case 'shift_reminder': {
+            const at = v.start ? pragueClock(String(v.start), lang) : '';
+            return cs
+                ? { title: 'Směna za hodinu', body: `Vaše směna začíná${at ? ` v ${at}` : ' brzy'}${loc ? ` · ${loc}` : ''}.` }
+                : { title: 'Shift in an hour', body: `Your shift starts${at ? ` at ${at}` : ' soon'}${loc ? ` · ${loc}` : ''}.` };
+        }
+        case 'daily_digest':
+            return {
+                title: cs ? 'Dnešní přehled' : 'Today at a glance',
+                body: digestBody({ shifts: Number(v.shifts), people: Number(v.people), open: Number(v.open), requests: Number(v.requests) }, lang),
+            };
+        case 'feedback_new':
+            return feedbackCopy({ kind: String(v.kind ?? ''), who: String(v.who ?? ''), org: String(v.org ?? ''), text: String(v.text ?? '') }, lang);
+        case 'document_expiring':
+            return documentExpiringCopy(
+                { who: v.who ? String(v.who) : '', type: String(v.type ?? 'other'), name: String(v.name ?? ''), date: String(v.date ?? ''), days: Number(v.days ?? 0) },
+                lang,
+            );
         case 'schedule_published':
             return cs
                 ? { title: 'Rozpis zveřejněn', body: `${actor} zveřejnil(a) váš rozpis — ${shiftsCount(n, 'cs')}.` }
@@ -118,16 +266,16 @@ export function render(msg: PushMessage, lang: Lang): { title: string; body: str
         }
         case 'timeoff_requested':
             return cs
-                ? { title: 'Žádost o volno', body: `${who} žádá o ${KIND_ACC.cs[kind]}: ${range}.` }
-                : { title: 'Time-off request', body: `${who} requested ${KIND_ACC.en[kind]}: ${range}.` };
+                ? { title: 'Žádost o volno', body: `${who} žádá o ${kindAcc('cs')}: ${range}.` }
+                : { title: 'Time-off request', body: `${who} requested ${kindAcc('en')}: ${range}.` };
         case 'timeoff_approved':
             return cs
-                ? { title: 'Volno schváleno', body: `Vaše ${KIND_NOM.cs[kind]} (${range}) byla schválena.` }
-                : { title: 'Time off approved', body: `Your ${KIND_NOM.en[kind]} (${range}) was approved.` };
+                ? { title: 'Volno schváleno', body: `Vaše žádost o ${kindAcc('cs')} (${range}) byla schválena.` }
+                : { title: 'Time off approved', body: `Your ${kindNom('en')} (${range}) was approved.` };
         case 'timeoff_declined':
             return cs
-                ? { title: 'Volno zamítnuto', body: `Vaše ${KIND_NOM.cs[kind]} (${range}) byla zamítnuta.` }
-                : { title: 'Time off declined', body: `Your ${KIND_NOM.en[kind]} (${range}) was declined.` };
+                ? { title: 'Volno zamítnuto', body: `Vaše žádost o ${kindAcc('cs')} (${range}) byla zamítnuta.` }
+                : { title: 'Time off declined', body: `Your ${kindNom('en')} (${range}) was declined.` };
         case 'profile_updated': {
             const fields = String(v.fields ?? (cs ? 'profil' : 'profile'));
             return cs
@@ -217,14 +365,21 @@ export async function messagesFromWebhook(admin: SupabaseClient, table: string, 
         const bodyText = (record.body as string) || '';
         const shortBody = bodyText.length > 140 ? `${bodyText.slice(0, 139)}…` : bodyText;
 
-        const { data: members } = await admin
-            .from('profiles')
-            .select('id')
-            .eq('organization_id', orgId);
+        // Only the announcement's audience (its location's roster / its role / everyone).
+        let ids: string[] = [];
+        const { data: audience, error: audienceErr } = await admin.rpc('announcement_audience_ids', { p_id: record.id });
+        if (!audienceErr) {
+            ids = ((audience ?? []) as (string | { announcement_audience_ids?: string })[]).map((r) =>
+                typeof r === 'string' ? r : String(r.announcement_audience_ids ?? ''),
+            );
+        } else if (!record.location_id && !record.org_role_id) {
+            // Audience function unavailable: a whole-organization notice can still go to everyone.
+            const { data: members } = await admin.from('profiles').select('id').eq('organization_id', orgId);
+            ids = (members ?? []).map((m: { id: string }) => m.id);
+        }
 
-        return (members ?? [])
-            .map((m: { id: string }) => m.id)
-            .filter((id) => id !== authorId)
+        return ids
+            .filter((id) => id && id !== authorId)
             .map((id) => ({
                 userId: id,
                 // User-authored content — passed pre-rendered (no localization).
@@ -284,6 +439,44 @@ export async function messagesFromWebhook(admin: SupabaseClient, table: string, 
                     route: '/?openNotifications=1',
                     category: 'shifts',
                 }];
+            case 'shift_reminder':
+                return [{
+                    userId: target,
+                    key: 'shift_reminder',
+                    vars: { start: (details.scheduled_start as string) || '', loc: (details.location_name as string) || '' },
+                    route: '/',
+                    category: 'shifts',
+                }];
+            case 'daily_digest':
+                return [{
+                    userId: target,
+                    key: 'daily_digest',
+                    vars: {
+                        shifts: Number(details.shifts ?? 0),
+                        people: Number(details.people ?? 0),
+                        open: Number(details.open ?? 0),
+                        requests: Number(details.requests ?? 0),
+                    },
+                    route: '/',
+                    category: 'shifts',
+                }];
+            case 'document_expiring': {
+                // The member gets "your …"; their managers get the name in front.
+                const self = !record.subject_id || record.subject_id === target;
+                return [{
+                    userId: target,
+                    key: 'document_expiring',
+                    vars: {
+                        who: self ? '' : (details.target_name as string) || '',
+                        type: (details.doc_type as string) || 'other',
+                        name: (details.subject_name as string) || '',
+                        date: (details.valid_until as string) || '',
+                        days: Number(details.days_left ?? 0),
+                    },
+                    route: self ? '/profile' : `/profile/${record.subject_id}`,
+                    category: 'account',
+                }];
+            }
             case 'schedule_published':
                 return [{
                     userId: target,
@@ -354,6 +547,19 @@ export async function messagesFromWebhook(admin: SupabaseClient, table: string, 
                     },
                     route: '/requests',
                     category: 'requests',
+                }];
+            case 'feedback_new':
+                // In-app feedback → the platform Superadmin (rate-limited in the database).
+                return [{
+                    userId: target,
+                    key: 'feedback_new',
+                    vars: {
+                        kind: (details.kind as string) || '',
+                        who: (details.target_name as string) || '',
+                        org: (details.subject_name as string) || '',
+                        text: (details.note as string) || '',
+                    },
+                    route: '/feedback',
                 }];
             case 'profile_updated': {
                 const changes = (details.changes as { field: string }[] | undefined) ?? [];

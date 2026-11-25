@@ -4,6 +4,8 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter, HashRouter } from 'react-router-dom';
 import { IS_DEMO_BUILD } from '@shared/demoBuild';
 import App from './App.tsx';
+import '@fontsource-variable/inter';
+import './fonts.css';
 import './index.css';
 import './App.css';
 

@@ -1,0 +1,30 @@
+/*
+ * --- FONTS (self-hosted) ---
+ * Served from our own origin — no request to Google Fonts / Fontshare, so a page
+ * view never hands the visitor's IP to a third party (GDPR) and the CSP stays 'self'.
+ *   Inter (UI): @fontsource-variable/inter, imported in main.tsx — variable 100–900,
+ *     Latin + Cyrillic subsets by unicode-range.
+ *   Satoshi (display, Latin only — Cyrillic falls back to Inter): Fontshare,
+ *     ITF Free Font License (self-hosting allowed), the three weights we use.
+ */
+@font-face {
+  font-family: 'Satoshi';
+  src: url('./assets/fonts/satoshi-500.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Satoshi';
+  src: url('./assets/fonts/satoshi-700.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Satoshi';
+  src: url('./assets/fonts/satoshi-900.woff2') format('woff2');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}

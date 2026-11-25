@@ -5,11 +5,11 @@ import { Link } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import { useTheme } from '@app/providers/ThemeContext';
 import { usePreferences, useTranslation } from '@shared/preferences/PreferencesContext';
-import { LANGUAGES } from '@shared/i18n/translations';
+import { INTL_LOCALE, LANGUAGES } from '@shared/i18n/translations';
 import { BrandGlyph } from '@shared/components/BrandGlyph';
 import { APP_NAME } from '@shared/brand';
 
-/** One-tap CS/EN/SK/UK switch for the signed-out pages (saved like the Settings choice). */
+/** One-tap CZ/EN/SK/UA switch for the signed-out pages (saved like the Settings choice). */
 export function LanguageToggle() {
     const { language, setLanguage, t } = usePreferences();
     // Czech first — the home market.
@@ -22,13 +22,13 @@ export function LanguageToggle() {
                     <button
                         key={l.code}
                         type="button"
-                        lang={l.code}
+                        lang={INTL_LOCALE[l.code]}
                         onClick={() => setLanguage(l.code)}
                         aria-pressed={active}
                         aria-label={l.label}
                         className={`h-6.5 min-w-8 rounded-[9px] px-2 text-caption font-semibold uppercase transition-colors ${active ? 'segment-active text-ink dark:text-white' : 'text-ink-soft hover:text-ink dark:text-slate-400 dark:hover:text-white'}`}
                     >
-                        {l.code}
+                        {l.short}
                     </button>
                 );
             })}

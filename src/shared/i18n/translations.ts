@@ -3080,11 +3080,12 @@ export const BASE_LANGUAGE: Record<Language, 'en' | 'cs'> = { en: 'en', cs: 'cs'
 /** BCP 47 tag for Intl date / number formatting. */
 export const INTL_LOCALE: Record<Language, string> = { en: 'en-GB', cs: 'cs-CZ', sk: 'sk-SK', uk: 'uk-UA' };
 
-export const LANGUAGES: { code: Language; label: string }[] = [
-    { code: 'en', label: 'English' },
-    { code: 'cs', label: 'Čeština' },
-    { code: 'sk', label: 'Slovenčina' },
-    { code: 'uk', label: 'Українська' },
+/** `short` is what the compact switcher shows — country-style, so Ukrainian reads "UA", not "UK" (United Kingdom). */
+export const LANGUAGES: { code: Language; label: string; short: string }[] = [
+    { code: 'en', label: 'English', short: 'EN' },
+    { code: 'cs', label: 'Čeština', short: 'CZ' },
+    { code: 'sk', label: 'Slovenčina', short: 'SK' },
+    { code: 'uk', label: 'Українська', short: 'UA' },
 ];
 
 export function isLanguage(v: unknown): v is Language {

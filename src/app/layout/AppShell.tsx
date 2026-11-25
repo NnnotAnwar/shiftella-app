@@ -22,6 +22,7 @@ import { useBiometricEnabled } from '@features/auth/biometricSetting';
 import { CommandPalette } from '../CommandPalette';
 import { FeedbackHost } from '@features/feedback/FeedbackDialog';
 import { TrialBanner } from '@features/billing/TrialBanner';
+import { DemoModeBar } from '@features/demo/DemoModeBar';
 import { PlanEndedDialog } from '@features/billing/PlanEndedDialog';
 import { LocationPopup, type LocationPopupVariant } from '@features/locations/components/LocationPopup';
 import { type User, type Shift, type Location } from '@shared/types';
@@ -208,6 +209,7 @@ export function AppShell() {
       >
         {/* One reading width for every page, so titles and cards line up as you navigate. */}
         <div className="mx-auto w-full max-w-6xl">
+          <DemoModeBar />
           <TrialBanner />
           {/* One-time "trial ended" dialog for the owner (portalled). */}
           <PlanEndedDialog />

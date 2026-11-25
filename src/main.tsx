@@ -1,7 +1,8 @@
 import './shared/zodCsp';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter, HashRouter } from 'react-router-dom';
+import { IS_DEMO_BUILD } from '@shared/demoBuild';
 import App from './App.tsx';
 import './index.css';
 import './App.css';
@@ -12,14 +13,17 @@ import './App.css';
  * It mounts the React app into the HTML 'root' element.
  */
 
+// The public demo (/demo/) routes in the hash, so a reload never needs a server fallback.
+const Router = IS_DEMO_BUILD ? HashRouter : BrowserRouter;
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     {/* 
-      BrowserRouter: Handles URL management (navigation).
+      Router: Handles URL management (navigation).
       App: Our main component defined in App.tsx.
     */}
-    <BrowserRouter>
+    <Router>
       <App />
-    </BrowserRouter>
+    </Router>
   </StrictMode>,
 );

@@ -40,6 +40,9 @@ jobs:
       - name: Build (tsc -b + vite build)
         run: yarn build
 
+      - name: Build the in-browser demo (/demo/)
+        run: yarn build:demo
+
   # Playwright E2E against the real app + the in-memory fake Supabase
   # (tools/screenshots), served under the enforced production CSP. No backend,
   # no secrets; ~2 min. Details: docs/e2e.md.

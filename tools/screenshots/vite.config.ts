@@ -18,6 +18,14 @@ const root = path.resolve(here, '../..');
  */
 const E2E = process.env.E2E_BUILD === '1';
 
+/**
+ * Public demo (`corepack yarn build:demo`): the same in-memory fake, shipped at
+ * shiftella.app/demo/ so visitors can try the app with nothing stored anywhere —
+ * each tab gets its own copy, gone on close. Hash routing (/demo/#/schedule), so a
+ * reload never needs a server-side fallback; no pinned clock (data is relative to now).
+ */
+const DEMO = process.env.DEMO_BUILD === '1';
+
 /** The moment the app believes it is (override with SCREENSHOT_NOW). */
 const NOW = process.env.SCREENSHOT_NOW ?? '2026-12-10T10:30:00+01:00';
 
@@ -55,6 +63,14 @@ function fakeSupabase(): Plugin {
     };
 }
 
+/** The demo page is not a landing page: keep it out of search results. */
+function demoHtml(): Plugin {
+    return {
+        name: 'demo:noindex',
+        transformIndexHtml: () => [{ tag: 'meta', attrs: { name: 'robots', content: 'noindex' }, injectTo: 'head' }],
+    };
+}
+
 const appAliases = Object.entries((appConfig.resolve?.alias ?? {}) as Record<string, string>).map(
     ([find, replacement]): Alias => ({ find, replacement }),
 );
@@ -62,9 +78,12 @@ const appAliases = Object.entries((appConfig.resolve?.alias ?? {}) as Record<str
 export default defineConfig({
     root,
     cacheDir: path.join(root, 'node_modules/.vite-screenshots'),
-    define: appConfig.define,
-    plugins: [fakeSupabase(), ...(appConfig.plugins ?? []), ...(E2E ? [] : [pinnedClock()])],
-    build: { ...appConfig.build, outDir: 'dist-e2e', emptyOutDir: true },
+    base: DEMO ? '/demo/' : '/',
+    // The demo sits next to the real build: public/ files are already served from the root.
+    publicDir: DEMO ? false : undefined,
+    define: { ...appConfig.define, 'import.meta.env.VITE_DEMO_BUILD': JSON.stringify(DEMO ? '1' : '') },
+    plugins: [fakeSupabase(), ...(appConfig.plugins ?? []), ...(E2E || DEMO ? [] : [pinnedClock()]), ...(DEMO ? [demoHtml()] : [])],
+    build: { ...appConfig.build, outDir: DEMO ? 'dist/demo' : 'dist-e2e', emptyOutDir: true },
     resolve: { alias: appAliases },
     server: { port: Number(process.env.SCREENSHOT_PORT ?? 5199), strictPort: true, host: '127.0.0.1' },
     clearScreen: false,

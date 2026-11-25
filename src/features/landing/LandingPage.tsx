@@ -11,6 +11,7 @@ import {
     DevicesIcon,
     FileTextIcon,
     GridFourIcon,
+    PlayCircleIcon,
     ScalesIcon,
     ShieldCheckIcon,
     XIcon,
@@ -138,12 +139,11 @@ function Hero({ c }: { c: LandingCopy }) {
                         {fill(h.cta, { days: TRIAL_DAYS })}
                         <ArrowRightIcon weight="bold" aria-hidden="true" className="size-4" />
                     </Link>
-                    {/* Phones: sign-in sits in the header, so the hero keeps one clear CTA. */}
-                    <div className="hidden sm:block">
-                        <Link to="/login" className={`${buttonClass({ variant: 'secondary', size: 'lg' })} ${FOCUS}`}>
-                            {h.secondary}
-                        </Link>
-                    </div>
+                    {/* The in-browser demo (a separate build at /demo/) — a full page load, not a route. Sign-in lives in the header. */}
+                    <a href="/demo/" className={`${buttonClass({ variant: 'secondary', size: 'lg' })} ${FOCUS}`}>
+                        <PlayCircleIcon weight="bold" aria-hidden="true" className="size-4" />
+                        {h.demo}
+                    </a>
                 </div>
                 <ul className="mt-5 flex flex-wrap justify-center gap-x-4 gap-y-1.5 text-meta text-ink-soft lg:justify-start dark:text-slate-400">
                     {h.trust.map((item) => (

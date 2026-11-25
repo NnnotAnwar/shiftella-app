@@ -3072,7 +3072,7 @@ export const translations = { en, cs, sk, uk } satisfies Record<Language, Partia
 
 /**
  * The complete language a partial one falls back to — for missing UI keys and
- * for everything that exists only in cs/en (landing copy, legal pages, holiday
+ * for everything that exists only in cs/en (landing copy, terms of service, holiday
  * names, e-mails, push / Telegram copy). Slovaks read Czech; Ukrainian → English.
  */
 export const BASE_LANGUAGE: Record<Language, 'en' | 'cs'> = { en: 'en', cs: 'cs', sk: 'cs', uk: 'en' };

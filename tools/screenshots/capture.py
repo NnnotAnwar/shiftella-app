@@ -18,7 +18,7 @@ from urllib.parse import urlparse
 from playwright.sync_api import Page, sync_playwright
 
 ROOT = Path(__file__).resolve().parents[2]
-ALLOWED_HOSTS = {"127.0.0.1", "localhost", "fonts.googleapis.com", "fonts.gstatic.com", "api.fontshare.com", "cdn.fontshare.com"}
+ALLOWED_HOSTS = {"127.0.0.1", "localhost"}
 
 DESKTOP = {"viewport": {"width": 1440, "height": 900}, "device_scale_factor": 2}
 MOBILE = {

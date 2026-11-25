@@ -106,7 +106,7 @@ const PRIVACY_CS: LegalContent = {
                 'Organizaci a předplatné: název organizace, tarif a stav zkušební doby. Až spustíme placené tarify, přibude fakturační jméno, e-mail, adresa, DIČ a identifikátor zákazníka u Stripe. Údaje o kartě zadáváte přímo u Stripe, my je nevidíme.',
                 'Zpětnou vazbu z aplikace: druh a text zprávy, zda vás smíme kontaktovat, stránku aplikace (bez parametrů), verzi aplikace, jazyk a údaj o prohlížeči (user agent). Upozornění na novou zprávu s vaším jménem, organizací a textem dostává provozovatel jako push oznámení a přes Telegram.',
                 'Komunikaci s podporou: e-maily, které nám pošlete, a naše odpovědi.',
-                'Návštěvu webu: analytiku ani sledování nepoužíváme. Při načtení stránky ale prohlížeč stáhne písma z Google Fonts a Fontshare a ti při tom vidí vaši IP adresu.',
+                'Návštěvu webu: analytiku ani sledování nepoužíváme a písma i vše ostatní načítáme z vlastního serveru, takže vaši IP adresu při návštěvě nevidí žádná třetí strana.',
             ],
         },
         {
@@ -144,12 +144,11 @@ const PRIVACY_CS: LegalContent = {
                 'Cloudflare, Inc. (USA): DNS domény shiftella.app a přeposílání e-mailů z adresy support@shiftella.app do schránky provozovatele u Googlu (Gmail).',
                 'Telegram: jen pokud si bota propojíte, viz Volitelné funkce.',
                 'Stripe Payments Europe, Ltd. (Irsko): platby, až spustíme placené tarify. Během bezplatné bety se přes Stripe nic neplatí.',
-                'Google Fonts (Google) a Fontshare (Indian Type Foundry, Indie): písma webu. Vidí jen IP adresu a údaje prohlížeče.',
             ],
         },
         {
             h: 'Předávání mimo EU',
-            p: 'Údaje ukládáme v EU. Supabase, Resend, Google, Apple, Cloudflare a Stripe jsou americké firmy nebo k údajům mohou mít přístup z USA. Takový přenos chrání rámec EU–USA pro ochranu osobních údajů (Data Privacy Framework), pokud se k němu poskytovatel připojil, jinak standardní smluvní doložky Evropské komise (SCC). Telegram a Fontshare sídlí mimo EU v zemích bez rozhodnutí o odpovídající ochraně. Telegram používáte jen na vlastní žádost a kdykoli ho můžete odpojit.',
+            p: 'Údaje ukládáme v EU. Supabase, Resend, Google, Apple, Cloudflare a Stripe jsou americké firmy nebo k údajům mohou mít přístup z USA. Takový přenos chrání rámec EU–USA pro ochranu osobních údajů (Data Privacy Framework), pokud se k němu poskytovatel připojil, jinak standardní smluvní doložky Evropské komise (SCC). Telegram sídlí mimo EU v zemi bez rozhodnutí o odpovídající ochraně. Telegram používáte jen na vlastní žádost a kdykoli ho můžete odpojit.',
         },
         {
             h: 'Volitelné funkce',
@@ -255,7 +254,7 @@ const PRIVACY_EN: LegalContent = {
                 'Organization and subscription: organization name, plan and trial status. Once paid plans start: billing name, email, address, VAT ID and the Stripe customer ID. You enter card details directly at Stripe; we never see them.',
                 'In-app feedback: the type and text of the message, whether we may contact you, the app page (without parameters), app version, language and browser details (user agent). The operator is alerted to a new message, with your name, organization and the text, by push notification and via Telegram.',
                 'Support communication: emails you send us and our replies.',
-                'Website visits: we use no analytics or tracking. When a page loads, however, your browser fetches fonts from Google Fonts and Fontshare, which see your IP address.',
+                'Website visits: we use no analytics or tracking, and fonts and everything else load from our own server, so no third party sees your IP address when you visit.',
             ],
         },
         {
@@ -293,12 +292,11 @@ const PRIVACY_EN: LegalContent = {
                 'Cloudflare, Inc. (USA): DNS for shiftella.app and forwarding email sent to support@shiftella.app to the operator’s mailbox at Google (Gmail).',
                 'Telegram: only if you link the bot, see Optional features.',
                 'Stripe Payments Europe, Ltd. (Ireland): payments, once paid plans start. Nothing is paid through Stripe during the free beta.',
-                'Google Fonts (Google) and Fontshare (Indian Type Foundry, India): website fonts. They see only your IP address and browser details.',
             ],
         },
         {
             h: 'Transfers outside the EU',
-            p: 'We store data in the EU. Supabase, Resend, Google, Apple, Cloudflare and Stripe are US companies or may access data from the US. Such transfers are covered by the EU–US Data Privacy Framework where the provider has joined it, otherwise by the European Commission’s Standard Contractual Clauses (SCCs). Telegram and Fontshare are based outside the EU in countries without an adequacy decision. You use Telegram only at your own request and can unlink it at any time.',
+            p: 'We store data in the EU. Supabase, Resend, Google, Apple, Cloudflare and Stripe are US companies or may access data from the US. Such transfers are covered by the EU–US Data Privacy Framework where the provider has joined it, otherwise by the European Commission’s Standard Contractual Clauses (SCCs). Telegram is based outside the EU in a country without an adequacy decision. You use Telegram only at your own request and can unlink it at any time.',
         },
         {
             h: 'Optional features',
@@ -406,7 +404,7 @@ const PRIVACY_SK: LegalContent = {
                 'Organizáciu a predplatné: názov organizácie, tarifu a stav skúšobnej doby. Keď spustíme platené tarify, pribudne fakturačné meno, e-mail, adresa, DIČ a identifikátor zákazníka v Stripe. Údaje o karte zadávate priamo v Stripe, my ich nevidíme.',
                 'Spätnú väzbu z aplikácie: druh a text správy, či vás smieme kontaktovať, stránku aplikácie (bez parametrov), verziu aplikácie, jazyk a údaj o prehliadači (user agent). Upozornenie na novú správu s vaším menom, organizáciou a textom dostáva poskytovateľ ako push oznámenie a cez Telegram.',
                 'Komunikáciu s podporou: e-maily, ktoré nám pošlete, a naše odpovede.',
-                'Návštevu webu: analytiku ani sledovanie nepoužívame. Pri načítaní stránky však prehliadač stiahne písma z Google Fonts a Fontshare a tí pri tom vidia vašu IP adresu.',
+                'Návštevu webu: analytiku ani sledovanie nepoužívame a písma aj všetko ostatné načítavame z vlastného servera, takže vašu IP adresu pri návšteve nevidí žiadna tretia strana.',
             ],
         },
         {
@@ -444,12 +442,11 @@ const PRIVACY_SK: LegalContent = {
                 'Cloudflare, Inc. (USA): DNS domény shiftella.app a preposielanie e-mailov z adresy support@shiftella.app do schránky poskytovateľa v Google (Gmail).',
                 'Telegram: len ak si bota prepojíte, pozri Voliteľné funkcie.',
                 'Stripe Payments Europe, Ltd. (Írsko): platby, keď spustíme platené tarify. Počas bezplatnej bety sa cez Stripe nič neplatí.',
-                'Google Fonts (Google) a Fontshare (Indian Type Foundry, India): písma webu. Vidia len IP adresu a údaje prehliadača.',
             ],
         },
         {
             h: 'Prenos mimo EÚ',
-            p: 'Údaje ukladáme v EÚ. Supabase, Resend, Google, Apple, Cloudflare a Stripe sú americké firmy alebo k údajom môžu mať prístup z USA. Taký prenos chráni rámec EÚ – USA pre ochranu osobných údajov (Data Privacy Framework), ak sa k nemu poskytovateľ pripojil, inak štandardné zmluvné doložky Európskej komisie (SCC). Telegram a Fontshare sídlia mimo EÚ v krajinách bez rozhodnutia o primeranosti ochrany. Telegram používate len na vlastnú žiadosť a kedykoľvek ho môžete odpojiť.',
+            p: 'Údaje ukladáme v EÚ. Supabase, Resend, Google, Apple, Cloudflare a Stripe sú americké firmy alebo k údajom môžu mať prístup z USA. Taký prenos chráni rámec EÚ – USA pre ochranu osobných údajov (Data Privacy Framework), ak sa k nemu poskytovateľ pripojil, inak štandardné zmluvné doložky Európskej komisie (SCC). Telegram sídli mimo EÚ v krajine bez rozhodnutia o primeranosti ochrany. Telegram používate len na vlastnú žiadosť a kedykoľvek ho môžete odpojiť.',
         },
         {
             h: 'Voliteľné funkcie',
@@ -555,7 +552,7 @@ const PRIVACY_UK: LegalContent = {
                 'Організацію та підписку: назву організації, тариф і стан пробного періоду. Коли запрацюють платні тарифи — платіжне ім’я, e-mail, адресу, податковий номер і ідентифікатор клієнта в Stripe. Дані картки ви вводите безпосередньо на сторінці Stripe, ми їх не бачимо.',
                 'Відгуки із застосунку: тип і текст повідомлення, чи можна з вами зв’язатися, сторінку застосунку (без параметрів), версію застосунку, мову та дані браузера (user agent). Сповіщення про нове повідомлення з вашим ім’ям, організацією і текстом постачальник отримує як push-сповіщення та через Telegram.',
                 'Листування з підтримкою: листи, які ви нам надсилаєте, і наші відповіді.',
-                'Відвідування сайту: аналітики чи стеження ми не використовуємо. Але під час завантаження сторінки браузер отримує шрифти з Google Fonts і Fontshare, і вони бачать вашу IP-адресу.',
+                'Відвідування сайту: аналітики чи стеження ми не використовуємо, а шрифти й усе інше завантажуємо з власного сервера, тож вашу IP-адресу під час відвідування не бачить жодна третя сторона.',
             ],
         },
         {
@@ -593,12 +590,11 @@ const PRIVACY_UK: LegalContent = {
                 'Cloudflare, Inc. (США): DNS домену shiftella.app і пересилання листів з адреси support@shiftella.app до поштової скриньки постачальника в Google (Gmail).',
                 'Telegram: лише якщо ви підключите бота, див. Додаткові функції.',
                 'Stripe Payments Europe, Ltd. (Ірландія): платежі, коли запрацюють платні тарифи. Під час безкоштовної бети через Stripe нічого не оплачується.',
-                'Google Fonts (Google) і Fontshare (Indian Type Foundry, Індія): шрифти сайту. Вони бачать лише IP-адресу і дані браузера.',
             ],
         },
         {
             h: 'Передавання за межі ЄС',
-            p: 'Ми зберігаємо дані в ЄС. Supabase, Resend, Google, Apple, Cloudflare і Stripe — американські компанії або можуть мати доступ до даних зі США. Таке передавання захищене рамкою ЄС–США щодо захисту даних (Data Privacy Framework), якщо постачальник до неї приєднався, інакше — стандартними договірними положеннями Європейської комісії (SCC). Telegram і Fontshare розташовані за межами ЄС у країнах без рішення про належний рівень захисту. Telegram ви використовуєте лише на власне прохання і можете відключити його будь-коли.',
+            p: 'Ми зберігаємо дані в ЄС. Supabase, Resend, Google, Apple, Cloudflare і Stripe — американські компанії або можуть мати доступ до даних зі США. Таке передавання захищене рамкою ЄС–США щодо захисту даних (Data Privacy Framework), якщо постачальник до неї приєднався, інакше — стандартними договірними положеннями Європейської комісії (SCC). Telegram розташований за межами ЄС у країні без рішення про належний рівень захисту. Telegram ви використовуєте лише на власне прохання і можете відключити його будь-коли.',
         },
         {
             h: 'Додаткові функції',

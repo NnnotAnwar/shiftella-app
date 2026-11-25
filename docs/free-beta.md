@@ -28,4 +28,5 @@ Once the IČO, invoices and live Stripe are ready:
    ```sql
    UPDATE public.app_settings SET free_beta = false, updated_at = now();
    ```
-4. Turn it back on the same way if needed. The app picks up the change within about 10 minutes, or on reload.
+4. In `index.html`, change the static `description`, `og:description` and `twitter:description` from "Během bety zdarma, bez karty" back to "30 dní zdarma, bez karty" (crawlers and link previews read the static HTML; the landing page itself switches on its own), then deploy.
+5. Turn it back on the same way if needed. The app picks up the change within about 10 minutes, or on reload.

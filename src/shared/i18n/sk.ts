@@ -1397,6 +1397,7 @@ export const sk: PartialDictionary = {
     'analytics.byPerson': 'Podľa ľudí',
     'analytics.colPerson': 'Človek',
     'analytics.colAbsence': 'Neprít.',
+    'analytics.colWorked': 'Odprac.',
     'analytics.empty': 'V tomto období zatiaľ nie sú žiadne hodiny ani rozpis.',
     'analytics.error': 'Analytiku sa nepodarilo načítať.',
 };

@@ -1380,7 +1380,7 @@ export const uk: PartialDictionary = {
     'analytics.noShow': 'Без відмітки приходу',
     'analytics.avgLate': 'Запізнення в середньому {n} хв',
     'analytics.mostLate': 'Найчастіше запізнюються',
-    'analytics.colLate': 'Запізнення',
+    'analytics.colLate': 'Запізн.',
     'analytics.colAvgLate': 'Сер. хв',
     'analytics.noLate': 'Ніхто не запізнився.',
     'analytics.costByLocation': 'Витрати на оплату праці за локаціями',
@@ -1396,6 +1396,7 @@ export const uk: PartialDictionary = {
     'analytics.byPerson': 'По людях',
     'analytics.colPerson': 'Працівник',
     'analytics.colAbsence': 'Відсут.',
+    'analytics.colWorked': 'Факт',
     'analytics.empty': 'У цьому періоді ще немає годин чи графіка.',
     'analytics.error': 'Не вдалося завантажити аналітику.',
 };

@@ -1442,6 +1442,7 @@ export const en = {
     'analytics.byPerson': 'By person',
     'analytics.colPerson': 'Person',
     'analytics.colAbsence': 'Absence',
+    'analytics.colWorked': 'Worked',
     'analytics.empty': 'No hours or rota in this period yet.',
     'analytics.error': 'Couldn\'t load analytics.',
 } as const;
@@ -2859,6 +2860,7 @@ export const cs: Record<TranslationKey, string> = {
     'analytics.byPerson': 'Podle lidí',
     'analytics.colPerson': 'Člověk',
     'analytics.colAbsence': 'Nepřít.',
+    'analytics.colWorked': 'Odprac.',
     'analytics.empty': 'V tomto období zatím nejsou žádné hodiny ani rozpis.',
     'analytics.error': 'Analytiku se nepodařilo načíst.',
 };

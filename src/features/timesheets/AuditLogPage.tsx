@@ -528,11 +528,22 @@ function AuditCard({ entry, onOpenUser }: { entry: ShiftAuditLog; onOpenUser: (u
     // Who/what the entry is about: a role, a place/announcement/template, or a person.
     const personId = entry.subject_id ?? entry.target_user_id;
     const isRequest = entry.action.startsWith('request_');
+    // Swap entries are logged once per notified person, so the row's user is the
+    // recipient, not who the swap is about: name the shift's owner (taken/requested)
+    // or the taker (approved/declined) from the details instead.
+    const swapName = entry.action === 'swap_taken' || entry.action === 'swap_requested'
+        ? entry.details.from_name
+        : entry.action === 'swap_approved' || entry.action === 'swap_declined'
+          ? entry.details.taker_name
+          : undefined;
+    const isSwap = swapName !== undefined;
     const target = entry.action.startsWith('role_')
         ? (entry.details.role_name ?? '—')
-        : isRequest
-          ? (entry.details.target_name ?? (entry.details.anonymous ? t('audit.anonymous') : null))
-          : (entry.details.subject_name ?? entry.details.target_name ?? (personId ? t('audit.member') : null));
+        : isSwap
+          ? swapName
+          : isRequest
+            ? (entry.details.target_name ?? (entry.details.anonymous ? t('audit.anonymous') : null))
+            : (entry.details.subject_name ?? entry.details.target_name ?? (personId ? t('audit.member') : null));
     const when = formatDateTime(entry.created_at);
 
     return (
@@ -547,7 +558,7 @@ function AuditCard({ entry, onOpenUser }: { entry: ShiftAuditLog; onOpenUser: (u
                         {t(meta.labelKey)}
                         {target ? ' ·' : ''}
                     </span>
-                    {target && <PersonButton name={target} userId={entry.details.subject_name && !isRequest ? null : personId} onOpenUser={onOpenUser} strong />}
+                    {target && <PersonButton name={target} userId={(entry.details.subject_name && !isRequest) || isSwap ? null : personId} onOpenUser={onOpenUser} strong />}
                 </div>
                 {/* Who did it + when — own line so nothing gets squeezed off-screen. */}
                 <p className="text-micro text-gray-400">

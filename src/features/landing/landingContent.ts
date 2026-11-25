@@ -51,7 +51,7 @@ export interface LandingCopy {
     faq: { eyebrow: string; title: string; items: { q: string; a: string }[] };
     final: { title: string; sub: string; cta: string };
     /** Free beta: replaces the trial wording on the sign-up buttons and the final call. */
-    beta: { cta: string; finalSub: string; trust: string };
+    beta: { cta: string; finalSub: string; trust: string; metaDescription: string };
     footer: { tagline: string; privacy: string; terms: string; contact: string; signIn: string; signUp: string };
 }
 
@@ -162,7 +162,9 @@ const cs: LandingCopy = {
         sub: '{days} dní všech funkcí zdarma. Bez karty, bez závazků.',
         cta: 'Vyzkoušet {days} dní zdarma',
     },
-    beta: { cta: 'Začít zdarma', finalSub: 'Během bety jsou všechny funkce zdarma. Bez karty, bez závazků.', trust: 'Zdarma během bety' },
+    beta: { cta: 'Začít zdarma', finalSub: 'Během bety jsou všechny funkce zdarma. Bez karty, bez závazků.', trust: 'Zdarma během bety',
+        metaDescription: 'Rozpis směn, docházka podle pobočky, žádosti a výměny směn i výkazy pro kavárny, obchody a ordinace. Bez Excelu a skupinových chatů. Během bety zdarma, bez karty.',
+    },
     footer: {
         tagline: 'Rozpis směn, docházka a výkazy pro malé týmy.',
         privacy: 'Ochrana soukromí',
@@ -280,7 +282,9 @@ const en: LandingCopy = {
         sub: '{days} days of every feature, free. No card, no commitment.',
         cta: 'Try {days} days free',
     },
-    beta: { cta: 'Start free', finalSub: 'Every feature is free during the beta. No card, no commitment.', trust: 'Free during the beta' },
+    beta: { cta: 'Start free', finalSub: 'Every feature is free during the beta. No card, no commitment.', trust: 'Free during the beta',
+        metaDescription: 'Rota planning, clock in/out by location, time-off requests, shift swaps and timesheets for cafés, shops and clinics. No more spreadsheets or group chats. Free during the beta, no card.',
+    },
     footer: {
         tagline: 'Rota, time tracking and timesheets for small teams.',
         privacy: 'Privacy',
@@ -399,7 +403,9 @@ const sk: LandingCopy = {
         sub: '{days} dní všetkých funkcií zadarmo. Bez karty, bez záväzkov.',
         cta: 'Vyskúšať {days} dní zadarmo',
     },
-    beta: { cta: 'Začať zadarmo', finalSub: 'Počas bety sú všetky funkcie zadarmo. Bez karty, bez záväzkov.', trust: 'Zadarmo počas bety' },
+    beta: { cta: 'Začať zadarmo', finalSub: 'Počas bety sú všetky funkcie zadarmo. Bez karty, bez záväzkov.', trust: 'Zadarmo počas bety',
+        metaDescription: 'Rozpis zmien, dochádzka podľa pobočky, žiadosti a výmeny zmien aj výkazy pre kaviarne, obchody a ambulancie. Bez Excelu a skupinových chatov. Počas bety zadarmo, bez karty.',
+    },
     footer: {
         tagline: 'Rozpis zmien, dochádzka a výkazy pre malé tímy.',
         privacy: 'Ochrana súkromia',
@@ -517,7 +523,9 @@ const uk: LandingCopy = {
         sub: '{days} днів усіх можливостей безкоштовно. Без картки, без зобов’язань.',
         cta: 'Спробувати {days} днів безкоштовно',
     },
-    beta: { cta: 'Почати безкоштовно', finalSub: 'Під час бети всі можливості безкоштовні. Без картки, без зобов’язань.', trust: 'Безкоштовно під час бети' },
+    beta: { cta: 'Почати безкоштовно', finalSub: 'Під час бети всі можливості безкоштовні. Без картки, без зобов’язань.', trust: 'Безкоштовно під час бети',
+        metaDescription: 'Графік змін, відмітки приходу за філією, заявки й обмін змінами, табелі для кав’ярень, магазинів і клінік. Без Excel і групових чатів. Безкоштовно під час бети, без картки.',
+    },
     footer: {
         tagline: 'Графік змін, облік часу й табелі для малих команд.',
         privacy: 'Конфіденційність',
@@ -532,11 +540,12 @@ const uk: LandingCopy = {
 export const LANDING: Record<Language, LandingCopy> = { cs, en, sk, uk };
 
 /** Fill `{name}` placeholders (numbers come from plans.ts). */
-/** The copy with the free-beta wording: "Start free" instead of "Try 30 days free". */
+/** The copy with the free-beta wording: "Start free" instead of "Try 30 days free" (meta description too). */
 export function withFreeBeta(c: LandingCopy, freeBeta: boolean): LandingCopy {
     if (!freeBeta) return c;
     return {
         ...c,
+        meta: { ...c.meta, description: c.beta.metaDescription },
         hero: { ...c.hero, cta: c.beta.cta, trust: [c.beta.trust, ...c.hero.trust.slice(1)] },
         final: { ...c.final, cta: c.beta.cta, sub: c.beta.finalSub },
     };

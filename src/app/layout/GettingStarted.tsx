@@ -4,8 +4,9 @@ import { useQuery } from '@tanstack/react-query';
 import { CheckIcon, MapPinIcon, PaperPlaneTiltIcon, CalendarPlusIcon, MegaphoneSimpleIcon, FlaskIcon, XIcon, type Icon } from '@phosphor-icons/react';
 import { supabase } from '@shared/api/supabaseClient';
 import { can, isSuperAdmin } from '@shared/auth/permissions';
-import { Button } from '@shared/components/Button';
-import { useDemoData } from '@features/demo/useDemoData';
+import { Capacitor } from '@capacitor/core';
+import { buttonClass } from '@shared/components/buttonStyles';
+import { APP_URL } from '@shared/brand';
 import { useTranslation } from '@shared/preferences/PreferencesContext';
 import type { User } from '@shared/types';
 
@@ -16,18 +17,24 @@ import type { User } from '@shared/types';
  * then do employees see their shifts and get notified). Each ticks itself off
  * from real data and says in one line what to do; the next open step is
  * highlighted. The card disappears once all are done (or when hidden).
- * Demo data (see features/demo) never ticks a step off; until there is some,
- * the owner can fill the org with it in one tap to look around first.
+ * Rows tagged as old demo data (see features/demo) never tick a step off. To
+ * look around first, the owner opens the in-browser demo (/demo/) in a new tab —
+ * their own organization is never touched.
  */
 
+// × hides the card until the tab/app is closed (sessionStorage); with "Don't show
+// again" ticked it stays gone on this device (localStorage — also the old × key).
 const hiddenKey = (uid: string) => `getting-started:hidden:${uid}`;
 const readHidden = (uid: string) => {
     try {
-        return localStorage.getItem(hiddenKey(uid)) === '1';
+        return localStorage.getItem(hiddenKey(uid)) === '1' || sessionStorage.getItem(hiddenKey(uid)) === '1';
     } catch {
         return false;
     }
 };
+
+/** The in-browser demo build; the native app has no /demo/ of its own, so it opens the site's. */
+const DEMO_URL = Capacitor.isNativePlatform() ? `${APP_URL}/demo/` : '/demo/';
 
 async function countOf(table: 'profiles' | 'scheduled_shifts', orgId: string, publishedOnly = false) {
     let q = supabase.from(table).select('id', { count: 'exact', head: true }).eq('organization_id', orgId).is('demo_batch', null);
@@ -40,8 +47,8 @@ async function countOf(table: 'profiles' | 'scheduled_shifts', orgId: string, pu
 export function GettingStarted({ user, locationCount }: { user: User; locationCount: number }) {
     const t = useTranslation();
     const [hidden, setHidden] = useState(() => readHidden(user.id));
+    const [forever, setForever] = useState(false);
     const eligible = can(user, 'locations.manage') && !isSuperAdmin(user) && !hidden;
-    const demo = useDemoData(user);
 
     const counts = useQuery({
         queryKey: ['getting-started', user.organization_id],
@@ -72,7 +79,7 @@ export function GettingStarted({ user, locationCount }: { user: User; locationCo
     const hide = () => {
         setHidden(true);
         try {
-            localStorage.setItem(hiddenKey(user.id), '1');
+            (forever ? localStorage : sessionStorage).setItem(hiddenKey(user.id), '1');
         } catch {
             /* storage unavailable — hidden for this session only */
         }
@@ -142,14 +149,22 @@ export function GettingStarted({ user, locationCount }: { user: User; locationCo
                     );
                 })}
             </ol>
-            {demo.loaded && !demo.active && (
-                <div className="mt-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 border-t border-ink/6 px-1 pt-2.5 dark:border-white/8">
-                    <p className="min-w-0 text-caption text-ink-soft dark:text-slate-400">{t('demo.tryHint')}</p>
-                    <Button size="sm" variant="tonal" icon={FlaskIcon} loading={demo.seeding} onClick={demo.seed} className="shrink-0">
-                        {t('demo.try')}
-                    </Button>
-                </div>
-            )}
+            <div className="mt-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 border-t border-ink/6 px-1 pt-2.5 dark:border-white/8">
+                <p className="min-w-0 text-caption text-ink-soft dark:text-slate-400">{t('demo.tryHint')}</p>
+                <a href={DEMO_URL} target="_blank" rel="noopener" className={`${buttonClass({ variant: 'tonal', size: 'sm' })} shrink-0`}>
+                    <FlaskIcon weight="bold" aria-hidden="true" className="size-4" />
+                    {t('demo.try')}
+                </a>
+            </div>
+            <label className="mt-2 inline-flex cursor-pointer select-none items-center gap-1.5 px-1 text-caption text-ink-soft dark:text-slate-400">
+                <input
+                    type="checkbox"
+                    checked={forever}
+                    onChange={(e) => setForever(e.target.checked)}
+                    className="size-3.5 rounded accent-emerald-600"
+                />
+                {t('start.dontShowAgain')}
+            </label>
         </section>
     );
 }

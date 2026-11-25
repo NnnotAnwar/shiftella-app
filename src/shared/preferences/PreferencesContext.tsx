@@ -2,7 +2,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useState } from 'react';
 import { useAuthContext } from '@features/auth/AuthContext';
 import { supabase } from '@shared/api/supabaseClient';
-import { isLanguage, translate, type Language, type TranslationKey } from '@shared/i18n/translations';
+import { INTL_LOCALE, isLanguage, translate, type Language, type TranslationKey } from '@shared/i18n/translations';
 import { setTimeFormatPreference, setLocalePreference, type TimeFormat } from '@shared/utils/date';
 import { browserLanguages, detectLanguage } from './detectLanguage';
 
@@ -73,9 +73,9 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
             .upsert({ user_id: userId, language, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
     }, [userId, language]);
 
-    // Keep <html lang> in step with the UI language (screen readers, hyphenation, SEO).
+    // Keep <html lang> in step with the UI language (screen readers, hyphenation, SEO) — full BCP 47 tag, e.g. cs-CZ / uk-UA.
     useEffect(() => {
-        document.documentElement.lang = language;
+        document.documentElement.lang = INTL_LOCALE[language];
     }, [language]);
 
     const setTimeFormat = useCallback((format: TimeFormat) => {

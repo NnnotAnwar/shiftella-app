@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { User } from '@shared/types';
@@ -55,6 +55,9 @@ const owner: User = {
     role: { name: 'Head Admin', is_admin: true, rank: 40 },
 };
 
+const local = new Map<string, string>();
+const session = new Map<string, string>();
+
 function renderCard(locationCount: number) {
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     return render(
@@ -69,13 +72,16 @@ function renderCard(locationCount: number) {
 describe('GettingStarted', () => {
     beforeEach(() => {
         // Node's own (empty) localStorage shadows jsdom's — give the card a real one.
-        const store = new Map<string, string>();
-        vi.stubGlobal('localStorage', {
+        const fakeStorage = (store: Map<string, string>) => ({
             getItem: (k: string) => store.get(k) ?? null,
             setItem: (k: string, v: string) => void store.set(k, v),
             removeItem: (k: string) => void store.delete(k),
             clear: () => store.clear(),
         });
+        local.clear();
+        session.clear();
+        vi.stubGlobal('localStorage', fakeStorage(local));
+        vi.stubGlobal('sessionStorage', fakeStorage(session));
         Object.assign(counts, { profiles: 1, scheduled: 0, published: 0 });
         demo.batch = null;
         calls.isFilters.length = 0;
@@ -87,7 +93,7 @@ describe('GettingStarted', () => {
         renderCard(0);
         expect(await screen.findByText('start.title')).toBeInTheDocument();
         expect(screen.getByText('start.sub:0,4')).toBeInTheDocument();
-        const links = screen.getAllByRole('link');
+        const links = screen.getAllByRole('link').filter((l) => l.getAttribute('href') !== '/demo/');
         expect(links).toHaveLength(4);
         expect(links[0]).toHaveAttribute('aria-current', 'step');
         expect(links[0]).toHaveAttribute('href', '/admin?tab=locations');
@@ -105,6 +111,25 @@ describe('GettingStarted', () => {
         expect(screen.queryByText('start.planHint')).toBeNull(); // done steps drop their hint
     });
 
+    it('× hides it for this session only', async () => {
+        const first = renderCard(0);
+        fireEvent.click(await screen.findByRole('button', { name: 'start.hide' }));
+        expect(screen.queryByText('start.title')).toBeNull();
+        expect(session.get('getting-started:hidden:owner-1')).toBe('1');
+        expect(local.has('getting-started:hidden:owner-1')).toBe(false);
+        first.unmount();
+        session.clear(); // a new session — it is back
+        renderCard(0);
+        expect(await screen.findByText('start.title')).toBeInTheDocument();
+    });
+
+    it('"Don\'t show again" + × hides it for good', async () => {
+        renderCard(0);
+        fireEvent.click(await screen.findByRole('checkbox', { name: 'start.dontShowAgain' }));
+        fireEvent.click(screen.getByRole('button', { name: 'start.hide' }));
+        expect(local.get('getting-started:hidden:owner-1')).toBe('1');
+    });
+
     it('everything done: the card is gone', async () => {
         Object.assign(counts, { profiles: 3, scheduled: 12, published: 12 });
         const { container } = renderCard(1);
@@ -118,21 +143,11 @@ describe('GettingStarted', () => {
         expect(calls.isFilters).toEqual(expect.arrayContaining(['profiles.demo_batch=null', 'scheduled_shifts.demo_batch=null']));
     });
 
-    it('no demo yet: one tap adds it (Czech texts) and offers Undo', async () => {
+    it('the demo opens in a new tab and never touches the org', async () => {
         renderCard(0);
-        fireEvent.click(await screen.findByRole('button', { name: 'demo.try' }));
-        await waitFor(() => expect(calls.rpc).toEqual([['seed_demo_data', { p_lang: 'cs' }]]));
-        await waitFor(() => expect(toasts.map((x) => x.message)).toContain('demo.added'));
-        expect(toasts.find((x) => x.message === 'demo.added')?.opts?.action?.label).toBe('common.undo');
-        // the org has demo data now → the offer is gone
-        await waitFor(() => expect(screen.queryByRole('button', { name: 'demo.try' })).toBeNull());
-    });
-
-    it('demo data already on: no offer', async () => {
-        demo.batch = 'b1';
-        renderCard(0);
-        await screen.findByText('start.title');
-        await new Promise((r) => setTimeout(r, 20));
-        expect(screen.queryByRole('button', { name: 'demo.try' })).toBeNull();
+        const link = await screen.findByRole('link', { name: 'demo.try' });
+        expect(link).toHaveAttribute('href', '/demo/');
+        expect(link).toHaveAttribute('target', '_blank');
+        expect(calls.rpc).toEqual([]);
     });
 });

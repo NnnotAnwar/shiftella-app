@@ -475,8 +475,12 @@ export const en = {
     'start.planHint': 'Add shifts in the grid; templates save time.',
     'start.publishHint': 'Only then your team sees their shifts and gets notified.',
     'start.hide': 'Hide the setup checklist',
-    'demo.try': 'Try it with demo data',
-    'demo.tryHint': 'Just looking around first? Add a sample café — 2 locations, 8 people, a month of shifts. Removable in one tap.',
+    'start.dontShowAgain': "Don't show again",
+    'demo.try': 'Open the demo',
+    'demo.tryHint': 'Just looking around first? A sample café with a team and a month of shifts opens in a new tab — your own data stays untouched.',
+    'demo.modeTitle': 'Demo',
+    'demo.modeSub': 'Try anything — it is all wiped when you close the page.',
+    'demo.modeSignUp': 'Create your organization',
     'demo.added': 'Demo data added — have a look around.',
     'demo.banner': 'Demo data is on',
     'demo.bannerSub': 'The “Demo” locations and their 8 people are made up. Nobody gets notified.',
@@ -2018,8 +2022,12 @@ export const cs: Record<TranslationKey, string> = {
     'start.planHint': 'Přidejte směny do mřížky; šablony ušetří čas.',
     'start.publishHint': 'Teprve pak tým uvidí své směny a dostane oznámení.',
     'start.hide': 'Skrýt průvodce nastavením',
-    'demo.try': 'Vyzkoušet s ukázkovými daty',
-    'demo.tryHint': 'Chcete se nejdřív jen rozhlédnout? Přidejte ukázkovou kavárnu — 2 pobočky, 8 lidí, měsíc směn. Smažete ji jedním klepnutím.',
+    'start.dontShowAgain': 'Příště nezobrazovat',
+    'demo.try': 'Otevřít ukázku',
+    'demo.tryHint': 'Chcete se nejdřív jen rozhlédnout? Ukázková kavárna s týmem a měsícem směn se otevře v nové kartě — vaše data zůstanou netknutá.',
+    'demo.modeTitle': 'Ukázková verze',
+    'demo.modeSub': 'Zkoušejte cokoli — po zavření stránky se vše smaže.',
+    'demo.modeSignUp': 'Založit vlastní organizaci',
     'demo.added': 'Ukázková data přidána — rozhlédněte se.',
     'demo.banner': 'Máte zapnutá ukázková data',
     'demo.bannerSub': 'Pobočky „Ukázka“ a jejich 8 lidí jsou smyšlení. Nikomu nic nepřijde.',
@@ -3080,11 +3088,12 @@ export const BASE_LANGUAGE: Record<Language, 'en' | 'cs'> = { en: 'en', cs: 'cs'
 /** BCP 47 tag for Intl date / number formatting. */
 export const INTL_LOCALE: Record<Language, string> = { en: 'en-GB', cs: 'cs-CZ', sk: 'sk-SK', uk: 'uk-UA' };
 
-export const LANGUAGES: { code: Language; label: string }[] = [
-    { code: 'en', label: 'English' },
-    { code: 'cs', label: 'Čeština' },
-    { code: 'sk', label: 'Slovenčina' },
-    { code: 'uk', label: 'Українська' },
+/** `short` is what the compact switcher shows — country-style, so Ukrainian reads "UA", not "UK" (United Kingdom). */
+export const LANGUAGES: { code: Language; label: string; short: string }[] = [
+    { code: 'en', label: 'English', short: 'EN' },
+    { code: 'cs', label: 'Čeština', short: 'CZ' },
+    { code: 'sk', label: 'Slovenčina', short: 'SK' },
+    { code: 'uk', label: 'Українська', short: 'UA' },
 ];
 
 export function isLanguage(v: unknown): v is Language {

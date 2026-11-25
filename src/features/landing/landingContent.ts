@@ -12,7 +12,7 @@ export type FeatureIcon = 'clock' | 'grid' | 'swap' | 'sheet' | 'law' | 'roles' 
 export interface LandingCopy {
     meta: { title: string; description: string };
     nav: { features: string; pricing: string; faq: string; signIn: string; skip: string; menu: string };
-    hero: { eyebrow: string; title: string; titleAccent: string; sub: string; cta: string; secondary: string; trust: string[]; imgAlt: string; phoneAlt: string };
+    hero: { eyebrow: string; title: string; titleAccent: string; sub: string; cta: string; demo: string; trust: string[]; imgAlt: string; phoneAlt: string };
     problem: { eyebrow: string; title: string; before: string; after: string; rows: { before: string; after: string }[] };
     features: { eyebrow: string; title: string; sub: string; items: { icon: FeatureIcon; title: string; body: string }[] };
     steps: { eyebrow: string; title: string; items: { title: string; body: string }[]; imgAlt: string };
@@ -68,7 +68,7 @@ const cs: LandingCopy = {
         titleAccent: 'pro malé týmy — bez Excelu',
         sub: 'Naplánujte měsíc za pár minut, tým se přihlašuje na směnu v telefonu a hodiny se sečtou samy. Všechno na jednom místě, česky a podle českých pravidel.',
         cta: 'Vyzkoušet {days} dní zdarma',
-        secondary: 'Přihlásit se',
+        demo: 'Prohlédnout ukázku',
         trust: ['Bez platební karty', 'Web, Android i iPhone', 'Česky, slovensky, ukrajinsky i anglicky'],
         imgAlt: 'Nástěnka Shiftelly: kdo je právě na směně na kterých pobočkách',
         phoneAlt: 'Shiftella v telefonu: aktivní směna a další směna',
@@ -186,7 +186,7 @@ const en: LandingCopy = {
         titleAccent: 'for small teams — no spreadsheets',
         sub: 'Plan the month in minutes, your team clocks in from their phones and the hours add up on their own. One place for everything, built around Czech labour rules.',
         cta: 'Try {days} days free',
-        secondary: 'Sign in',
+        demo: 'See the demo',
         trust: ['No credit card', 'Web, Android and iPhone', 'Czech, Slovak, Ukrainian and English'],
         imgAlt: 'Shiftella dashboard: who is on shift right now, by location',
         phoneAlt: 'Shiftella on a phone: the active shift and the next one',
@@ -305,7 +305,7 @@ const sk: LandingCopy = {
         titleAccent: 'pre malé tímy — bez Excelu',
         sub: 'Naplánujte mesiac za pár minút, tím sa prihlasuje na zmenu v telefóne a hodiny sa spočítajú samy. Všetko na jednom mieste, podľa českej pracovnej legislatívy.',
         cta: 'Vyskúšať {days} dní zadarmo',
-        secondary: 'Prihlásiť sa',
+        demo: 'Pozrieť ukážku',
         trust: ['Bez platobnej karty', 'Web, Android aj iPhone', 'Slovensky, česky, ukrajinsky aj anglicky'],
         imgAlt: 'Nástenka Shiftelly: kto je práve na zmene na ktorých pobočkách',
         phoneAlt: 'Shiftella v telefóne: aktívna zmena a ďalšia zmena',
@@ -423,7 +423,7 @@ const uk: LandingCopy = {
         titleAccent: 'для малих команд — без Excel',
         sub: 'Плануйте місяць за кілька хвилин: команда відмічає прихід у телефоні, а години рахуються самі. Усе в одному місці, з урахуванням чеського трудового права.',
         cta: 'Спробувати {days} днів безкоштовно',
-        secondary: 'Увійти',
+        demo: 'Переглянути демо',
         trust: ['Без банківської картки', 'Веб, Android та iPhone', 'Українська, чеська, словацька й англійська'],
         imgAlt: 'Панель Shiftella: хто зараз на зміні та на якій філії',
         phoneAlt: 'Shiftella в телефоні: поточна й наступна зміна',

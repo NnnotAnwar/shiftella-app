@@ -298,6 +298,9 @@ export const ShiftAuditLogSchema = z.object({
       valid_until: z.string().nullable().optional(),
       days_left: z.number().nullable().optional(),
       stage: z.number().nullable().optional(),
+      // Osobní číslo (personal_number_changed).
+      personal_number: z.string().nullable().optional(),
+      previous: z.string().nullable().optional(),
       // Leave balances (leave_adjusted / leave_settings_changed).
       bucket: z.string().nullable().optional(),
       hours: z.number().nullable().optional(),

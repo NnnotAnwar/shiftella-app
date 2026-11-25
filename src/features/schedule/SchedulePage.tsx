@@ -51,6 +51,7 @@ import { restIssues, restIssuesFor, type RestIssue } from './restRules';
 import { openingHours, isOutsideHours, isHoursShift, fullDayShift, type OpeningHours } from '@features/locations/settings/openingHours';
 import { buildShiftDates } from '@features/timesheets/shiftTimes';
 import { useEntitlements, useUpgradeNudge } from '@features/billing/useBilling';
+import { HelpLink } from '@features/help/HelpLink';
 
 /**
  * --- SCHEDULE PAGE (rota) ---
@@ -656,6 +657,7 @@ export default function SchedulePage() {
             <PageHeader
                 eyebrow={canObserve ? t('schedule.roster') : t('schedule.mine')}
                 title={t('nav.schedule')}
+                help={<HelpLink article={canManage ? 'rota-plan' : 'my-schedule'} />}
                 actions={
                     <>
                         <div className="flex items-center gap-2 shrink-0">

@@ -12,6 +12,7 @@ import {
     MegaphoneIcon,
     NotePencilIcon,
     CreditCardIcon,
+    QuestionIcon,
     ChatCircleTextIcon,
     type Icon,
 } from '@phosphor-icons/react';
@@ -105,6 +106,8 @@ export const NAV_ITEMS: readonly NavItemDef[] = [
     { id: 'settings', labelKey: 'nav.settings', icon: GearIcon, route: '/settings', section: 'system' },
     // Platform owner only: what users sent from "Send feedback".
     { id: 'feedback', labelKey: 'nav.feedback', icon: ChatCircleTextIcon, route: '/feedback', section: 'system', visible: (c) => c.superadmin, badge: 'newFeedback' },
+    // Help centre — last in System; on phones it lives in the "More" sheet.
+    { id: 'help', labelKey: 'nav.help', icon: QuestionIcon, route: '/help', section: 'system' },
 ];
 
 /** A nav item resolved for the current user: visible, translated and badged. */

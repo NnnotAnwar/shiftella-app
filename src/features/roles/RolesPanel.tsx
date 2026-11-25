@@ -11,6 +11,7 @@ import { can, isSuperAdmin, rankOf } from '@shared/auth/permissions';
 import { useOrgRoles } from './useOrgRoles';
 import { RoleEditor } from './RoleEditor';
 import { ACTIONS, AREAS, emptyGrants, isDefaultRole, isLockedTop, peopleKey, type Grants, type OrgRole } from './types';
+import { HelpLink } from '@features/help/HelpLink';
 
 /**
  * --- ROLES (Discord-style hierarchy) ---
@@ -99,6 +100,7 @@ export function RolesPanel({
                         </div>
                     )}
                     <p className="hidden text-meta text-ink-soft sm:block dark:text-slate-400">{t('roles.lead')}</p>
+                    <HelpLink article="roles-permissions" />
                 </div>
                 {mayManage && (
                     <Button size="sm" icon={PlusIcon} onClick={() => setEditing('new')} className="shrink-0">

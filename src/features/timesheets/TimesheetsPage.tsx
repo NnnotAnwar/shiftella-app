@@ -40,6 +40,7 @@ import { useTimesheetRealtime } from './useTimesheetRealtime';
 import { ShiftEditorModal, type ShiftFormValues } from './components/ShiftEditorModal';
 import { PageHeader } from '@shared/components/PageHeader';
 import { PayrollExportModal } from './payroll/PayrollExportModal';
+import { HelpLink } from '@features/help/HelpLink';
 import { useNotesForShifts } from '@features/shiftNotes/useShiftNotes';
 
 const EXPORT_FORMATS = [
@@ -406,6 +407,7 @@ function TimesheetsInner() {
             <PageHeader
                 eyebrow={t('admin.administration')}
                 title={t('nav.timesheets')}
+                help={<HelpLink article="timesheets" />}
                 actions={
                     <>
                         <div className="flex items-center gap-2">

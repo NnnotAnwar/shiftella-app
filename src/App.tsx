@@ -65,6 +65,7 @@ const SettingsPage = lazy(() => import('./features/settings/SettingsPage'));
 const ProfilePage = lazy(() => import('./features/profile/ProfilePage'));
 const LegalPage = lazy(() => import('./features/legal/LegalPage').then((m) => ({ default: m.LegalPage })));
 const BillingPage = lazy(() => import('./features/billing/BillingPage').then((m) => ({ default: m.BillingPage })));
+const HelpPage = lazy(() => import('./features/help/HelpPage').then((m) => ({ default: m.HelpPage })));
 const FeedbackInboxPage = lazy(() => import('./features/feedback/FeedbackInboxPage').then((m) => ({ default: m.FeedbackInboxPage })));
 
 /** Handles Android hardware back button: go back in history or exit app. */
@@ -145,6 +146,8 @@ export default function App() {
                         <Route path="settings" element={<SettingsPage />} />
                         {/* Billing: the org's Head Admin (page self-guards); plan gates wrap Team/Business pages above. */}
                         <Route path="billing" element={<BillingPage />} />
+                        {/* Help centre: everyone; articles are role-aware (managers' ones flagged, not hidden). */}
+                        <Route path="help" element={<HelpPage />} />
                         {/* Feedback inbox: the platform Superadmin only (page self-guards; RLS too). */}
                         <Route path="feedback" element={<FeedbackInboxPage />} />
                         <Route path="profile" element={<ProfilePage />} />

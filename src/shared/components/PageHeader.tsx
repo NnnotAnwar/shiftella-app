@@ -12,6 +12,7 @@ export function PageHeader({
     title,
     description,
     actions,
+    help,
     className = '',
 }: {
     eyebrow?: ReactNode;
@@ -19,13 +20,22 @@ export function PageHeader({
     /** One quiet line under the title (scope, who sees what…). */
     description?: ReactNode;
     actions?: ReactNode;
+    /** A small contextual help control beside the title (e.g. `<HelpLink article="…" />`). */
+    help?: ReactNode;
     className?: string;
 }) {
     return (
         <header className={`mb-4 flex flex-wrap items-end justify-between gap-x-4 gap-y-3 ${className}`}>
             <div className="min-w-0">
                 {eyebrow && <p className="mb-1.5 text-eyebrow text-emerald-600 dark:text-emerald-300">{eyebrow}</p>}
-                <h1 className="text-greeting text-pretty text-ink dark:text-white">{title}</h1>
+                {help ? (
+                    <div className="flex items-center gap-1.5">
+                        <h1 className="text-greeting text-pretty text-ink dark:text-white">{title}</h1>
+                        {help}
+                    </div>
+                ) : (
+                    <h1 className="text-greeting text-pretty text-ink dark:text-white">{title}</h1>
+                )}
                 {description && <p className="mt-1 text-meta text-ink-soft dark:text-slate-400">{description}</p>}
             </div>
             {actions && <div className="flex max-w-full shrink-0 flex-wrap items-center gap-2">{actions}</div>}

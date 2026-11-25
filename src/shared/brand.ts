@@ -11,3 +11,6 @@ export const APP_URL = 'https://shiftella.app';
 
 /** Support / contact address (legal pages, landing footer). */
 export const SUPPORT_EMAIL = 'anuarkairulla@gmail.com';
+
+/** The in-app help centre's contact address (/help footer). */
+export const HELP_EMAIL = 'support@shiftella.app';

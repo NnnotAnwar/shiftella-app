@@ -33,6 +33,7 @@ export type Capability =
     | 'rota.edit' // plan / publish the rota, templates, coverage, open shifts, teams
     | 'timesheets.view'
     | 'timesheets.edit'
+    | 'timesheets.delete' // e.g. remove anyone's shift note (mirrors the shift_notes delete policy)
     | 'requests.view'
     | 'requests.decide' // approve or decline time off, name changes, swaps
     | 'announcements.post' // post, edit, pin and delete announcements
@@ -51,6 +52,7 @@ const CAP: Record<Exclude<Capability, 'team.view' | 'analytics.view'>, [Permissi
     'rota.edit': ['rota', 'write', RANK.ADMIN],
     'timesheets.view': ['timesheets', 'read', RANK.MANAGER],
     'timesheets.edit': ['timesheets', 'write', RANK.ADMIN],
+    'timesheets.delete': ['timesheets', 'delete', RANK.ADMIN],
     'requests.view': ['requests', 'read', RANK.MANAGER],
     'requests.decide': ['requests', 'write', RANK.ADMIN],
     'announcements.post': ['announcements', 'write', RANK.ADMIN],

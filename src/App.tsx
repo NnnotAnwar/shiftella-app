@@ -59,6 +59,7 @@ const AdminPage = lazy(() => import('./features/admin/AdminPage').then((m) => ({
 const RequestsPage = lazy(() => import('./features/requests/RequestsPage').then((m) => ({ default: m.RequestsPage })));
 const TimesheetsPage = lazy(() => import('./features/timesheets/TimesheetsPage').then((m) => ({ default: m.TimesheetsPage })));
 const AnalyticsPage = lazy(() => import('./features/analytics/AnalyticsPage').then((m) => ({ default: m.AnalyticsPage })));
+const ShiftNotesPage = lazy(() => import('./features/shiftNotes/ShiftNotesPage').then((m) => ({ default: m.ShiftNotesPage })));
 const AuditLogPage = lazy(() => import('./features/timesheets/AuditLogPage').then((m) => ({ default: m.AuditLogPage })));
 const SettingsPage = lazy(() => import('./features/settings/SettingsPage'));
 const ProfilePage = lazy(() => import('./features/profile/ProfilePage'));
@@ -133,6 +134,8 @@ export default function App() {
                           <Route path="timesheets" element={<GatedPage feature="timesheets" titleKey="nav.timesheets"><TimesheetsPage /></GatedPage>} />
                           {/* Owner analytics: rota + timesheets read (the page self-guards; the RPC checks too). */}
                           <Route path="analytics" element={<GatedPage feature="timesheets" titleKey="nav.analytics"><AnalyticsPage /></GatedPage>} />
+                          {/* Shift notes per location + day: timesheet readers (self-guards; RLS too). Not plan-gated. */}
+                          <Route path="notes" element={<ShiftNotesPage />} />
                           {/* Activity Log is admin-only (rank >= 30); the page self-guards too. */}
                           <Route path="activity" element={<GatedPage feature="activityLog" titleKey="nav.activity"><AuditLogPage /></GatedPage>} />
                         </Route>

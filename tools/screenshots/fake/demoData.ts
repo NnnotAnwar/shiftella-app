@@ -324,6 +324,22 @@ export function buildDemoData(): Tables {
         });
     }
 
+    // --- Shift notes & handover ------------------------------------------------------------
+    // Last night's closers left handovers at Malá Strana + Karlín (unread, so Home shows the
+    // card while on shift); one older manager-only note; one on the owner's own last shift.
+    const hoursAgo = (h: number) => new Date(now.getTime() - h * 3600000).toISOString();
+    const petraLast = shifts.filter((x) => x.user_id === P.petra && x.ended_at).at(-1);
+    const shift_notes: Row[] = [
+        { id: id(20, 1), organization_id: ORG, shift_id: id(20, 101), location_id: L.mala, author_id: P.eva, body: 'Dorazilo mléko, je ve skladu. Kávovar odvápněný, do mlýnku ráno doplnit zrna.', handover: true, demo_batch: null, created_at: hoursAgo(13), updated_at: hoursAgo(13) },
+        { id: id(20, 2), organization_id: ORG, shift_id: id(20, 101), location_id: L.mala, author_id: P.eva, body: 'Došly kelímky 0,3 l — objednáno, přijdou zítra do 10. Do té doby berte 0,4 l.', handover: true, demo_batch: null, created_at: hoursAgo(12.8), updated_at: hoursAgo(12.8) },
+        { id: id(20, 3), organization_id: ORG, shift_id: id(20, 102), location_id: L.karlin, author_id: P.tereza, body: 'Myčka hlásí chybu E4 — restart pomohl, ale ať se na ni někdo ráno podívá.', handover: true, demo_batch: null, created_at: hoursAgo(14), updated_at: hoursAgo(14) },
+        { id: id(20, 4), organization_id: ORG, shift_id: id(20, 103), location_id: L.mala, author_id: P.ondrej, body: 'Zákazník reklamoval dort (suchý korpus), vráceno 85 Kč, účtenka v šuplíku.', handover: false, demo_batch: null, created_at: hoursAgo(38), updated_at: hoursAgo(38) },
+        { id: id(20, 6), organization_id: ORG, shift_id: id(20, 104), location_id: L.mala, author_id: P.tomas, body: 'Pokladna sedí, tržba z rána odvezená do banky.', handover: false, demo_batch: null, created_at: hoursAgo(0.02), updated_at: hoursAgo(0.02) },
+        ...(petraLast
+            ? [{ id: id(20, 5), organization_id: ORG, shift_id: petraLast.id, location_id: L.mala, author_id: P.petra, body: 'Inventura baru hotová, chybí 2 lahve sirupu.', handover: false, demo_batch: null, created_at: petraLast.ended_at, updated_at: petraLast.ended_at }]
+            : []),
+    ];
+
     // --- Swaps ---------------------------------------------------------------------------
     const swapShift = planned(P.eva, 12) ?? scheduled_shifts.find((s) => s.user_id === P.eva && Date.parse(s.starts_at as string) > now.getTime())!;
     const openOffer = scheduled_shifts.find((s) => s.user_id === P.ondrej && Date.parse(s.starts_at as string) > now.getTime() + 5 * 86400000)!;
@@ -527,6 +543,8 @@ export function buildDemoData(): Tables {
         name_change_requests,
         announcements,
         announcement_reads,
+        shift_notes,
+        shift_note_reads: [],
         open_shifts,
         shift_templates,
         coverage_requirements,

@@ -89,6 +89,9 @@ const FKS: Fk[] = [
     fk('shift_swaps', 'from_user', 'profiles'),
     fk('shift_swaps', 'taker_id', 'profiles'),
     fk('announcements', 'author_id', 'profiles'),
+    fk('shift_notes', 'author_id', 'profiles'),
+    fk('shift_notes', 'shift_id', 'shifts'),
+    fk('shift_notes', 'location_id', 'locations'),
     fk('availability', 'user_id', 'profiles'),
     fk('name_change_requests', 'user_id', 'profiles'),
 ];
@@ -337,6 +340,11 @@ class Query implements PromiseLike<Result> {
                 } else {
                     // Column defaults the real tables have (e.g. a new clock-in has no end yet).
                     const defaults: Row = this.table === 'shifts' ? { ended_at: null, previous_location_id: null } : {};
+                    // shift_notes: the DB trigger copies the location from the shift.
+                    if (this.table === 'shift_notes') {
+                        const shift = (db.shifts ?? []).find((x) => x.id === p.shift_id);
+                        Object.assign(defaults, { location_id: shift?.location_id ?? null, handover: false, demo_batch: null });
+                    }
                     const row: Row = { id: uuid(), created_at: now, updated_at: now, ...defaults, ...p };
                     rows.push(row);
                     affected.push(row);

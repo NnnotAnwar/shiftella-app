@@ -22,7 +22,7 @@ test('the enforced production CSP is served, and a violation is caught', async (
     problems.length = 0; // expected here — don't fail this test for it
 });
 
-const SCREENS = ['/', '/schedule', '/overview', '/announcements', '/requests', '/timesheets', '/activity', '/admin', '/settings', '/billing', '/profile'];
+const SCREENS = ['/', '/schedule', '/overview', '/announcements', '/requests', '/timesheets', '/notes', '/activity', '/admin', '/settings', '/billing', '/profile'];
 
 test('every main screen renders under the enforced CSP without errors', async ({ page }) => {
     await signIn(page);

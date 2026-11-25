@@ -497,7 +497,7 @@ export function Sidebar({ onLocationSelect, onOpenSearch }: SidebarProps) {
     <header
       className={`sticky top-0 z-50 w-full text-ink dark:text-slate-100 flex flex-col transition-all duration-300
         max-md:bg-white/75 max-md:dark:bg-slate-950/70 max-md:backdrop-blur-xl max-md:border-b max-md:border-white/70 max-md:dark:border-white/5
-        md:glass md:top-3 md:m-3 md:h-[calc(100dvh-1.5rem)] md:shrink-0 md:rounded-2xl ${collapsed ? 'md:w-16' : 'md:w-64'}`}
+        md:glass md:top-[calc(0.75rem+env(safe-area-inset-top,0px))] md:m-3 md:h-[calc(100dvh-1.5rem-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))] md:shrink-0 md:rounded-2xl ${collapsed ? 'md:w-16' : 'md:w-64'}`}
     >
       <div className="flex flex-col h-full px-3 pt-[calc(0.25rem+env(safe-area-inset-top,0px))] pb-1 md:px-3 md:pt-3 md:pb-3">
         {/* Top brand row — desktop: logo + collapse + bell; mobile: logo, centred clock, search + bell */}

@@ -20,10 +20,12 @@ import type { User } from '@shared/types';
  * the owner can fill the org with it in one tap to look around first.
  */
 
+// × hides the card until the tab/app is closed (sessionStorage); with "Don't show
+// again" ticked it stays gone on this device (localStorage — also the old × key).
 const hiddenKey = (uid: string) => `getting-started:hidden:${uid}`;
 const readHidden = (uid: string) => {
     try {
-        return localStorage.getItem(hiddenKey(uid)) === '1';
+        return localStorage.getItem(hiddenKey(uid)) === '1' || sessionStorage.getItem(hiddenKey(uid)) === '1';
     } catch {
         return false;
     }
@@ -40,6 +42,7 @@ async function countOf(table: 'profiles' | 'scheduled_shifts', orgId: string, pu
 export function GettingStarted({ user, locationCount }: { user: User; locationCount: number }) {
     const t = useTranslation();
     const [hidden, setHidden] = useState(() => readHidden(user.id));
+    const [forever, setForever] = useState(false);
     const eligible = can(user, 'locations.manage') && !isSuperAdmin(user) && !hidden;
     const demo = useDemoData(user);
 
@@ -72,7 +75,7 @@ export function GettingStarted({ user, locationCount }: { user: User; locationCo
     const hide = () => {
         setHidden(true);
         try {
-            localStorage.setItem(hiddenKey(user.id), '1');
+            (forever ? localStorage : sessionStorage).setItem(hiddenKey(user.id), '1');
         } catch {
             /* storage unavailable — hidden for this session only */
         }
@@ -150,6 +153,15 @@ export function GettingStarted({ user, locationCount }: { user: User; locationCo
                     </Button>
                 </div>
             )}
+            <label className="mt-2 inline-flex cursor-pointer select-none items-center gap-1.5 px-1 text-caption text-ink-soft dark:text-slate-400">
+                <input
+                    type="checkbox"
+                    checked={forever}
+                    onChange={(e) => setForever(e.target.checked)}
+                    className="size-3.5 rounded accent-emerald-600"
+                />
+                {t('start.dontShowAgain')}
+            </label>
         </section>
     );
 }

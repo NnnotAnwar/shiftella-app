@@ -55,6 +55,9 @@ const owner: User = {
     role: { name: 'Head Admin', is_admin: true, rank: 40 },
 };
 
+const local = new Map<string, string>();
+const session = new Map<string, string>();
+
 function renderCard(locationCount: number) {
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     return render(
@@ -69,13 +72,16 @@ function renderCard(locationCount: number) {
 describe('GettingStarted', () => {
     beforeEach(() => {
         // Node's own (empty) localStorage shadows jsdom's — give the card a real one.
-        const store = new Map<string, string>();
-        vi.stubGlobal('localStorage', {
+        const fakeStorage = (store: Map<string, string>) => ({
             getItem: (k: string) => store.get(k) ?? null,
             setItem: (k: string, v: string) => void store.set(k, v),
             removeItem: (k: string) => void store.delete(k),
             clear: () => store.clear(),
         });
+        local.clear();
+        session.clear();
+        vi.stubGlobal('localStorage', fakeStorage(local));
+        vi.stubGlobal('sessionStorage', fakeStorage(session));
         Object.assign(counts, { profiles: 1, scheduled: 0, published: 0 });
         demo.batch = null;
         calls.isFilters.length = 0;
@@ -103,6 +109,25 @@ describe('GettingStarted', () => {
         expect(next).toHaveTextContent('start.publish');
         expect(screen.getByText('start.publishHint')).toBeInTheDocument();
         expect(screen.queryByText('start.planHint')).toBeNull(); // done steps drop their hint
+    });
+
+    it('× hides it for this session only', async () => {
+        const first = renderCard(0);
+        fireEvent.click(await screen.findByRole('button', { name: 'start.hide' }));
+        expect(screen.queryByText('start.title')).toBeNull();
+        expect(session.get('getting-started:hidden:owner-1')).toBe('1');
+        expect(local.has('getting-started:hidden:owner-1')).toBe(false);
+        first.unmount();
+        session.clear(); // a new session — it is back
+        renderCard(0);
+        expect(await screen.findByText('start.title')).toBeInTheDocument();
+    });
+
+    it('"Don\'t show again" + × hides it for good', async () => {
+        renderCard(0);
+        fireEvent.click(await screen.findByRole('checkbox', { name: 'start.dontShowAgain' }));
+        fireEvent.click(screen.getByRole('button', { name: 'start.hide' }));
+        expect(local.get('getting-started:hidden:owner-1')).toBe('1');
     });
 
     it('everything done: the card is gone', async () => {

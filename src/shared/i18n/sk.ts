@@ -414,6 +414,7 @@ export const sk: PartialDictionary = {
     'start.planHint': 'Pridajte zmeny do mriežky; šablóny ušetria čas.',
     'start.publishHint': 'Až potom tím uvidí svoje zmeny a dostane upozornenie.',
     'start.hide': 'Skryť sprievodcu nastavením',
+    'start.dontShowAgain': 'Nabudúce nezobrazovať',
     'roles.tab': 'Roly',
     'roles.lead': 'Zhora nadol: vyššie roly spravujú tie pod sebou. Každá rola určuje, čo smie vidieť, meniť a mazať.',
     'roles.new': 'Nová rola',

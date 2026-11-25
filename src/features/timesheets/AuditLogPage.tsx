@@ -1,3 +1,4 @@
+import { AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
@@ -295,9 +296,11 @@ function AuditLogInner() {
                 )}
             </section>
 
-            {profileUserId && (
-                <UserProfileModal userId={profileUserId} onClose={() => setProfileUserId(null)} />
-            )}
+            <AnimatePresence>
+                {profileUserId && (
+                    <UserProfileModal userId={profileUserId} onClose={() => setProfileUserId(null)} />
+                )}
+            </AnimatePresence>
         </div>
     );
 }

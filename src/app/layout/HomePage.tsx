@@ -1,3 +1,4 @@
+import { AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
@@ -178,9 +179,11 @@ export function HomePage() {
       </div>
       </div>
 
-      {profileUserId && (
-        <UserProfileModal userId={profileUserId} onClose={() => setProfileUserId(null)} />
-      )}
+      <AnimatePresence>
+        {profileUserId && (
+          <UserProfileModal userId={profileUserId} onClose={() => setProfileUserId(null)} />
+        )}
+      </AnimatePresence>
     </>
   );
 }

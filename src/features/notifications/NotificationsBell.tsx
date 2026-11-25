@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
     AlarmIcon,
     CoffeeIcon,
@@ -316,27 +316,32 @@ export function NotificationsBell({ variant = 'header' }: { variant?: 'header' |
                 )}
             </button>
 
-            {/* Portal panel (no AnimatePresence — it drops portal children). */}
-            {open && pos && createPortal(
-                    <motion.div
-                        ref={panelRef}
-                        initial={{ opacity: 0, y: -8, scale: 0.98 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        transition={{ duration: 0.15 }}
-                        role="dialog"
-                        aria-label={t('notif.title')}
-                        style={{ position: 'fixed', top: pos.top, bottom: pos.bottom, left: pos.left, right: pos.right }}
-                        className="glass glass-menu z-100 w-80 max-w-[calc(100vw-2rem)] rounded-2xl overflow-hidden"
-                    >
-                        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50 dark:border-white/5">
-                            <p className="text-body-strong text-gray-900 dark:text-white">{t('notif.title')}</p>
-                            {notifications.length > 0 && (
-                                <button
-                                    onClick={clearAll}
-                                    className="text-caption font-semibold text-emerald-600 dark:text-emerald-400 hover:underline underline-offset-2"
-                                >
-                                    {t('notif.clearAll')}
-                                </button>
+            {/* Portal panel. AnimatePresence sits inside the portal (it can't track a
+                portal as its direct child), so the panel fades out instead of popping. */}
+            {createPortal(
+                <AnimatePresence>
+                    {open && pos && (
+                        <motion.div
+                            key="notifications"
+                            ref={panelRef}
+                            initial={{ opacity: 0, y: -8, scale: 0.98 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: -4, scale: 0.98, transition: { duration: 0.12, ease: 'easeIn' } }}
+                            transition={{ duration: 0.15, ease: 'easeOut' }}
+                            role="dialog"
+                            aria-label={t('notif.title')}
+                            style={{ position: 'fixed', top: pos.top, bottom: pos.bottom, left: pos.left, right: pos.right }}
+                            className="glass glass-menu z-100 w-80 max-w-[calc(100vw-2rem)] rounded-2xl overflow-hidden"
+                        >
+                            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50 dark:border-white/5">
+                                <p className="text-body-strong text-gray-900 dark:text-white">{t('notif.title')}</p>
+                                {notifications.length > 0 && (
+                                    <button
+                                        onClick={clearAll}
+                                        className="text-caption font-semibold text-emerald-600 dark:text-emerald-400 hover:underline underline-offset-2"
+                                    >
+                                        {t('notif.clearAll')}
+                                    </button>
                             )}
                         </div>
 
@@ -387,9 +392,11 @@ export function NotificationsBell({ variant = 'header' }: { variant?: 'header' |
                                 })
                             )}
                         </div>
-                    </motion.div>,
-                    document.body,
-                )}
+                    </motion.div>
+                    )}
+                </AnimatePresence>,
+                document.body,
+            )}
         </div>
     );
 }

@@ -1,3 +1,4 @@
+import { AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Capacitor } from '@capacitor/core';
@@ -95,6 +96,7 @@ export function CalendarFeedCard() {
                 </div>
             )}
 
+            <AnimatePresence>
             {confirmReset && (
                 <ConfirmDialog
                     title={t('cal.reset')}
@@ -107,6 +109,7 @@ export function CalendarFeedCard() {
                     onClose={() => setConfirmReset(false)}
                 />
             )}
+            </AnimatePresence>
         </div>
     );
 }

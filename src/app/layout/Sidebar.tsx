@@ -608,8 +608,9 @@ export function Sidebar({ onLocationSelect, onOpenSearch }: SidebarProps) {
               ))}
             </div>
 
-            {/* FOOTER — feedback + log out, aligned with the nav rows */}
-            <div className="pt-2 border-t border-ink/6 dark:border-white/6 shrink-0">
+            {/* FOOTER — feedback + log out, aligned with the nav rows; a little air between the two
+                so "Log out" isn't hit by mistake. */}
+            <div className="pt-2.5 border-t border-ink/6 dark:border-white/6 shrink-0 flex flex-col gap-1.5">
               <button
                 onClick={() => openFeedback()}
                 className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-meta text-ink-soft dark:text-slate-400 hover:bg-white/60 dark:hover:bg-white/5 hover:text-ink dark:hover:text-white transition-colors"

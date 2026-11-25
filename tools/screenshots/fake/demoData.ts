@@ -463,7 +463,7 @@ export function buildDemoData(): Tables {
     });
     const shift_audit_log: Row[] = [
         audit(1, 'swap_requested', 60 * 25, { from_name: 'Eva Dvořáková', taker_name: 'Veronika Pokorná' }),
-        audit(2, 'timeoff_requested', 60 * 14, { actor_name: 'Ondřej Procházka', kind: 'other', starts_on: md(31), ends_on: md(31) }),
+        audit(2, 'timeoff_requested', 60 * 14, { actor_name: 'Ondřej Procházka', target_name: 'Ondřej Procházka', kind: 'other', starts_on: md(31), ends_on: md(31) }),
         audit(3, 'schedule_published', 60 * 24 * 4, { actor_name: 'Petra Nováková', count: scheduled_shifts.length, month_start: md(1) }),
     ];
 

@@ -40,15 +40,14 @@ export interface LegalContent {
 const PRIVACY_EMAIL = SUPPORT_EMAIL;
 
 /**
- * OWNER TODO — the law (GDPR art. 13(1)(a)) requires the operator's identity.
- * Replace each placeholder with the same real name and postal address (and the
- * IČO once there is one) before paid plans launch.
+ * The operator's identity (GDPR art. 13(1)(a)): a private individual during the
+ * free beta. Add the IČO here once the owner registers a business.
  */
 const OPERATOR: Record<LegalLang, string> = {
-    cs: '[DOPLNIT: jméno a příjmení provozovatele, adresa]',
-    en: '[TO BE COMPLETED: operator’s full name and postal address]',
-    sk: '[DOPLNIŤ: meno a priezvisko poskytovateľa, adresa]',
-    uk: '[ЗАПОВНИТИ: ім’я та прізвище постачальника, поштова адреса]',
+    cs: 'Anuar Kairulla, Argentinská 1023/24, Praha 7, Česká republika',
+    en: 'Anuar Kairulla, Argentinská 1023/24, Prague 7, Czech Republic',
+    sk: 'Anuar Kairulla, Argentinská 1023/24, Praha 7, Česká republika',
+    uk: 'Anuar Kairulla, Argentinská 1023/24, Прага 7, Чеська Республіка',
 };
 
 const PRIVACY_UPDATED: Record<LegalLang, string> = {

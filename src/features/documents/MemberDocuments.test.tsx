@@ -35,8 +35,9 @@ const admin: U = { id: 'boss', organization_id: 'o1', role: { name: 'Admin', ran
 const manager: U = { id: 'mgr', organization_id: 'o1', role: { name: 'Manager', rank: 20 }, permissions: { members: { read: true, write: false, delete: false } } };
 const colleague: U = { id: 'jan', organization_id: 'o1', role: { name: 'Employee', rank: 0 } };
 
+let qc: QueryClient;
 function renderIt() {
-    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     return render(
         <QueryClientProvider client={qc}>
             <MemberDocuments member={eva} />
@@ -112,6 +113,21 @@ describe('MemberDocuments', () => {
         expect(t.message).toBe('docs.deleted');
         act(() => toastStore.dismiss(t.id));
         expect(documentsService.remove).toHaveBeenCalledWith(expect.objectContaining({ id: 'd2' }));
+    });
+
+    it('a refetch inside the Undo window does not bring the document back', async () => {
+        me = admin;
+        renderIt();
+        await screen.findByText('Smlouva');
+        await userEvent.click(within(screen.getByText('Smlouva').closest('li')!).getByRole('button', { name: 'common.delete' }));
+        await act(async () => {
+            await qc.refetchQueries();
+            await new Promise((r) => setTimeout(r, 20));
+        });
+        expect(documentsService.list).toHaveBeenCalledTimes(2);
+        expect(screen.queryByText('Smlouva')).toBeNull();
+        const [t] = toastStore.getSnapshot();
+        act(() => toastStore.dismiss(t.id));
     });
 
     it('Undo keeps the document', async () => {

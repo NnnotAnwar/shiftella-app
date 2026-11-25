@@ -18,6 +18,7 @@
 // Event → message mapping and the localized copy live in _shared/notify.ts.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { isTrustedCaller } from '../_shared/callerAuth.ts';
 import { messagesFromWebhook, normalizeLang, render, type Lang, type PrefCategory, type PushMessage } from '../_shared/notify.ts';
 import { sendTelegramNotification } from '../_shared/telegram.ts';
 
@@ -149,9 +150,18 @@ async function sendToUser(msg: PushMessage): Promise<number> {
     return sent;
 }
 
+// --- Caller check ---------------------------------------------------------------
+// The function runs with verify_jwt = false (Database Webhooks call it), and the
+// public anon key is a valid JWT too, so the gateway can't tell callers apart.
+// Only our own Database Webhooks may call it: they send the project's
+// service-role key as the bearer token. Anyone else gets 401.
+
 // --- HTTP entry ---------------------------------------------------------------
 
 Deno.serve(async (req) => {
+    if (!(await isTrustedCaller(req, { serviceKey: SERVICE_ROLE ?? '', supabaseUrl: SUPABASE_URL }))) {
+        return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+    }
     try {
         const payload = await req.json();
 

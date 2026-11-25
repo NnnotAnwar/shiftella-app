@@ -141,7 +141,8 @@ export function FeedbackInboxPage() {
         {
             key: 'status',
             header: t('feedback.col.status'),
-            width: 'w-24',
+            // Fits the longest label ("Переглянуто", ~87px) after the cell padding.
+            width: 'w-28 sm:w-32',
             align: 'right',
             render: (r) => (
                 <button
@@ -152,7 +153,7 @@ export function FeedbackInboxPage() {
                     }}
                     aria-label={t('feedback.statusNext', { status: t(STATUS_LABEL[r.status]), next: t(STATUS_LABEL[nextStatus(r.status)]) })}
                     title={t('feedback.statusNext', { status: t(STATUS_LABEL[r.status]), next: t(STATUS_LABEL[nextStatus(r.status)]) })}
-                    className={`rounded-full px-2 py-0.5 text-caption font-semibold ring-1 transition-colors hover:brightness-95 ${STATUS_PILL[r.status]}`}
+                    className={`whitespace-nowrap rounded-full px-2 py-0.5 text-caption font-semibold ring-1 transition-colors hover:brightness-95 ${STATUS_PILL[r.status]}`}
                 >
                     {t(STATUS_LABEL[r.status])}
                 </button>

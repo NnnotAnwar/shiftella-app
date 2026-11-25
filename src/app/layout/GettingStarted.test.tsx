@@ -93,7 +93,7 @@ describe('GettingStarted', () => {
         renderCard(0);
         expect(await screen.findByText('start.title')).toBeInTheDocument();
         expect(screen.getByText('start.sub:0,4')).toBeInTheDocument();
-        const links = screen.getAllByRole('link').filter((l) => l.getAttribute('href') !== '/demo/');
+        const links = screen.getAllByRole('link').filter((l) => l.getAttribute('href') !== '/demo/index.html');
         expect(links).toHaveLength(4);
         expect(links[0]).toHaveAttribute('aria-current', 'step');
         expect(links[0]).toHaveAttribute('href', '/admin?tab=locations');
@@ -146,7 +146,7 @@ describe('GettingStarted', () => {
     it('the demo opens in a new tab and never touches the org', async () => {
         renderCard(0);
         const link = await screen.findByRole('link', { name: 'demo.try' });
-        expect(link).toHaveAttribute('href', '/demo/');
+        expect(link).toHaveAttribute('href', '/demo/index.html');
         expect(link).toHaveAttribute('target', '_blank');
         expect(calls.rpc).toEqual([]);
     });

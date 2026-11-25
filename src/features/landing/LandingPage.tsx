@@ -28,6 +28,7 @@ import { LANDING, fill, withFreeBeta, type FeatureIcon, type LandingCopy } from 
 import { PricingSection } from './PricingSection';
 import { SectionHead } from './SectionHead';
 import { useReveal } from './useReveal';
+import { DEMO_PATH } from '@shared/demoBuild';
 
 /**
  * --- LANDING PAGE ---
@@ -140,7 +141,7 @@ function Hero({ c }: { c: LandingCopy }) {
                         <ArrowRightIcon weight="bold" aria-hidden="true" className="size-4" />
                     </Link>
                     {/* The in-browser demo (a separate build at /demo/) — a full page load, not a route. Sign-in lives in the header. */}
-                    <a href="/demo/" className={`${buttonClass({ variant: 'secondary', size: 'lg' })} ${FOCUS}`}>
+                    <a href={DEMO_PATH} className={`${buttonClass({ variant: 'secondary', size: 'lg' })} ${FOCUS}`}>
                         <PlayCircleIcon weight="bold" aria-hidden="true" className="size-4" />
                         {h.demo}
                     </a>

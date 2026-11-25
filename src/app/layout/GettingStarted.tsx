@@ -7,6 +7,7 @@ import { can, isSuperAdmin } from '@shared/auth/permissions';
 import { Capacitor } from '@capacitor/core';
 import { buttonClass } from '@shared/components/buttonStyles';
 import { APP_URL } from '@shared/brand';
+import { DEMO_PATH } from '@shared/demoBuild';
 import { useTranslation } from '@shared/preferences/PreferencesContext';
 import type { User } from '@shared/types';
 
@@ -34,7 +35,7 @@ const readHidden = (uid: string) => {
 };
 
 /** The in-browser demo build; the native app has no /demo/ of its own, so it opens the site's. */
-const DEMO_URL = Capacitor.isNativePlatform() ? `${APP_URL}/demo/` : '/demo/';
+const DEMO_URL = Capacitor.isNativePlatform() ? `${APP_URL}${DEMO_PATH}` : DEMO_PATH;
 
 async function countOf(table: 'profiles' | 'scheduled_shifts', orgId: string, publishedOnly = false) {
     let q = supabase.from(table).select('id', { count: 'exact', head: true }).eq('organization_id', orgId).is('demo_batch', null);

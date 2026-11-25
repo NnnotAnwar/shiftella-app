@@ -31,6 +31,11 @@ jobs:
       - name: Install dependencies
         run: yarn install --immutable
 
+      # iOS MARKETING_VERSION / CURRENT_PROJECT_VERSION must match package.json
+      # (Android reads package.json itself). Fix: `corepack yarn native:version`.
+      - name: Native app version matches package.json
+        run: yarn native:version --check
+
       - name: Lint
         run: yarn lint
 

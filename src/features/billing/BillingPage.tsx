@@ -426,7 +426,7 @@ function BillingInner() {
                         </p>
                     )}
 
-                    <div className="grid gap-3 md:grid-cols-3">
+                    <div className="grid gap-3 lg:grid-cols-3">
                         {PLAN_ORDER.map((p) => {
                             // A Stripe-backed trial is already this plan (only our no-card trial isn't).
                             const current = ent.plan === p && (!ent.isTrial || livePlan === p);

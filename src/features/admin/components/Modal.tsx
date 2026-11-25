@@ -39,6 +39,10 @@ export function Modal({
 }) {
     const t = useTranslation();
     const panelRef = useRef<HTMLDivElement>(null);
+    // Below `sm` the panel is a bottom sheet, so it slides up from the edge like a
+    // native sheet; on larger screens it is a centred dialog that settles in.
+    // Read once per open — a modal never switches between the two while showing.
+    const [motionProps] = useState(() => (isPhone() ? SHEET_MOTION : DIALOG_MOTION));
 
     // Android hardware back closes the modal before navigating.
     useBackHandler(true, onClose);
@@ -101,13 +105,15 @@ export function Modal({
     }, [onClose]);
 
     return createPortal(
-        <motion.div
-            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-        >
-            <div className="absolute inset-0 bg-slate-ink/35 backdrop-blur-sm" onClick={onClose} />
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+            <motion.div
+                className="absolute inset-0 bg-slate-ink/35 backdrop-blur-sm"
+                onClick={onClose}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
+            />
 
             <motion.div
                 ref={panelRef}
@@ -115,10 +121,7 @@ export function Modal({
                 aria-modal="true"
                 aria-label={title}
                 tabIndex={-1}
-                initial={{ opacity: 0, scale: 0.97, y: 16 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.97, y: 16 }}
-                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                {...motionProps}
                 className={`glass glass-menu relative w-full ${wide ? 'sm:max-w-2xl' : 'max-w-md'} max-h-[90dvh] flex flex-col rounded-t-2xl sm:rounded-2xl overflow-hidden outline-none`}
             >
                 <div className="flex items-start justify-between gap-4 px-4 py-3.5 border-b border-ink/5 dark:border-white/6 shrink-0">
@@ -142,10 +145,29 @@ export function Modal({
                     {children}
                 </div>
             </motion.div>
-        </motion.div>,
+        </div>,
         document.body,
     );
 }
+
+/** Same breakpoint as the `sm:` classes that turn the sheet into a dialog. */
+function isPhone() {
+    return typeof window !== 'undefined' && !!window.matchMedia?.('(max-width: 639.98px)').matches;
+}
+
+/** iOS-like sheet curve; exits a little faster than it enters. No spring: an
+ *  overshoot would lift the sheet off the bottom edge for a frame. */
+const SHEET_MOTION = {
+    initial: { y: '100%' },
+    animate: { y: 0, transition: { duration: 0.3, ease: [0.32, 0.72, 0, 1] } },
+    exit: { y: '100%', transition: { duration: 0.2, ease: [0.4, 0, 1, 1] } },
+} as const;
+
+const DIALOG_MOTION = {
+    initial: { opacity: 0, scale: 0.97, y: 8 },
+    animate: { opacity: 1, scale: 1, y: 0, transition: { type: 'spring', stiffness: 420, damping: 34 } },
+    exit: { opacity: 0, scale: 0.98, y: 4, transition: { duration: 0.15, ease: 'easeIn' } },
+} as const;
 
 /**
  * --- CONFIRM DIALOG ---

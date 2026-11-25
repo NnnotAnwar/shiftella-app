@@ -92,7 +92,9 @@ function Header({ c }: { c: LandingCopy }) {
                     <a href="#top" className={FOCUS} aria-label={APP_NAME}>
                         <Brand />
                     </a>
-                    <nav aria-label={c.nav.menu} className="ml-4 hidden md:block">
+                    {/* From lg: at tablet width the section links + language switch + both CTAs
+                        overflowed the bar (uk/sk labels pushed "Try free" off-screen). */}
+                    <nav aria-label={c.nav.menu} className="ml-4 hidden lg:block">
                         <ul className="flex items-center gap-1">
                             {links.map((l) => (
                                 <li key={l.href}>

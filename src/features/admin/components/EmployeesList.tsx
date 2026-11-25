@@ -108,9 +108,9 @@ export function EmployeesList({
 
     const columns: Column<EmployeeRow>[] = [
         { key: 'employee', header: t('admin.colEmployee'), render: (emp) => <EmployeeIdentity employee={emp} isSelf={emp.id === currentUser?.id} org={showOrganization ? emp.organizationName : undefined} /> },
-        { key: 'email', header: t('profile.field.email'), hideOnMobile: true, className: 'truncate', render: (emp) => <span className="text-body text-gray-500 dark:text-gray-400">{emp.email}</span> },
+        { key: 'email', header: t('profile.field.email'), hideOnMobile: 'lg', className: 'truncate', render: (emp) => <span className="text-body text-gray-500 dark:text-gray-400">{emp.email}</span> },
         ...(showOrganization
-            ? [{ key: 'org', header: t('profile.field.organization'), hideOnMobile: true, className: 'truncate', render: (emp: EmployeeRow) => <span className="text-body text-gray-500 dark:text-gray-400">{emp.organizationName ?? '—'}</span> }]
+            ? [{ key: 'org', header: t('profile.field.organization'), hideOnMobile: 'lg' as const, className: 'truncate', render: (emp: EmployeeRow) => <span className="text-body text-gray-500 dark:text-gray-400">{emp.organizationName ?? '—'}</span> }]
             : []),
         { key: 'role', header: t('profile.field.role'), align: 'right', width: 'w-24 sm:w-32', render: (emp) => <RoleBadge profile={emp} /> },
         ...(anyManageable

@@ -16,6 +16,7 @@
 ![Supabase](https://img.shields.io/badge/Supabase-Postgres%20%2B%20RLS-3ecf8e?logo=supabase&logoColor=white)
 ![Capacitor](https://img.shields.io/badge/Capacitor-8-119eff?logo=capacitor&logoColor=white)
 ![Stripe](https://img.shields.io/badge/Stripe-billing-635bff?logo=stripe&logoColor=white)
+[![License: proprietary](https://img.shields.io/badge/license-proprietary%20%C2%B7%20all%20rights%20reserved-b91c1c)](LICENSE)
 
 <br />
 
@@ -657,6 +658,7 @@ run it against **preprod** (SQL editor, or `psql -f`).
 
 ## 📄 License
 
-© 2026 Anuar Kairulla. All rights reserved. This is proprietary software: the
-source is visible for transparency, but no licence is granted to copy, modify,
-host or redistribute it.
+© 2026 Anuar Kairulla. **All rights reserved.** This is proprietary software:
+the source is visible for transparency only — no licence is granted to copy,
+modify, use, host, redistribute or train models on it. See [LICENSE](LICENSE).
+Permission requests: support@shiftella.app.

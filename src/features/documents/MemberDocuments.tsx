@@ -12,6 +12,7 @@ import { toast } from '@shared/toast/toastStore';
 import { formatDayNumeric } from '@shared/utils/date';
 import type { Profile } from '@shared/types';
 import { documentsService, type MemberDocument } from './documentsService';
+import { DOC_UNDO_MS, pendingDeletes } from './pendingDeletes';
 import {
     DOC_ACCEPT,
     DOC_TYPES,
@@ -55,25 +56,6 @@ function fmtSize(bytes?: number | null): string {
 }
 
 /**
- * Documents deleted but still inside their Undo window. They stay hidden even
- * if the list refetches meanwhile (window focus, remount, another open view),
- * and the file is removed for real only when the toast expires.
- */
-const pendingDeletes = new Set<string>();
-const pendingListeners = new Set<() => void>();
-let pendingVersion = 0;
-const setPending = (id: string, on: boolean) => {
-    if (on) pendingDeletes.add(id);
-    else pendingDeletes.delete(id);
-    pendingVersion++;
-    pendingListeners.forEach((l) => l());
-};
-const subscribePending = (l: () => void) => {
-    pendingListeners.add(l);
-    return () => pendingListeners.delete(l);
-};
-
-/**
  * --- DOCUMENTS ---
  * A member's contracts, health certificates and trainings. The member sees and
  * adds their own (and may delete what they added); people who manage the team
@@ -96,7 +78,7 @@ export function MemberDocuments({ member, className = '' }: { member: Member; cl
     const key = ['member-documents', member.id] as const;
 
     const docs = useQuery({ queryKey: key, queryFn: () => documentsService.list(member.id), enabled: canView });
-    useSyncExternalStore(subscribePending, () => pendingVersion);
+    useSyncExternalStore(pendingDeletes.subscribe, pendingDeletes.version);
 
     const upload = useMutation({
         mutationFn: (d: NonNullable<typeof draft>) =>
@@ -119,7 +101,7 @@ export function MemberDocuments({ member, className = '' }: { member: Member; cl
     if (!user || !canView || !member.organization_id) return null;
 
     const today = isoDay(new Date());
-    const list = (docs.data ?? []).filter((d) => !pendingDeletes.has(d.id));
+    const list = (docs.data ?? []).filter((d) => !pendingDeletes.isHidden(d.id));
 
     const pick = (file: File | undefined) => {
         if (fileRef.current) fileRef.current.value = '';
@@ -133,19 +115,17 @@ export function MemberDocuments({ member, className = '' }: { member: Member; cl
     };
 
     const remove = (doc: MemberDocument) => {
-        // Hide now; delete for real once the Undo window has passed.
-        setPending(doc.id, true);
+        // Hide now; delete for real once the Undo window has passed (also if the
+        // page is closed meanwhile — see ./pendingDeletes).
+        pendingDeletes.schedule(doc);
         toast(t('docs.deleted'), 'success', {
-            action: { label: t('common.undo'), onClick: () => setPending(doc.id, false) },
+            duration: DOC_UNDO_MS,
+            action: { label: t('common.undo'), onClick: () => pendingDeletes.cancel(doc.id) },
             onExpire: () => {
-                documentsService
-                    .remove(doc)
-                    .then(() => qc.setQueryData<MemberDocument[]>(key, (old) => (old ?? []).filter((d) => d.id !== doc.id)))
+                pendingDeletes
+                    .commit(doc.id)
                     .catch(() => toast(t('docs.error'), 'error'))
-                    .finally(() => {
-                        setPending(doc.id, false);
-                        void qc.invalidateQueries({ queryKey: key });
-                    });
+                    .finally(() => void qc.invalidateQueries({ queryKey: key }));
             },
         });
     };

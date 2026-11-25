@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { authStorage } from './authStorage';
+import { keepaliveFetch } from './keepalive';
 
 /**
  * --- SUPABASE CLIENT ---
@@ -33,5 +34,7 @@ export const supabase = createClient(supabaseUrl, supabasePublisherKey, {
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true
-    }
+    },
+    // Lets requests flushed while the page closes finish (see ./keepalive).
+    global: { fetch: keepaliveFetch }
 });

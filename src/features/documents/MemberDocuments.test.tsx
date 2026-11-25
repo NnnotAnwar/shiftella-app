@@ -29,6 +29,7 @@ import { MemberDocuments } from './MemberDocuments';
 import { documentsService } from './documentsService';
 import { toastStore } from '@shared/toast/toastStore';
 import { isoDay } from './documentTypes';
+import { resetPendingDeletesForTests } from './pendingDeletes';
 
 const eva = { id: 'eva', organization_id: 'o1', role: { name: 'Employee', rank: 0 } } as never;
 const admin: U = { id: 'boss', organization_id: 'o1', role: { name: 'Admin', rank: 30 } };
@@ -54,6 +55,7 @@ const inDays = (n: number) => {
 describe('MemberDocuments', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        resetPendingDeletesForTests();
         docs[0].valid_until = inDays(10);
         docs[1].valid_until = null;
     });
@@ -112,7 +114,7 @@ describe('MemberDocuments', () => {
         const [t] = toastStore.getSnapshot();
         expect(t.message).toBe('docs.deleted');
         act(() => toastStore.dismiss(t.id));
-        expect(documentsService.remove).toHaveBeenCalledWith(expect.objectContaining({ id: 'd2' }));
+        expect(documentsService.remove).toHaveBeenCalledWith(expect.objectContaining({ id: 'd2' }), { parallel: undefined });
     });
 
     it('a refetch inside the Undo window does not bring the document back', async () => {

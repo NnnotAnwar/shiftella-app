@@ -1,3 +1,4 @@
+import { AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
@@ -65,7 +66,7 @@ function Segmented<T extends string>({
             key={o.value}
             onClick={() => onChange(o.value)}
             aria-pressed={active}
-            className={`flex-1 px-3 py-1 rounded-[9px] text-meta font-semibold transition-colors ${active
+            className={`flex-auto min-w-0 truncate px-2 py-1 rounded-[9px] text-meta font-semibold transition-colors ${active
               ? 'segment-active text-ink dark:text-white'
               : 'text-ink-soft dark:text-slate-400 hover:text-ink dark:hover:text-white'
               }`}
@@ -428,15 +429,17 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {confirmDelete && (
-        <ConfirmDialog
-          title={t('settings.deleteAccount')}
-          message={t('settings.deleteAccountConfirm')}
-          confirmLabel={t('settings.deleteAccount')}
-          onConfirm={handleDelete}
-          onClose={() => setConfirmDelete(false)}
-        />
-      )}
+      <AnimatePresence>
+        {confirmDelete && (
+          <ConfirmDialog
+            title={t('settings.deleteAccount')}
+            message={t('settings.deleteAccountConfirm')}
+            confirmLabel={t('settings.deleteAccount')}
+            onConfirm={handleDelete}
+            onClose={() => setConfirmDelete(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

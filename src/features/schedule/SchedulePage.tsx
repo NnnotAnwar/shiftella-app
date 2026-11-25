@@ -778,12 +778,22 @@ export default function SchedulePage() {
                                     {t('schedule.publish', { count: draftCount })}
                                 </Button>
                             )}
-                            <Button size="sm" variant="secondary" icon={CopySimpleIcon} onClick={copyLastMonth}>
-                                {t('schedule.copyLast')}
+                            {/* Copy / clear are icon-only on phones so the four actions fit one row
+                                instead of stacking into a wall of buttons above the rota. */}
+                            <Button size="sm" variant="secondary" icon={CopySimpleIcon} onClick={copyLastMonth} aria-label={t('schedule.copyLast')} title={t('schedule.copyLast')} className="max-sm:w-9 max-sm:px-0">
+                                <span className="hidden sm:inline">{t('schedule.copyLast')}</span>
                             </Button>
                             {shifts.length > 0 && (
-                                <Button size="sm" variant="secondary" icon={EraserIcon} onClick={clearAll} className="text-red-600 dark:text-red-400">
-                                    {t('schedule.clearAll')}
+                                <Button
+                                    size="sm"
+                                    variant="secondary"
+                                    icon={EraserIcon}
+                                    onClick={clearAll}
+                                    aria-label={t('schedule.clearAll')}
+                                    title={t('schedule.clearAll')}
+                                    className="text-red-600 dark:text-red-400 max-sm:w-9 max-sm:px-0"
+                                >
+                                    <span className="hidden sm:inline">{t('schedule.clearAll')}</span>
                                 </Button>
                             )}
                             <Button
@@ -879,27 +889,31 @@ export default function SchedulePage() {
                                         </span>
                                         <span className="flex-1 min-w-0">
                                             <span className="block text-body-strong text-gray-900 dark:text-white truncate">{sec.name}</span>
-                                            <span className="flex items-center gap-1.5 text-caption text-gray-400">
-                                                {sec.items.length} {t('schedule.shiftsCount')}
-                                                {rc.enabled &&
-                                                    (() => {
-                                                        const line = rc.cost.byLocation.get(locKey(sec.id));
-                                                        if (!line) return null;
-                                                        const m = money(line.cost);
-                                                        return (
-                                                            <span className="tabular-nums" title={t('cost.hint')}>
-                                                                · {hrs(line.hours)}
-                                                                {m && ` · ${m}`}
-                                                            </span>
-                                                        );
-                                                    })()}
+                                            <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-caption text-gray-400">
+                                                {/* Count + hours + cost stay one unit; only the
+                                                    confirmation pill may drop to the next line. */}
+                                                <span className="min-w-0 truncate">
+                                                    {sec.items.length} {t('schedule.shiftsCount')}
+                                                    {rc.enabled &&
+                                                        (() => {
+                                                            const line = rc.cost.byLocation.get(locKey(sec.id));
+                                                            if (!line) return null;
+                                                            const m = money(line.cost);
+                                                            return (
+                                                                <span className="tabular-nums" title={t('cost.hint')}>
+                                                                    {' '}· {hrs(line.hours)}
+                                                                    {m && ` · ${m}`}
+                                                                </span>
+                                                            );
+                                                        })()}
+                                                </span>
                                                 {(() => {
                                                     const due = sec.items.filter((s) => s.published && new Date(s.starts_at).getTime() > now);
                                                     if (due.length === 0) return null;
                                                     const done = due.filter((s) => orgConfirmed.has(s.id)).length;
                                                     return (
                                                         <span
-                                                            className={`rounded-full px-1.5 text-[10px] font-semibold leading-4 ${
+                                                            className={`whitespace-nowrap rounded-full px-1.5 text-[10px] font-semibold leading-4 ${
                                                                 done === due.length ? 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-300' : 'bg-amber-500/12 text-amber-700 dark:text-amber-300'
                                                             }`}
                                                         >

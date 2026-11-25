@@ -209,13 +209,13 @@ function AnalyticsBody({ data, lang }: { data: Analytics; lang: string }) {
     }
 
     const memberCols: Column<AnalyticsMember>[] = [
-        { key: 'name', header: t('analytics.colPerson'), render: (m) => <span className="block truncate font-medium">{m.name}</span> },
-        { key: 'worked', header: t('analytics.colWorked'), align: 'right', width: 'w-20 sm:w-24', render: (m) => <span className="tabular-nums">{fmtHours(m.worked)}</span>, footer: <span className="tabular-nums">{fmtHours(totals.worked)}</span> },
-        { key: 'planned', header: t('analytics.planned'), align: 'right', width: 'w-24', hideOnMobile: true, render: (m) => <span className="tabular-nums">{fmtHours(m.planned)}</span>, footer: <span className="tabular-nums">{fmtHours(totals.planned)}</span> },
-        { key: 'absence', header: t('analytics.colAbsence'), align: 'right', width: 'w-24', hideOnMobile: 'lg', render: (m) => <span className="tabular-nums">{m.absence_hours ? fmtHours(m.absence_hours) : '—'}</span> },
-        { key: 'late', header: t('analytics.colLate'), align: 'right', width: 'w-24', hideOnMobile: 'lg', render: (m) => <span className="tabular-nums">{m.late_15 + m.late_60 || '—'}</span> },
+        { key: 'name', header: t('analytics.colPerson'), render: (m) => <span className="block truncate text-body">{m.name}</span> },
+        { key: 'worked', header: t('analytics.colWorked'), align: 'right', width: 'w-20 sm:w-24', render: (m) => <span className="text-body tabular-nums">{fmtHours(m.worked)}</span>, footer: <span className="text-body tabular-nums">{fmtHours(totals.worked)}</span> },
+        { key: 'planned', header: t('analytics.planned'), align: 'right', width: 'w-24', hideOnMobile: true, render: (m) => <span className="text-body tabular-nums">{fmtHours(m.planned)}</span>, footer: <span className="text-body tabular-nums">{fmtHours(totals.planned)}</span> },
+        { key: 'absence', header: t('analytics.colAbsence'), align: 'right', width: 'w-24', hideOnMobile: 'lg', render: (m) => <span className="text-body tabular-nums">{m.absence_hours ? fmtHours(m.absence_hours) : '—'}</span> },
+        { key: 'late', header: t('analytics.colLate'), align: 'right', width: 'w-24', hideOnMobile: 'lg', render: (m) => <span className="text-body tabular-nums">{m.late_15 + m.late_60 || '—'}</span> },
         ...(data.can_cost
-            ? [{ key: 'cost', header: t('analytics.colCost'), align: 'right' as const, width: 'w-32 sm:w-36', render: (m: AnalyticsMember) => <span className="tabular-nums">{m.cost === null ? '—' : money(m.cost)}</span>, footer: totals.cost === null ? undefined : <span className="tabular-nums">{money(totals.cost)}</span> }]
+            ? [{ key: 'cost', header: t('analytics.colCost'), align: 'right' as const, width: 'w-32 sm:w-36', render: (m: AnalyticsMember) => <span className="text-body tabular-nums">{m.cost === null ? '—' : money(m.cost)}</span>, footer: totals.cost === null ? undefined : <span className="text-body tabular-nums">{money(totals.cost)}</span> }]
             : []),
     ];
 

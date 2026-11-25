@@ -43,7 +43,7 @@ export function LocationsList({
     const t = useTranslation();
     const columns: Column<LocationRow>[] = [
         { key: 'loc', header: t('admin.colLocation'), render: (loc) => <LocationIdentity loc={loc} /> },
-        { key: 'org', header: t('profile.field.organization'), hideOnMobile: true, className: 'truncate', render: (loc) => <span className="text-body text-gray-500 dark:text-gray-400">{loc.organizationName}</span> },
+        { key: 'org', header: t('profile.field.organization'), hideOnMobile: 'lg', className: 'truncate', render: (loc) => <span className="text-body text-gray-500 dark:text-gray-400">{loc.organizationName}</span> },
         { key: 'id', header: t('admin.colId'), align: 'right', width: 'w-28', hideOnMobile: true, render: (loc) => <span className="text-micro tracking-normal text-gray-400 normal-case whitespace-nowrap">{loc.id.slice(0, 8)}</span> },
         ...(canManage
             ? [{ key: 'actions', header: '', align: 'right' as const, width: 'w-20 sm:w-28', render: (loc: LocationRow) => <div className="flex justify-end"><ActionButtons onEdit={() => onEdit(loc)} onDelete={() => onDelete(loc)} /></div> }]

@@ -1,3 +1,4 @@
+import { AnimatePresence } from 'framer-motion';
 import { useMemo, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { SunHorizonIcon, CheckIcon, XIcon, PlusIcon, TrashIcon, ScalesIcon } from '@phosphor-icons/react';
@@ -252,25 +253,30 @@ export function TimeOffCard({
 
     return (
         <section className="glass rounded-2xl p-4 space-y-3">
-            <div className="flex items-center gap-2.5">
+            {/* Wraps instead of squeezing: when the title and both buttons don't fit
+                (long uk/sk labels), the buttons drop to their own row, right-aligned. */}
+            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-2">
                 <span className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
                     <SunHorizonIcon weight="fill" className="w-4 h-4" />
                 </span>
                 <div className="flex flex-1 items-center gap-1 text-body-strong text-gray-900 dark:text-white">
-                    <span>
+                    <span className="whitespace-nowrap">
                         {t('timeoff.title')}
                         {pending.length > 0 && <span className="text-amber-500 font-normal"> · {pending.length}</span>}
                     </span>
                     <HelpLink article={seesBalances ? 'leave-balances' : 'request-time-off'} />
                 </div>
-                {seesBalances && (
-                    <Button size="sm" variant="ghost" icon={ScalesIcon} onClick={() => setBalancesOpen(true)}>
-                        {t('leave.balances')}
+                <div className="ml-auto flex items-center gap-2">
+                    {seesBalances && (
+                        <Button size="sm" variant="ghost" icon={ScalesIcon} onClick={() => setBalancesOpen(true)} aria-label={t('leave.balances')} title={t('leave.balances')} className="max-sm:w-9 max-sm:px-0">
+                            {/* Icon-only on phones, so the header never pushes "Add time off" out of the card. */}
+                            <span className="hidden sm:inline">{t('leave.balances')}</span>
+                        </Button>
+                    )}
+                    <Button size="sm" variant="tonal" icon={PlusIcon} onClick={() => setOpen(true)}>
+                        {managerMode ? t('timeoff.add') : t('timeoff.request')}
                     </Button>
-                )}
-                <Button size="sm" variant="tonal" icon={PlusIcon} onClick={() => setOpen(true)}>
-                    {managerMode ? t('timeoff.add') : t('timeoff.request')}
-                </Button>
+                </div>
             </div>
 
             {own && (
@@ -331,16 +337,19 @@ export function TimeOffCard({
                 </ul>
             )}
 
-            {balancesOpen && <LeaveBalancesModal selfId={selfId} canDecide={can(user, 'requests.decide')} onClose={() => setBalancesOpen(false)} />}
-            {open && (
-                <TimeOffRequestModal
-                    members={members}
-                    selfId={selfId}
-                    orgId={orgId}
-                    managerMode={managerMode}
-                    onClose={() => setOpen(false)}
-                />
-            )}
+            <AnimatePresence>
+                {balancesOpen && <LeaveBalancesModal key="balances" selfId={selfId} canDecide={can(user, 'requests.decide')} onClose={() => setBalancesOpen(false)} />}
+                {open && (
+                    <TimeOffRequestModal
+                        key="request"
+                        members={members}
+                        selfId={selfId}
+                        orgId={orgId}
+                        managerMode={managerMode}
+                        onClose={() => setOpen(false)}
+                    />
+                )}
+            </AnimatePresence>
         </section>
     );
 }

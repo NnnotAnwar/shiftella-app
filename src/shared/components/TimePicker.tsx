@@ -123,8 +123,9 @@ export function TimePicker({ value, onChange, disabled, ...rest }: TimePickerPro
                 createPortal(
                     <motion.div
                         ref={popRef}
-                        initial={{ opacity: 0, scale: 0.95 }}
+                        initial={{ opacity: 0, scale: 0.97 }}
                         animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.15, ease: 'easeOut' }}
                         style={{
                             position: 'fixed',
                             top: pos?.top ?? 0,

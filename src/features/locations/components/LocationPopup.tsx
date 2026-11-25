@@ -55,7 +55,7 @@ export function LocationPopup({ locationName, variant, isBusy, onConfirm, onCanc
                 initial={{ y: '100%', opacity: 0.6 }}
                 animate={{ y: 0, opacity: 1 }}
                 exit={{ y: '100%', opacity: 0 }}
-                transition={{ type: 'spring', stiffness: 360, damping: 32 }}
+                transition={{ type: 'spring', stiffness: 360, damping: 38 }}
                 onClick={(e) => e.stopPropagation()}
                 className="glass glass-menu w-full max-w-md rounded-t-2xl sm:rounded-2xl p-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:pb-5"
             >

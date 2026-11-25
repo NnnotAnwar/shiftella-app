@@ -302,3 +302,20 @@ body {
     50% { transform: scale(1.02); }
   }
 }
+/* Reduced motion (OS setting): CSS transitions and keyframe animations finish
+   at once (framer-motion is handled by <MotionConfig reducedMotion="user">).
+   Spinners keep turning — a frozen spinner reads as a hang. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .animate-spin {
+    animation-duration: 1s !important;
+    animation-iteration-count: infinite !important;
+  }
+}

@@ -26,6 +26,7 @@ import { ErrorBoundary } from './shared/components/ErrorBoundary';
 import { PageLoader } from './shared/components/PageLoader';
 import { GatedPage } from './features/billing/UpgradeGate';
 import { DEMO_PATH } from '@shared/demoBuild';
+import { MotionConfig } from 'framer-motion';
 
 /** Full page load into the separate demo build (see src/shared/demoBuild.ts). */
 function ToDemo() {
@@ -107,76 +108,80 @@ function BackButtonHandler() {
 
 export default function App() {
   return (
-    <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider>
-          <AuthProvider>
-            <PreferencesProvider>
-              <ShiftProvider>
-                <BackButtonHandler />
-                <Suspense fallback={<PageLoader />}>
-                  <Routes>
-                    {/* PUBLIC: invite acceptance manages its own session (no guard). */}
-                    <Route path="/accept-invite" element={<AcceptInvitePage />} />
-                    {/* PUBLIC: the reset email's recovery session must not bounce it to "/". */}
-                    <Route path="/reset-password" element={<ResetPasswordPage />} />
+    // reducedMotion="user": with the OS "reduce motion" setting on, framer-motion
+    // drops movement (slides, scale, layout) and keeps only fades, app-wide.
+    <MotionConfig reducedMotion="user">
+      <ErrorBoundary>
+        <QueryClientProvider client={queryClient}>
+          <ThemeProvider>
+            <AuthProvider>
+              <PreferencesProvider>
+                <ShiftProvider>
+                  <BackButtonHandler />
+                  <Suspense fallback={<PageLoader />}>
+                    <Routes>
+                      {/* PUBLIC: invite acceptance manages its own session (no guard). */}
+                      <Route path="/accept-invite" element={<AcceptInvitePage />} />
+                      {/* PUBLIC: the reset email's recovery session must not bounce it to "/". */}
+                      <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-                    {/* PUBLIC: legal pages, linkable from anywhere (incl. app stores). */}
-                    {/* /demo/ typed by hand reaches the real app (SPA fallback) — hand over to the demo build. */}
-                    <Route path="/demo/*" element={<ToDemo />} />
-                    <Route path="/privacy" element={<LegalPage doc="privacy" />} />
-                    <Route path="/terms" element={<LegalPage doc="terms" />} />
+                      {/* PUBLIC: legal pages, linkable from anywhere (incl. app stores). */}
+                      {/* /demo/ typed by hand reaches the real app (SPA fallback) — hand over to the demo build. */}
+                      <Route path="/demo/*" element={<ToDemo />} />
+                      <Route path="/privacy" element={<LegalPage doc="privacy" />} />
+                      <Route path="/terms" element={<LegalPage doc="terms" />} />
 
-                    {/* LOGGED-OUT ONLY: redirects to "/" if already authenticated. */}
-                    <Route element={<PublicRoute />}>
-                      <Route path="/login" element={<LoginPage />} />
-                      {/* Owners create their organization (store release); staff join by invite. */}
-                      <Route path="/signup" element={<SignupPage />} />
-                      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                    </Route>
-
-                    {/* PROTECTED: requires a session; redirects to "/login" otherwise.
-                        Signed-out web visitors at "/" get the landing page instead (native: login). */}
-                    <Route element={<ProtectedRoute landing={<LandingPage />} />}>
-                      <Route path="/" element={<AppShell />}>
-                        <Route index element={<HomePage />} />
-                        <Route path="overview" element={<OverviewPage />} />
-                        <Route path="announcements" element={<AnnouncementsPage />} />
-                        <Route path="schedule" element={<SchedulePage />} />
-                        <Route element={<RoleGuard />}>
-                          <Route path="admin" element={<AdminPage />} />
-                          {/* Timesheets: managers+ view (rank >= 20); admins edit. */}
-                          <Route path="timesheets" element={<GatedPage feature="timesheets" titleKey="nav.timesheets"><TimesheetsPage /></GatedPage>} />
-                          {/* Owner analytics: Business plan; rota + timesheets read (the page self-guards; the RPC checks both). */}
-                          <Route path="analytics" element={<GatedPage feature="analytics" titleKey="nav.analytics"><AnalyticsPage /></GatedPage>} />
-                          {/* Shift notes per location + day: timesheet readers (self-guards; RLS too). Not plan-gated. */}
-                          <Route path="notes" element={<ShiftNotesPage />} />
-                          {/* Activity Log is admin-only (rank >= 30); the page self-guards too. */}
-                          <Route path="activity" element={<GatedPage feature="activityLog" titleKey="nav.activity"><AuditLogPage /></GatedPage>} />
-                        </Route>
-                        {/* Requests: everyone files and tracks theirs; admins decide, managers observe. */}
-                        <Route path="requests" element={<RequestsPage />} />
-                        <Route path="settings" element={<SettingsPage />} />
-                        {/* Billing: the org's Head Admin (page self-guards); plan gates wrap Team/Business pages above. */}
-                        <Route path="billing" element={<BillingPage />} />
-                        {/* Help centre: everyone; articles are role-aware (managers' ones flagged, not hidden). */}
-                        <Route path="help" element={<HelpPage />} />
-                        {/* Feedback inbox: the platform Superadmin only (page self-guards; RLS too). */}
-                        <Route path="feedback" element={<FeedbackInboxPage />} />
-                        <Route path="profile" element={<ProfilePage />} />
-                        <Route path="profile/:userId" element={<ProfilePage />} />
+                      {/* LOGGED-OUT ONLY: redirects to "/" if already authenticated. */}
+                      <Route element={<PublicRoute />}>
+                        <Route path="/login" element={<LoginPage />} />
+                        {/* Owners create their organization (store release); staff join by invite. */}
+                        <Route path="/signup" element={<SignupPage />} />
+                        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                       </Route>
-                    </Route>
 
-                    {/* FALLBACK: any unknown URL -> Home (then guards take over). */}
-                    <Route path="*" element={<Navigate to="/" replace />} />
-                  </Routes>
-                </Suspense>
-              </ShiftProvider>
-            </PreferencesProvider>
-          </AuthProvider>
-        </ThemeProvider>
-      </QueryClientProvider>
-    </ErrorBoundary>
+                      {/* PROTECTED: requires a session; redirects to "/login" otherwise.
+                          Signed-out web visitors at "/" get the landing page instead (native: login). */}
+                      <Route element={<ProtectedRoute landing={<LandingPage />} />}>
+                        <Route path="/" element={<AppShell />}>
+                          <Route index element={<HomePage />} />
+                          <Route path="overview" element={<OverviewPage />} />
+                          <Route path="announcements" element={<AnnouncementsPage />} />
+                          <Route path="schedule" element={<SchedulePage />} />
+                          <Route element={<RoleGuard />}>
+                            <Route path="admin" element={<AdminPage />} />
+                            {/* Timesheets: managers+ view (rank >= 20); admins edit. */}
+                            <Route path="timesheets" element={<GatedPage feature="timesheets" titleKey="nav.timesheets"><TimesheetsPage /></GatedPage>} />
+                            {/* Owner analytics: Business plan; rota + timesheets read (the page self-guards; the RPC checks both). */}
+                            <Route path="analytics" element={<GatedPage feature="analytics" titleKey="nav.analytics"><AnalyticsPage /></GatedPage>} />
+                            {/* Shift notes per location + day: timesheet readers (self-guards; RLS too). Not plan-gated. */}
+                            <Route path="notes" element={<ShiftNotesPage />} />
+                            {/* Activity Log is admin-only (rank >= 30); the page self-guards too. */}
+                            <Route path="activity" element={<GatedPage feature="activityLog" titleKey="nav.activity"><AuditLogPage /></GatedPage>} />
+                          </Route>
+                          {/* Requests: everyone files and tracks theirs; admins decide, managers observe. */}
+                          <Route path="requests" element={<RequestsPage />} />
+                          <Route path="settings" element={<SettingsPage />} />
+                          {/* Billing: the org's Head Admin (page self-guards); plan gates wrap Team/Business pages above. */}
+                          <Route path="billing" element={<BillingPage />} />
+                          {/* Help centre: everyone; articles are role-aware (managers' ones flagged, not hidden). */}
+                          <Route path="help" element={<HelpPage />} />
+                          {/* Feedback inbox: the platform Superadmin only (page self-guards; RLS too). */}
+                          <Route path="feedback" element={<FeedbackInboxPage />} />
+                          <Route path="profile" element={<ProfilePage />} />
+                          <Route path="profile/:userId" element={<ProfilePage />} />
+                        </Route>
+                      </Route>
+
+                      {/* FALLBACK: any unknown URL -> Home (then guards take over). */}
+                      <Route path="*" element={<Navigate to="/" replace />} />
+                    </Routes>
+                  </Suspense>
+                </ShiftProvider>
+              </PreferencesProvider>
+            </AuthProvider>
+          </ThemeProvider>
+        </QueryClientProvider>
+      </ErrorBoundary>
+    </MotionConfig>
   );
 }

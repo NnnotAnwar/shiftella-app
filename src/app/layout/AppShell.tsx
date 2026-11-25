@@ -203,7 +203,7 @@ export function AppShell() {
           No max-width: collapsing the sidebar should hand its space to the
           content (a capped main just sat left-aligned with a dead right gap). */}
       <main
-        className={`flex-1 min-w-0 p-3 md:py-6 md:pr-6 md:pl-3 transition-all ${
+        className={`flex-1 min-w-0 p-3 md:py-6 md:pr-6 md:pl-3 ${
           pathname === '/' ? 'pb-32' : 'pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))]'
         }`}
       >
@@ -221,8 +221,10 @@ export function AppShell() {
       <BottomNav />
 
       {/* ACTION ERROR TOASTS — surface failed shift actions (start/end/move). */}
-      <div className="toast-stack fixed left-1/2 -translate-x-1/2 z-200 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] md:bottom-6 w-[calc(100%-2rem)] max-w-md space-y-2">
-        <AnimatePresence>
+      <div className="toast-stack fixed left-1/2 -translate-x-1/2 z-200 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] md:bottom-6 w-[calc(100%-2rem)] max-w-md flex flex-col gap-2">
+        {/* popLayout + layout: when one toast leaves, the others glide into place
+            instead of jumping. */}
+        <AnimatePresence mode="popLayout" initial={false}>
           {toasts.map((toastItem) => {
             // Colour + icon by intent so success/undo reads differently from an error.
             const tone =
@@ -240,15 +242,17 @@ export function AppShell() {
             return (
               <motion.div
                 key={toastItem.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 20 }}
+                layout
+                initial={{ opacity: 0, y: 16, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.15, ease: 'easeIn' } }}
+                transition={{ duration: 0.22, ease: [0.2, 0.7, 0.2, 1] }}
                 role="alert"
                 className="w-full"
               >
-                <div className={`flex items-center gap-3 text-white rounded-2xl px-4 py-3 shadow-2xl ${tone}`}>
+                <div className={`flex items-center gap-2.5 text-white rounded-2xl px-3.5 py-2.5 shadow-2xl ${tone}`}>
                   <ToastIcon weight="fill" className="w-5 h-5 shrink-0" />
-                  <p className="flex-1 text-sm font-bold leading-snug">{toastItem.message}</p>
+                  <p className="flex-1 text-body-strong leading-snug">{toastItem.message}</p>
                   {/* Inline action (e.g. Undo) — dismisses via the action path so
                       the toast's onExpire (the deferred commit) is cancelled. */}
                   {toastItem.action && (

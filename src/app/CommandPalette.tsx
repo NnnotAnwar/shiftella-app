@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { MagnifyingGlassIcon, MapPinIcon, SunIcon, MoonIcon, SignOutIcon, ChatCircleTextIcon, type Icon } from '@phosphor-icons/react';
 
@@ -190,83 +190,94 @@ export function CommandPalette({ open, onClose, locations, selectedLocationId, o
         listRef.current?.querySelector('[data-active="true"]')?.scrollIntoView({ block: 'nearest' });
     }, [active, open]);
 
-    if (!open) return null;
-
     let runningIndex = -1;
 
+    // AnimatePresence inside the portal, so closing fades out instead of popping.
     return createPortal(
-        <div className="fixed inset-0 z-120 flex items-start justify-center p-4 pt-[16vh]">
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-            <motion.div
-                initial={{ opacity: 0, y: -8, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ duration: 0.14, ease: 'easeOut' }}
-                role="dialog"
-                aria-modal="true"
-                className="glass glass-menu relative w-full max-w-lg max-h-[68vh] flex flex-col rounded-2xl overflow-hidden"
-            >
-                {/* Search */}
-                <div className="flex items-center gap-2.5 px-4 border-b border-gray-100 dark:border-white/10">
-                    <MagnifyingGlassIcon weight="bold" className="w-4 h-4 text-gray-400 shrink-0" />
-                    <input
-                        ref={inputRef}
-                        value={query}
-                        onChange={(e) => {
-                            setQuery(e.target.value);
-                            setActive(0);
-                        }}
-                        placeholder={t('cmd.placeholder')}
-                        className="flex-1 bg-transparent py-3.5 text-body text-gray-900 dark:text-white outline-none placeholder:text-gray-400"
+        <AnimatePresence>
+            {open && (
+                <div key="palette" className="fixed inset-0 z-120 flex items-start justify-center p-4 pt-[16vh]">
+                    <motion.div
+                        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+                        onClick={onClose}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.15 }}
                     />
-                </div>
+                    <motion.div
+                        initial={{ opacity: 0, y: -8, scale: 0.98 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -4, scale: 0.98, transition: { duration: 0.12, ease: 'easeIn' } }}
+                        transition={{ duration: 0.14, ease: 'easeOut' }}
+                        role="dialog"
+                        aria-modal="true"
+                        className="glass glass-menu relative w-full max-w-lg max-h-[68vh] flex flex-col rounded-2xl overflow-hidden"
+                    >
+                        {/* Search */}
+                        <div className="flex items-center gap-2.5 px-4 border-b border-gray-100 dark:border-white/10">
+                            <MagnifyingGlassIcon weight="bold" className="w-4 h-4 text-gray-400 shrink-0" />
+                            <input
+                                ref={inputRef}
+                                value={query}
+                                onChange={(e) => {
+                                    setQuery(e.target.value);
+                                    setActive(0);
+                                }}
+                                placeholder={t('cmd.placeholder')}
+                                className="flex-1 bg-transparent py-3.5 text-body text-gray-900 dark:text-white outline-none placeholder:text-gray-400"
+                            />
+                        </div>
 
-                {/* Results */}
-                <div ref={listRef} className="flex-1 min-h-0 overflow-y-auto emerald-scrollbar p-2">
-                    {flat.length === 0 ? (
-                        <div className="py-10 text-center text-small text-gray-400">{t('cmd.empty')}</div>
-                    ) : (
-                        groups.map((group) => (
-                            <div key={group.label} className="mb-1.5 last:mb-0">
-                                <div className="uppercase text-micro text-gray-400 dark:text-slate-500 px-2.5 py-1">
-                                    {group.label}
-                                </div>
-                                {group.items.map((item) => {
-                                    runningIndex += 1;
-                                    const idx = runningIndex;
-                                    const isActive = idx === active;
-                                    return (
-                                        <button
-                                            key={item.key}
-                                            data-active={isActive}
-                                            onMouseMove={() => setActive(idx)}
-                                            onClick={item.run}
-                                            className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-sm text-left transition-colors ${
-                                                isActive
-                                                    ? 'bg-emerald-500 text-white'
-                                                    : 'text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-white/5'
-                                            }`}
-                                        >
-                                            <item.icon
-                                                weight={isActive ? 'fill' : 'regular'}
-                                                className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-emerald-600 dark:text-emerald-400'}`}
-                                            />
-                                            <span className="flex-1 truncate">{item.label}</span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        ))
-                    )}
-                </div>
+                        {/* Results */}
+                        <div ref={listRef} className="flex-1 min-h-0 overflow-y-auto emerald-scrollbar p-2">
+                            {flat.length === 0 ? (
+                                <div className="py-10 text-center text-small text-gray-400">{t('cmd.empty')}</div>
+                            ) : (
+                                groups.map((group) => (
+                                    <div key={group.label} className="mb-1.5 last:mb-0">
+                                        <div className="uppercase text-micro text-gray-400 dark:text-slate-500 px-2.5 py-1">
+                                            {group.label}
+                                        </div>
+                                        {group.items.map((item) => {
+                                            runningIndex += 1;
+                                            const idx = runningIndex;
+                                            const isActive = idx === active;
+                                            return (
+                                                <button
+                                                    key={item.key}
+                                                    data-active={isActive}
+                                                    onMouseMove={() => setActive(idx)}
+                                                    onClick={item.run}
+                                                    className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-sm text-left transition-colors ${
+                                                        isActive
+                                                            ? 'bg-emerald-500 text-white'
+                                                            : 'text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-white/5'
+                                                    }`}
+                                                >
+                                                    <item.icon
+                                                        weight={isActive ? 'fill' : 'regular'}
+                                                        className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-emerald-600 dark:text-emerald-400'}`}
+                                                    />
+                                                    <span className="flex-1 truncate">{item.label}</span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                ))
+                            )}
+                        </div>
 
-                {/* Hint */}
-                <div className="flex items-center gap-3 px-4 py-2 border-t border-gray-100 dark:border-white/10 text-micro text-gray-400 normal-case tracking-normal">
-                    <span><kbd className="font-sans">↑↓</kbd> {t('cmd.hintMove')}</span>
-                    <span><kbd className="font-sans">↵</kbd> {t('cmd.hintOpen')}</span>
-                    <span><kbd className="font-sans">esc</kbd> {t('cmd.hintClose')}</span>
+                        {/* Keyboard hints — pointless on a touch screen, so hidden there. */}
+                        <div className="flex items-center gap-3 px-4 py-2 border-t border-gray-100 dark:border-white/10 text-micro text-gray-400 normal-case tracking-normal pointer-coarse:hidden">
+                            <span><kbd className="font-sans">↑↓</kbd> {t('cmd.hintMove')}</span>
+                            <span><kbd className="font-sans">↵</kbd> {t('cmd.hintOpen')}</span>
+                            <span><kbd className="font-sans">esc</kbd> {t('cmd.hintClose')}</span>
+                        </div>
+                    </motion.div>
                 </div>
-            </motion.div>
-        </div>,
+            )}
+        </AnimatePresence>,
         document.body,
     );
 }

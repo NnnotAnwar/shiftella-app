@@ -66,7 +66,8 @@ server, and everything resets when you leave.
 
 ### Live board
 Who is on shift right now, per location, updating in real time. Your own shift,
-the next one and a team announcement sit on top; one tap starts or ends a shift.
+the handover from the last shift, your shift note, the next shift and a team
+announcement sit on top; one tap starts or ends a shift.
 
 </td>
 <td width="50%"><img src="docs/screenshots/desktop-dashboard.png" alt="Home: live board" /></td>
@@ -127,6 +128,28 @@ mobile tab bar and one-tap actions with Undo keep frequent work to a single tap.
 
 </td>
 </tr>
+<tr>
+<td width="50%" valign="top">
+
+### Analytics for the owner
+Hours against the plan, labour cost per location, absences by type, who comes
+late and the busiest hours and weekdays — for any period and location, with a
+per-person table underneath.
+
+</td>
+<td width="50%"><img src="docs/screenshots/analytics.png" alt="Owner analytics" /></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/screenshots/documents.png" alt="Employee documents" /></td>
+<td width="50%" valign="top">
+
+### Documents with expiry dates
+Contracts, health and food-handling cards and BOZP training live on each
+person's profile in private storage. Expiring ones turn amber, expired ones red,
+and the right people get a reminder 30, 7 and 0 days ahead.
+
+</td>
+</tr>
 </table>
 
 ---
@@ -137,7 +160,7 @@ mobile tab bar and one-tap actions with Undo keep frequent work to a single tap.
 | --- | --- |
 | ⏱ **Clock in / out** | By location, live board of who's on shift (Realtime), auto-end at midnight |
 | 📝 **Shift notes** | Notes on your shift, a handover card for the next person, a manager list per day and location |
-| 🗓 **Rota** | Roster grid + month calendar, templates, copy month, draft → publish, open shifts, swaps |
+| 🗓 **Rota** | Roster grid + month calendar, templates, copy month, draft → publish, open shifts, swaps, rota cost |
 | 🇨🇿 **Czech rules** | 11 h rest, max 6 days in a row, mandatory breaks, public holidays, vacation counted in hours |
 | 📥 **Requests** | Time off of 12 kinds, swaps, role requests, complaints (optionally anonymous), four-eyes decisions |
 | 🏖 **Leave balances** | Vacation entitlement and balance in hours per year, a náhradní volno bank for holiday work |
@@ -220,6 +243,8 @@ mobile tab bar and one-tap actions with Undo keep frequent work to a single tap.
 - **Location opening hours** — a location's hours are its default shift: the
   location letter in the grid means "the whole opening time", and planning
   outside the hours is flagged.
+- **Rota cost** — planned hours × wages and overtime show in the grid, so the
+  cost of a month is visible before it is published.
 - **Rest rules (Czech labour law)** — the grid warns when someone gets less than
   11 h between two shifts or works more than 6 days in a row.
 - **Shift swaps** — a member offers an upcoming shift (to anyone or one
@@ -652,6 +677,10 @@ run it against **preprod** (SQL editor, or `psql -f`).
   same access rule as their table.
 - New database functions get explicit `REVOKE` / `GRANT` — see
   [docs/db-security.md](docs/db-security.md).
+- Clock-in and clock-out are stamped with the **server's time**; sign-in is
+  rate-limited (8 wrong passwords per username or 30 per IP lock it for
+  15 minutes); passwords need at least 8 characters; the push function accepts
+  only the database's own webhooks.
 
 ---
 

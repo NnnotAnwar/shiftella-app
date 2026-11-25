@@ -26,8 +26,8 @@ export interface Column<T> {
   className?: string;
   /** Extra classes applied to the `<th>`. */
   headerClassName?: string;
-  /** Hide this column on mobile (shown from `sm` up). */
-  hideOnMobile?: boolean;
+  /** Hide this column on small screens: `true` shows it from `sm` up, `'lg'` from `lg` up. */
+  hideOnMobile?: boolean | 'lg';
   /** Optional footer cell (e.g. totals). If any column sets this, a `tfoot` renders. */
   footer?: ReactNode;
 }
@@ -53,7 +53,8 @@ const ALIGN: Record<NonNullable<Column<unknown>['align']>, string> = {
 
 // Compact on phones, roomier on sm+. `hideOnMobile` columns appear from sm up.
 const cellPad = 'px-2 py-2 sm:px-3.5 sm:py-2.5';
-const mobileHidden = 'hidden sm:table-cell';
+const hidden = (h: Column<unknown>['hideOnMobile']) =>
+  h === 'lg' ? 'hidden lg:table-cell' : h ? 'hidden sm:table-cell' : '';
 
 /**
  * Responsive, generic data table. A single `table-fixed` `<table>` that always
@@ -87,22 +88,23 @@ export function DataTable<T>({
             {columns.map((col) => (
               <th
                 key={col.key}
+                title={typeof col.header === 'string' ? col.header : undefined}
                 className={`${cellPad} text-eyebrow text-ink-soft dark:text-slate-400 truncate ${ALIGN[col.align ?? 'left']} ${col.width ?? ''
-                  } ${col.hideOnMobile ? mobileHidden : ''} ${col.headerClassName ?? ''}`}
+                  } ${hidden(col.hideOnMobile)} ${col.headerClassName ?? ''}`}
               >
                 {col.header}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-ink/5 dark:divide-white/5">
+        <tbody className="divide-y divide-ink/5 dark:divide-white/5 text-ink dark:text-slate-100">
           {showSkeleton
             ? Array.from({ length: 6 }).map((_, r) => (
                 <tr key={`skeleton-${r}`}>
                   {columns.map((col) => (
                     <td
                       key={col.key}
-                      className={`${cellPad} ${ALIGN[col.align ?? 'left']} ${col.width ?? ''} ${col.hideOnMobile ? mobileHidden : ''}`}
+                      className={`${cellPad} ${ALIGN[col.align ?? 'left']} ${col.width ?? ''} ${hidden(col.hideOnMobile)}`}
                     >
                       <Skeleton
                         className={`h-3.5 ${col.align === 'right' ? 'ml-auto' : ''} ${col.width ? 'w-12' : 'w-2/3'}`}
@@ -121,7 +123,7 @@ export function DataTable<T>({
               {columns.map((col) => (
                 <td
                   key={col.key}
-                  className={`${cellPad} ${ALIGN[col.align ?? 'left']} ${col.width ?? ''} ${col.hideOnMobile ? mobileHidden : ''
+                  className={`${cellPad} ${ALIGN[col.align ?? 'left']} ${col.width ?? ''} ${hidden(col.hideOnMobile)
                     } ${col.className ?? ''}`}
                 >
                   {col.render(row)}
@@ -132,11 +134,11 @@ export function DataTable<T>({
         </tbody>
         {hasFooter && (
           <tfoot>
-            <tr className="border-t border-ink/5 dark:border-white/6 bg-ink/2.5 dark:bg-white/3">
+            <tr className="border-t border-ink/5 dark:border-white/6 bg-ink/2.5 dark:bg-white/3 text-ink dark:text-white">
               {columns.map((col) => (
                 <td
                   key={col.key}
-                  className={`${cellPad} truncate ${ALIGN[col.align ?? 'left']} ${col.width ?? ''} ${col.hideOnMobile ? mobileHidden : ''
+                  className={`${cellPad} truncate ${ALIGN[col.align ?? 'left']} ${col.width ?? ''} ${hidden(col.hideOnMobile)
                     }`}
                 >
                   {col.footer}

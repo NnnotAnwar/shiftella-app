@@ -19,6 +19,7 @@ import {
     ArrowsLeftRightIcon,
     ChatTextIcon,
     HourglassMediumIcon,
+    ChatCircleTextIcon,
     type Icon,
 } from '@phosphor-icons/react';
 import type { ShiftAuditLog, ShiftSnapshot } from '@shared/types';
@@ -28,6 +29,7 @@ import { useTranslation } from '@shared/preferences/PreferencesContext';
 import type { TranslationKey } from '@shared/i18n/translations';
 import { useNotifications } from './useNotifications';
 import { subscribeOpenNotifications } from './notificationsPanel';
+import { KIND_LABEL as FEEDBACK_KIND_KEYS, type FeedbackKind } from '@features/feedback/feedbackLogic';
 
 
 function fmtClock(iso?: string | null): string {
@@ -144,6 +146,17 @@ function describe(entry: ShiftAuditLog, t: Translate): { Icon: Icon; tint: strin
                 d.requests ? t('notif.digest.requests', { n: d.requests }) : null,
             ].filter(Boolean);
             return { Icon: CoffeeIcon, tint: 'text-amber-600', title: t('notif.dailyDigest'), detail: parts.join(' · ') };
+        }
+        case 'feedback_new': {
+            // Platform Superadmin: a user sent in-app feedback (read it on /feedback).
+            const kind = d.kind && d.kind in FEEDBACK_KIND_KEYS ? t(FEEDBACK_KIND_KEYS[d.kind as FeedbackKind]) : null;
+            const who = d.target_name && d.subject_name ? `${d.target_name} (${d.subject_name})` : d.target_name;
+            return {
+                Icon: ChatCircleTextIcon,
+                tint: 'text-emerald-500',
+                title: t('notif.feedbackNew'),
+                detail: [kind, who, d.note].filter(Boolean).join(' · ') || undefined,
+            };
         }
         case 'document_expiring': {
             // Same entry for the member ("your …") and their managers (their name in the detail).

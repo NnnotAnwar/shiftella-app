@@ -94,6 +94,8 @@ const FKS: Fk[] = [
     fk('shift_notes', 'location_id', 'locations'),
     fk('availability', 'user_id', 'profiles'),
     fk('name_change_requests', 'user_id', 'profiles'),
+    fk('app_feedback', 'user_id', 'profiles'),
+    fk('app_feedback', 'organization_id', 'organizations'),
 ];
 
 type Relation = { table: string; many: boolean; local: string; foreign: string };
@@ -345,7 +347,14 @@ class Query implements PromiseLike<Result> {
                         const shift = (db.shifts ?? []).find((x) => x.id === p.shift_id);
                         Object.assign(defaults, { location_id: shift?.location_id ?? null, handover: false, demo_batch: null });
                     }
-                    const row: Row = { id: uuid(), created_at: now, updated_at: now, ...defaults, ...p };
+                    // app_feedback: the database fills sender, organization and status (BEFORE INSERT trigger).
+                    let forced: Row = {};
+                    if (this.table === 'app_feedback') {
+                        const me = currentProfile();
+                        forced = { user_id: me?.id ?? null, organization_id: me?.organization_id ?? null, status: 'new' };
+                        Object.assign(defaults, { may_contact: false, route: null, app_version: null, language: null, user_agent: null });
+                    }
+                    const row: Row = { id: uuid(), created_at: now, updated_at: now, ...defaults, ...p, ...forced };
                     rows.push(row);
                     affected.push(row);
                 }

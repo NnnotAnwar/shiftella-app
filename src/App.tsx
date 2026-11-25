@@ -25,6 +25,17 @@ import { ProtectedRoute, PublicRoute } from './app/router/RouteGuards';
 import { ErrorBoundary } from './shared/components/ErrorBoundary';
 import { PageLoader } from './shared/components/PageLoader';
 import { GatedPage } from './features/billing/UpgradeGate';
+import { DEMO_PATH } from '@shared/demoBuild';
+
+/** Full page load into the separate demo build (see src/shared/demoBuild.ts). */
+function ToDemo() {
+    // Already at the file yet still in the real app → the demo isn't deployed here (e.g. vite dev): go home, never loop.
+    const missing = window.location.pathname === DEMO_PATH;
+    useEffect(() => {
+        if (!missing) window.location.replace(DEMO_PATH);
+    }, [missing]);
+    return missing ? <Navigate to="/" replace /> : null;
+}
 
 /**
  * --- MAIN APP COMPONENT ---
@@ -111,6 +122,8 @@ export default function App() {
                     <Route path="/reset-password" element={<ResetPasswordPage />} />
 
                     {/* PUBLIC: legal pages, linkable from anywhere (incl. app stores). */}
+                    {/* /demo/ typed by hand reaches the real app (SPA fallback) — hand over to the demo build. */}
+                    <Route path="/demo/*" element={<ToDemo />} />
                     <Route path="/privacy" element={<LegalPage doc="privacy" />} />
                     <Route path="/terms" element={<LegalPage doc="terms" />} />
 

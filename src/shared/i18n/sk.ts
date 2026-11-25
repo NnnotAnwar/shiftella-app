@@ -400,6 +400,7 @@ export const sk: PartialDictionary = {
     'auth.capsLock': 'Máte zapnutý Caps Lock',
     'auth.differentEmail': 'Použiť iný e-mail',
     'auth.language': 'Jazyk',
+    'auth.backHome': 'Späť na úvod',
     'start.title': 'Nastavte svoju organizáciu',
     'start.sub': 'Hotovo {done} z {total}. Pár minút a tím môže začať.',
     'start.location': 'Pridajte prvé miesto',

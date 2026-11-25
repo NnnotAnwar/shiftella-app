@@ -399,6 +399,7 @@ export const uk: PartialDictionary = {
     'auth.capsLock': 'Увімкнено Caps Lock',
     'auth.differentEmail': 'Використати іншу е-пошту',
     'auth.language': 'Мова',
+    'auth.backHome': 'На головну',
     'start.title': 'Налаштуйте свою організацію',
     'start.sub': 'Виконано {done} з {total}. Кілька хвилин — і команда може починати.',
     'start.location': 'Додайте першу локацію',

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { RoleBadge } from '@shared/components/RoleBadge';
-import { Navigate, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -15,6 +15,8 @@ import {
     FileCsvIcon,
     ClockUserIcon,
     CalculatorIcon,
+    NotePencilIcon,
+    HandshakeIcon,
     type Icon,
 } from '@phosphor-icons/react';
 
@@ -38,6 +40,7 @@ import { useTimesheetRealtime } from './useTimesheetRealtime';
 import { ShiftEditorModal, type ShiftFormValues } from './components/ShiftEditorModal';
 import { PageHeader } from '@shared/components/PageHeader';
 import { PayrollExportModal } from './payroll/PayrollExportModal';
+import { useNotesForShifts } from '@features/shiftNotes/useShiftNotes';
 
 const EXPORT_FORMATS = [
     { fmt: 'pdf' as const, label: 'PDF', Icon: FilePdfIcon },
@@ -189,6 +192,10 @@ function TimesheetsInner() {
         return month ? all.filter((s) => monthKey(s.started_at) === month) : all;
     }, [shiftsQ.data, month]);
 
+    // Shift notes left by the member (shown under the time in each row).
+    const shiftIds = useMemo(() => shifts.map((s) => s.id), [shifts]);
+    const { byShift: notesByShift } = useNotesForShifts(shiftIds, !!selectedId);
+
     const totals = useMemo(() => {
         let gross = 0;
         let net = 0;
@@ -319,6 +326,16 @@ function TimesheetsInner() {
                         <span className="sm:hidden text-caption text-gray-400 tabular-nums">
                             Gross {fmtDuration(gross)}{brk > 0 ? ` · −${fmtDuration(brk)}` : ''}
                         </span>
+                        {(notesByShift.get(s.id) ?? []).map((n) => (
+                            <span key={n.id} title={n.body} className="mt-0.5 flex items-start gap-1 text-caption text-ink-soft dark:text-slate-400">
+                                {n.handover ? (
+                                    <HandshakeIcon weight="bold" className="mt-px size-3 shrink-0 text-amber-600 dark:text-amber-300" aria-label={t('notes.handoverBadge')} />
+                                ) : (
+                                    <NotePencilIcon weight="bold" className="mt-px size-3 shrink-0" aria-label={t('notes.noteLabel')} />
+                                )}
+                                <span className="line-clamp-2 whitespace-normal break-words">{n.body}</span>
+                            </span>
+                        ))}
                     </div>
                 );
             },
@@ -424,6 +441,14 @@ function TimesheetsInner() {
                                     <CalculatorIcon weight="bold" className="w-4 h-4" />
                                 </button>
                             )}
+                            <Link
+                                to="/notes"
+                                title={t('notes.pageTitle')}
+                                aria-label={t('notes.pageTitle')}
+                                className="glass flex items-center justify-center w-9 h-9 rounded-xl text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 active:scale-90 transition-all"
+                            >
+                                <NotePencilIcon weight="bold" className="w-4 h-4" />
+                            </Link>
                             <MonthPicker value={month} onChange={setMonth} />
                         </div>
                     </>

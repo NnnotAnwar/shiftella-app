@@ -1,0 +1,2 @@
+/* Shown by iOS before the app lock first uses Face ID. */
+"NSFaceIDUsageDescription" = "Shiftella používa Face ID na odomknutie aplikácie.";

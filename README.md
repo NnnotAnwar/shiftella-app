@@ -606,6 +606,7 @@ yarn build
 npx cap sync
 npx cap open android   # or: npx cap open ios
 ```
+- App version: `package.json` "version" drives both stores — versionName/MARKETING_VERSION = `1.14.10`, build number = `major·1 000 000 + minor·1 000 + patch` (`1014010`). Android reads it at build time; **after bumping `package.json`, run `corepack yarn native:version`** to write it into the iOS project (CI's `native:version --check` fails until you do).
 
 ### Push notifications (native)
 Push requires Firebase (FCM). In short: create a Firebase project, add the

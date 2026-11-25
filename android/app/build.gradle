@@ -1,5 +1,27 @@
 apply plugin: 'com.android.application'
 
+// package.json "version" is the single source of truth for the app version.
+// versionCode = major * 1_000_000 + minor * 1_000 + patch (1.14.10 -> 1014010), the same
+// formula as tools/native-version.mjs (which writes it into the iOS project).
+def appVersion = { ->
+    def pkgFile = rootProject.file('../package.json')
+    def version
+    try {
+        version = new groovy.json.JsonSlurper().parse(pkgFile).version
+    } catch (Exception e) {
+        throw new GradleException("Cannot read the app version from ${pkgFile}: ${e.message}")
+    }
+    def m = (version ?: '') =~ /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/
+    if (!m.matches()) {
+        throw new GradleException("package.json version \"${version}\" is not plain semver MAJOR.MINOR.PATCH")
+    }
+    def (major, minor, patch) = [m.group(1), m.group(2), m.group(3)].collect { it as int }
+    if (minor > 999 || patch > 999) {
+        throw new GradleException("package.json version \"${version}\": minor and patch must stay below 1000")
+    }
+    [name: version as String, code: major * 1000000 + minor * 1000 + patch]
+}()
+
 android {
     namespace = "com.shiftella.app"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,8 +29,8 @@ android {
         applicationId "com.shiftella.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode appVersion.code
+        versionName appVersion.name
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

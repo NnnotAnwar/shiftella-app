@@ -15,6 +15,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
+    "native:version": "node tools/native-version.mjs",
     "screenshots": "python3 tools/screenshots/run.py",
     "e2e": "playwright test",
     "e2e:build": "E2E_BUILD=1 vite build --config tools/screenshots/vite.config.ts --logLevel warn",

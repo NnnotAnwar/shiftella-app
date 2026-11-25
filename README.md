@@ -6,11 +6,11 @@
 
 **Shift planning, clock-in and timesheets for small teams — on the web, Android and iPhone.**
 
-[shiftella.app](https://shiftella.app) · [Roadmap](ROADMAP.md) · [Deploy docs](deploy/hetzner/README.md) · [Billing docs](docs/billing.md)
+[shiftella.app](https://shiftella.app) · [Live demo](https://shiftella.app/demo/index.html) · [Roadmap](ROADMAP.md) · [Deploy docs](deploy/hetzner/README.md) · [Billing docs](docs/billing.md)
 
 [![CI](https://github.com/NnnotAnwar/shiftella-app/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/NnnotAnwar/shiftella-app/actions/workflows/ci.yml)
 [![Deploy](https://github.com/NnnotAnwar/shiftella-app/actions/workflows/deploy-hetzner.yml/badge.svg)](https://github.com/NnnotAnwar/shiftella-app/actions/workflows/deploy-hetzner.yml)
-![Version](https://img.shields.io/badge/version-1.13.0%20Ejpovice-4f46e5)
+![Version](https://img.shields.io/badge/version-1.14%20Fr%C3%BDdlant-4f46e5)
 ![React](https://img.shields.io/badge/React-19-149eca?logo=react&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript&logoColor=white)
 ![Supabase](https://img.shields.io/badge/Supabase-Postgres%20%2B%20RLS-3ecf8e?logo=supabase&logoColor=white)
@@ -45,12 +45,16 @@ shops, clinics, warehouses — that still plan their week in Excel and a group c
 The owner creates an organization in a minute; staff clock in on their phone, see
 their shifts, swap them and ask for time off; managers build the month's rota on a
 paper-like grid and publish it with one tap. Everything a team does lands in one
-place, in Czech or English, on the web or as a native app.
+place, in Czech, Slovak, Ukrainian or English, on the web or as a native app.
 
 It is a complete product, not a demo: real sign-up and invites, custom roles
-enforced in the database, an activity log of every action, push notifications,
-Czech labour-law checks and paid plans with Stripe — designed, built, tested and
-operated end to end by one developer.
+enforced in the database, an activity log of every action, push and Telegram
+notifications, Czech labour-law checks, payroll exports and paid plans with
+Stripe — designed, built, tested and operated end to end by one developer.
+
+**Try it without an account:** [shiftella.app/demo](https://shiftella.app/demo/index.html)
+runs the real app in your browser against invented data. Nothing is sent to a
+server, and everything resets when you leave.
 
 ---
 
@@ -132,15 +136,22 @@ mobile tab bar and one-tap actions with Undo keep frequent work to a single tap.
 | | |
 | --- | --- |
 | ⏱ **Clock in / out** | By location, live board of who's on shift (Realtime), auto-end at midnight |
+| 📝 **Shift notes** | Notes on your shift, a handover card for the next person, a manager list per day and location |
 | 🗓 **Rota** | Roster grid + month calendar, templates, copy month, draft → publish, open shifts, swaps |
-| 🇨🇿 **Czech rules** | 11 h rest, max 6 days in a row, mandatory breaks, public holidays |
-| 📥 **Requests** | Time off, swaps, role requests, complaints (optionally anonymous), four-eyes decisions |
+| 🇨🇿 **Czech rules** | 11 h rest, max 6 days in a row, mandatory breaks, public holidays, vacation counted in hours |
+| 📥 **Requests** | Time off of 12 kinds, swaps, role requests, complaints (optionally anonymous), four-eyes decisions |
+| 🏖 **Leave balances** | Vacation entitlement and balance in hours per year, a náhradní volno bank for holiday work |
 | 📊 **Timesheets** | My hours with month pace, team timesheets, PDF / Excel / CSV exports, wages & pay estimate |
+| 💼 **Payroll** | "Podklady pro mzdy" for the accountant: Excel, CSV and a Money S3 XML import; personal numbers |
+| 📈 **Analytics** | Labour-cost share, absences, lateness and busy days for owners (Business plan) |
+| 📁 **Documents** | Contracts, DPP / DPČ, health and food-handling cards, BOZP — private storage, expiry reminders |
 | 🛡 **Roles** | Discord-style custom roles: view / change / delete per area, hierarchy enforced in Postgres RLS |
-| 📣 **Communication** | Announcements, in-app bell, push notifications (FCM) with per-category preferences |
+| 📣 **Communication** | Announcements per location or role with read receipts, in-app bell, push (FCM), a Telegram bot |
+| ⏰ **Reminders** | An hour before a shift, late-for-shift alerts, a 07:00 digest for managers |
+| 📅 **Calendar sync** | A private ICS feed of your shifts for Google / Apple / Outlook calendars |
 | 💳 **Subscriptions** | **Free beta now** (Business for everyone). After it: Free · Team (449 Kč flat) · Business (45 Kč / person), 30-day trial, Stripe Checkout & Portal, in-app plan changes |
 | 📜 **Activity log** | An append-only record of every action, filterable by person and group |
-| 🌍 **Everywhere** | Web (PWA), Android & iOS (Capacitor), Czech / English, light & dark, five colour schemes |
+| 🌍 **Everywhere** | Web (PWA), Android & iOS (Capacitor), Czech / Slovak / Ukrainian / English, light & dark, five colour schemes |
 
 <details>
 <summary><b>All features in detail</b></summary>
@@ -154,6 +165,10 @@ mobile tab bar and one-tap actions with Undo keep frequent work to a single tap.
   activity, so it scales with the team, not the location count.
 - **Auto-end at midnight** — shifts left open overnight are closed automatically
   at Europe/Prague midnight by a scheduled job.
+- **Shift notes & handover** — jot down what happened during your shift (or
+  after it ended); notes marked for handover greet the next person on that
+  location until they tick them read. Managers read every note per day and
+  location.
 
 ### Scheduling (rota)
 - **Two views of one rota:** a **roster grid** (people × days, paper-rota style —
@@ -168,12 +183,21 @@ mobile tab bar and one-tap actions with Undo keep frequent work to a single tap.
   search, admin-set **location letters** shown in cells, and a Σ hours column.
 - **Draft → publish** — new assignments are drafts only the planner sees; one
   **Publish** flips the month live for members and notifies everyone involved.
-- **Time off** (vacation / sick / other): members request, admins approve or
-  decline in Requests (or enter pre-approved leave); approved leave **clears the
-  rota** for those days and blocks planning, and overlapping leave per person is
-  rejected.
-- **Reminders:** if someone hasn't clocked in, **late-for-shift alerts** fire at
-  +15 min and +1 h to the member and their manager (pg_cron, every 5 min).
+- **Time off** — vacation, sick leave, OČR, náhradní volno, unpaid leave,
+  doctor, sick day, business trip, home office, parental leave, employer-side
+  obstacle and other; each organization picks which kinds its people may
+  request. Admins approve or decline in Requests (or enter pre-approved leave);
+  approved leave **clears the rota** for those days and blocks planning, and
+  overlapping leave per person is rejected.
+- **Leave balances** — vacation is counted in **hours** (Czech law since 2021):
+  a yearly entitlement per person, what's taken and what's left, plus a
+  **náhradní volno** bank fed by hours worked on public holidays.
+- **Reminders:** a push **an hour before** a published shift; if someone hasn't
+  clocked in, **late-for-shift alerts** fire at +15 min and +1 h to the member and
+  their manager; managers get a **07:00 digest** of the day (shifts, people on,
+  unclaimed open shifts, requests waiting). All run on pg_cron.
+- **Calendar sync** — every member gets a private ICS link for Google, Apple or
+  Outlook calendar; published shifts update there on their own.
 - **Exports mirror the on-screen view** — the grid exports as a people × days
   matrix (PDF in two print bands / Excel), the calendar as month pages.
 - A **next-shift card** on the dashboard, and today's rostered location
@@ -211,6 +235,12 @@ mobile tab bar and one-tap actions with Undo keep frequent work to a single tap.
   delete shifts, with an overnight-shift-aware time picker.
 - **Exports** as **PDF / Excel / CSV**, per employee or the whole team; on native
   they open the OS **share sheet**, on web they download.
+- **Payroll export ("Podklady pro mzdy")** — one file per month for the
+  accountant: hours, night / weekend / holiday work and every absence, as Excel,
+  CSV or a **Money S3** XML import, keyed by each person's personal number. See
+  [docs/payroll-export.md](docs/payroll-export.md).
+- **Owner analytics** (Business plan) — labour-cost share, absences, lateness
+  and the busiest days, per location and period.
 - **Activity Log**: an append-only record of **every action** in the app —
   clock-ins and -outs, the rota, requests and decisions, swaps, announcements,
   open shifts, templates, availability, wages (who changed whose rate, never the
@@ -231,6 +261,13 @@ mobile tab bar and one-tap actions with Undo keep frequent work to a single tap.
 - **Invite by email, with a role** — new members are provisioned into the right
   organization and role atomically, finishing onboarding on a branded
   `/accept-invite` page.
+- **Import a team** from Excel or CSV in one go.
+- **Getting started checklist** for a new owner (locations, people, first rota),
+  with a link to the browser demo; it can be hidden for the session or for good.
+- **Employee documents** — contracts, DPP / DPČ, health and food-handling cards,
+  BOZP training: files in a private storage bucket, visible only to the person
+  and those allowed to manage them, with reminders 30, 7 and 0 days before
+  expiry.
 
 ### Custom roles (Discord-style)
 - **Roles your way** — the Head Admin creates roles with any name and colour and
@@ -263,9 +300,9 @@ mobile tab bar and one-tap actions with Undo keep frequent work to a single tap.
   is self-service but rate-limited to once every 7 days.
 
 ### Announcements
-- Admins post, pin, edit and delete notices for the whole team. New posts arrive
-  as a push notification and an unread badge; the latest unread one shows on
-  Home.
+- Admins post, pin, edit and delete notices for the whole team, one location
+  or one role. New posts arrive as a push notification and an unread badge; the
+  latest unread one shows on Home, and the poster sees who has read it.
 
 ### Notifications
 - **In-app bell** — a personal feed of what concerns you: your schedule being
@@ -276,6 +313,10 @@ mobile tab bar and one-tap actions with Undo keep frequent work to a single tap.
   delivered to your device, with **per-category preferences** (master switch +
   shift / account / requests) in Settings. Tapping opens the relevant screen —
   or the notifications panel when there's no dedicated one.
+- **Telegram bot** — link your account from Settings with a one-time code and
+  get the same notifications in Telegram, plus announcements and a few quick
+  commands; managers can approve or decline requests right in the chat. See
+  [docs/telegram.md](docs/telegram.md).
 - Everything also lands in the **Activity Log** for people with that right.
 
 ### Navigation
@@ -287,12 +328,19 @@ mobile tab bar and one-tap actions with Undo keep frequent work to a single tap.
   Team · More.
 
 ### Localization & theming
-- **English / Čeština** throughout, with a 12h/24h time-format option and
-  locale-aware dates.
+- **English / Čeština / Slovenčina / Українська** throughout (Slovak falls back
+  to Czech, Ukrainian to English for anything not yet translated), with a
+  12h/24h time-format option and locale-aware dates.
 - **Premium glass design** — frosted surfaces, compact type, one consistent set of
   components on every page.
 - **Colour schemes** (Lilac / Emerald / Cyan / Amber / Violet) + **Light / Dark /
   System** themes, with native status-bar sync.
+
+### Help & feedback
+- A built-in **help centre** with short articles per topic, linked from the
+  pages they explain.
+- **Send feedback** (idea, bug, question, praise) from Settings, the sidebar,
+  the mobile "More" sheet or ⌘K; the platform owner reads it in an inbox.
 
 ### Mobile (Capacitor)
 - Native-style bottom tab bar + a "More" control center (grouped nav, quick
@@ -342,13 +390,20 @@ mobile tab bar and one-tap actions with Undo keep frequent work to a single tap.
 - **Audit everything.** Every action — clock-ins, rota edits, decisions, role and
   wage changes (never the amounts), invites, plan changes — writes to an
   append-only activity log, which also feeds the localized push notifications.
-- **Reproducible screenshots.** The README images come from a harness that runs
-  the real app against an in-memory fake Supabase with invented data and a pinned
-  clock — no real people, no backend.
+- **One fake backend, three jobs.** An in-memory fake Supabase with invented
+  data runs the real app for the README screenshots (pinned clock), for the
+  Playwright end-to-end tests, and for the public
+  [browser demo](https://shiftella.app/demo/index.html) — no real people, no
+  server, nothing to clean up.
+- **A strict CSP, tested.** Production sends an enforced Content-Security-Policy
+  with no third-party origins (fonts are self-hosted, zod runs without `eval`);
+  the E2E suite serves the app with that exact header and fails on any
+  violation.
 - **Boring, safe operations.** Static SPA on a Hetzner server behind a shared edge
   Caddy; CI builds, ships a tarball over a forced-command SSH key and switches an
-  atomic symlink — rollback in seconds. 250+ unit tests, lint, type-check and
-  Caddy validation on every PR.
+  atomic symlink — rollback in seconds. 480+ unit tests, Playwright E2E, lint,
+  type-check and Caddy validation on every PR; an uptime check pings
+  shiftella.app every 5 minutes.
 
 ---
 
@@ -358,13 +413,13 @@ mobile tab bar and one-tap actions with Undo keep frequent work to a single tap.
 | --- | --- |
 | Frontend | React 19 + TypeScript, Vite 7 |
 | Routing / state | React Router 7, TanStack Query 5 |
-| Styling / motion | Tailwind CSS v4, Framer Motion, Phosphor icons |
-| i18n | Custom lightweight `t()` + EN/CS dictionaries |
+| Styling / motion | Tailwind CSS v4, Framer Motion, Phosphor icons, self-hosted Inter + Satoshi |
+| i18n | Custom lightweight `t()` + EN / CS / SK / UK dictionaries (with fallbacks and a coverage test) |
 | Validation | Zod |
 | Reports | jsPDF + jspdf-autotable, SheetJS (xlsx, lazy-loaded) |
-| Backend | Supabase — Postgres, Auth, Realtime, Edge Functions, pg_cron |
+| Backend | Supabase — Postgres, Auth, Realtime, Storage, Edge Functions, pg_cron |
 | Native | Capacitor 8 (Android & iOS) — push, share, filesystem, haptics, keyboard, splash, status-bar |
-| Tooling | ESLint 9, Prettier, Vitest, Yarn 4 (Corepack) |
+| Tooling | ESLint 9, Prettier, Vitest, Playwright, Yarn 4 (Corepack) |
 
 ---
 
@@ -383,15 +438,18 @@ flowchart LR
     DB[(Postgres<br/>RLS · triggers · pg_cron)]
     AU[Auth]
     RT[Realtime]
-    EF[Edge Functions<br/>invite · billing · push]
+    ST[(Storage<br/>documents)]
+    EF[Edge Functions<br/>invite · billing · push<br/>telegram · calendar]
   end
   S[Stripe]
   F[Firebase FCM]
+  T[Telegram]
   W --> C
-  W & A --> AU & DB & RT & EF
+  W & A --> AU & DB & RT & EF & ST
   EF <--> S
   S -- webhooks --> EF
   DB -- database webhooks --> EF --> F --> A
+  EF <--> T
 ```
 
 
@@ -402,18 +460,30 @@ src/
 ├─ features/
 │  ├─ auth/        # login, accept-invite, AuthContext, route guards
 │  ├─ shifts/      # clock in/out, realtime, Overview + export
+│  ├─ shiftNotes/  # shift notes, handover card, manager notes list
 │  ├─ schedule/    # rota: roster grid + calendar, day editor, time off, exports
 │  ├─ locations/   # location picker (recent + search), confirm/switch popup
 │  ├─ timesheets/  # admin shift management, exports, Activity Log
 │  ├─ admin/       # Admin Panel: orgs / locations / team
 │  ├─ roles/       # custom roles: list + hierarchy, editor, permission matrix
 │  ├─ requests/    # Requests inbox: time off, names, swaps, role/other/complaints
+│  ├─ leave/       # leave kinds, vacation + náhradní volno balances
+│  ├─ documents/   # employee documents + expiry
+│  ├─ analytics/   # owner analytics (Business)
+│  ├─ billing/     # plans, Stripe checkout / portal, free beta
 │  ├─ announcements/# team announcements, read state, home banner
 │  ├─ availability/# "can't work" days
 │  ├─ wages/       # hourly rates (admin-only) + pay estimate
 │  ├─ notifications/# in-app bell + push registration + preferences
 │  ├─ profile/     # profile editing
-│  └─ settings/    # appearance, language, time format, notifications
+│  ├─ settings/    # appearance, language, time format, notifications, calendar
+│  ├─ help/        # help centre articles
+│  ├─ feedback/    # send feedback + the owner's inbox
+│  ├─ landing/     # public landing page
+│  ├─ legal/       # terms, privacy (4 languages)
+│  └─ demo/        # browser-demo bar + legacy demo rows
+tools/screenshots/ # fake Supabase: screenshots, E2E and the public demo
+e2e/               # Playwright: local (fake backend) + remote (preprod) suites
 └─ shared/         # api client, types (zod), i18n, UI components, hooks, utils
 supabase/
 ├─ migrations/     # SQL schema, RLS policies, triggers, cron
@@ -458,11 +528,16 @@ same way.
   resume) and the Customer Portal; only the organization's owner.
 - **`stripe-webhook`** — verifies Stripe's signature and mirrors subscriptions
   into `public.subscriptions`; keeps the Business seat count in step.
-- **`send-push`** — sends FCM (HTTP v1) pushes from Database Webhooks
-  (`shift_audit_log`, `name_change_requests`, `announcements`), localized per
-  recipient (EN/CS) and honouring per-user preferences. Schedule and time-off
+- **`send-push`** — sends FCM (HTTP v1) pushes and Telegram messages from
+  Database Webhooks (`shift_audit_log`, `name_change_requests`,
+  `announcements`), localized per recipient (EN/CS) and honouring per-user
+  preferences. Schedule and time-off
   notifications flow through the `shift_audit_log` webhook (rows are written by
   SECURITY DEFINER triggers / the publish RPC).
+- **`telegram-webhook`** — the Telegram bot: account linking, quick commands
+  and approve / decline buttons for requests.
+- **`calendar-feed`** — serves a member's shifts as an ICS calendar; the secret
+  feed token is its only credential.
 
 ---
 
@@ -525,11 +600,13 @@ and `announcements` pointing at the `send-push` function. Keep the Firebase
 | --- | --- |
 | `yarn dev` | Vite dev server (LAN-exposed) |
 | `yarn build` | Type-check + production build (`tsc -b && vite build`) |
+| `yarn build:demo` | The browser demo (fake backend) into `dist/demo`, served at `/demo/` |
 | `yarn typecheck` | Type-check only |
 | `yarn lint` | ESLint |
 | `yarn format` | Prettier write — run it on the files you touch, not the whole repo |
 | `yarn test` / `test:watch` | Vitest (run / watch) |
 | `yarn e2e` / `e2e:remote` | Playwright E2E: fake backend under the enforced CSP / optional read-only preprod smoke (docs/e2e.md) |
+| `yarn screenshots` | Regenerate the README images from the fake backend |
 
 Database checks: `supabase/tests/rls_smoke.sql` proves organization isolation,
 no self-promotion and the four-eyes rule in a transaction that is rolled back —
@@ -543,16 +620,22 @@ run it against **preprod** (SQL editor, or `psql -f`).
   (automatic HTTPS). `master` → **https://shiftella.app**, `dev` →
   **https://dev.shiftella.app** (password-protected), deployed by
   `.github/workflows/deploy-hetzner.yml` with instant rollback — see
-  [deploy/hetzner/README.md](deploy/hetzner/README.md). The old Vercel URL stays
-  up for a transition period.
+  [deploy/hetzner/README.md](deploy/hetzner/README.md). Both are started by hand
+  (`gh workflow run deploy-hetzner.yml --ref dev -f target=preprod`, or
+  `--ref master -f target=production`); merging alone deploys nothing. Each deploy also ships the browser demo under `/demo/`.
+  The old Vercel URL stays up for a transition period.
 - **Database:** two Supabase projects — **prod** and **preprod** — kept in sync
   via the migrations in `supabase/migrations/`. CI (`verify`) runs lint, tests
   and the build on every PR.
 - **Versioning:** semver tags (`vX.Y.Z`) + GitHub Releases per release. Notable
   releases also carry a **codename** — a Czech town, advancing A→Z
-  (v1.9.0 = _Adamov_, v1.10.0 = _Beroun_, v1.11.0 = _Cheb_, v1.12.0 = _Děčín_, v1.13.0 = _Ejpovice_).
+  (v1.9.0 = _Adamov_, v1.10.0 = _Beroun_, v1.11.0 = _Cheb_, v1.12.0 = _Děčín_, v1.13.0 = _Ejpovice_,
+  v1.14.0 = _Frýdlant_); patch releases keep the minor's codename.
 - **Scheduled jobs (pg_cron):** auto-end open shifts at Europe/Prague midnight;
-  late-for-shift alerts every 5 minutes.
+  shift reminders and late-for-shift alerts every 5 minutes; the managers'
+  morning digest; document-expiry reminders.
+- **Uptime:** `.github/workflows/uptime.yml` checks shiftella.app every 5 minutes
+  and posts to Telegram when it goes down or comes back ([docs/uptime.md](docs/uptime.md)).
 
 ---
 
@@ -564,6 +647,11 @@ run it against **preprod** (SQL editor, or `psql -f`).
   server-side only (Edge Function secrets); both are gitignored.
 - Stripe keys live only in Edge Function secrets; Stripe webhooks are verified
   by signature.
+- An enforced **Content-Security-Policy** with no third-party origins (fonts are
+  self-hosted); employee documents sit in a private storage bucket behind the
+  same access rule as their table.
+- New database functions get explicit `REVOKE` / `GRANT` — see
+  [docs/db-security.md](docs/db-security.md).
 
 ---
 

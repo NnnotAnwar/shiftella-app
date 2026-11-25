@@ -41,8 +41,17 @@ export function HandoverCard() {
                     {/* Phones already show the location right above the card. */}
                     {locationName && <span className="hidden md:inline"> · {locationName}</span>}
                 </p>
-                <Button size="sm" variant="tonal" icon={CheckIcon} className="shrink-0" onClick={markAllRead}>
-                    {t('notes.read')}
+                <Button
+                    size="sm"
+                    variant="tonal"
+                    icon={CheckIcon}
+                    className="shrink-0"
+                    aria-label={t('notes.read')}
+                    title={t('notes.read')}
+                    onClick={markAllRead}
+                >
+                    {/* Phones get the bare "✓" so the title isn't cut off. */}
+                    <span className="hidden sm:inline">{t('notes.read')}</span>
                 </Button>
             </div>
             <ul className="mt-2 space-y-1.5">

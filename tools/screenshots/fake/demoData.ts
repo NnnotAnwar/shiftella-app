@@ -161,6 +161,9 @@ export function buildDemoData(): Tables {
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
     const nextMonthStart = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+    // The rota runs to the end of NEXT month, so late in a month (the public demo
+    // runs on the real clock) there are still upcoming shifts to show and swap.
+    const rotaEnd = new Date(today.getFullYear(), today.getMonth() + 2, 1);
     const created = '2026-03-02T09:00:00.000Z';
 
     const organizations: Row[] = [{ id: ORG, name: 'Kavárna U Mostu', slug: 'kavarna-u-mostu', created_at: created }];
@@ -255,10 +258,11 @@ export function buildDemoData(): Tables {
     const onLeave = (uid: string, day: string) =>
         time_off.some((t) => t.status === 'approved' && t.user_id === uid && (t.starts_on as string) <= day && day <= (t.ends_on as string));
 
-    // --- Rota for the current month (published) -------------------------------------
+    // --- Rota: this month + next (published up to the 27th, and always the coming week) --
     const scheduled_shifts: Row[] = [];
     let n = 0;
-    for (let d = new Date(monthStart); d < nextMonthStart; d = addDays(d, 1)) {
+    const publishedUntil = addDays(today, 7);
+    for (let d = new Date(monthStart); d < rotaEnd; d = addDays(d, 1)) {
         for (const plan of PLANS) {
             const kind = kindOn(plan, d);
             if (kind === '.' || onLeave(plan.user, ymd(d))) continue;
@@ -271,8 +275,9 @@ export function buildDemoData(): Tables {
                 starts_at: at(d, s),
                 ends_at: at(d, e),
                 all_day: false,
-                // The month's last days are still a draft (rota cost labels the draft part).
-                published: d.getDate() < 28,
+                // The month's last days (and next month) are still a draft — rota cost labels
+                // the draft part — but the coming week is always published.
+                published: (d < nextMonthStart && d.getDate() < 28) || d < publishedUntil,
                 note: null,
                 created_by: P.petra,
                 created_at: daysAgo(18, '20:00'),
@@ -280,8 +285,6 @@ export function buildDemoData(): Tables {
             });
         }
     }
-    const planned = (uid: string, day: number) =>
-        scheduled_shifts.find((s) => s.user_id === uid && ymd(new Date(s.starts_at as string)) === md(day))!;
 
     // --- Worked shifts: the owner's last three months + today's live board ------------
     const shifts: Row[] = [];
@@ -341,14 +344,18 @@ export function buildDemoData(): Tables {
     ];
 
     // --- Swaps ---------------------------------------------------------------------------
-    const swapShift = planned(P.eva, 12) ?? scheduled_shifts.find((s) => s.user_id === P.eva && Date.parse(s.starts_at as string) > now.getTime())!;
-    const openOffer = scheduled_shifts.find((s) => s.user_id === P.ondrej && Date.parse(s.starts_at as string) > now.getTime() + 5 * 86400000)!;
-    const pastSwap = scheduled_shifts.find((s) => s.user_id === P.tomas && Date.parse(s.starts_at as string) < now.getTime())!;
-    const shift_swaps: Row[] = [
-        { id: id(8, 1), organization_id: ORG, shift_id: swapShift.id, from_user: P.eva, to_user: null, taker_id: P.veronika, status: 'taken', note: 'V sobotu mám svatbu kamarádky.', review_note: null, reviewed_at: null, created_at: daysAgo(2, '13:10'), updated_at: daysAgo(1, '09:42') },
-        { id: id(8, 2), organization_id: ORG, shift_id: openOffer.id, from_user: P.ondrej, to_user: null, taker_id: null, status: 'open', note: 'Zkouška ve škole, vezme to někdo?', review_note: null, reviewed_at: null, created_at: daysAgo(1, '16:25'), updated_at: daysAgo(1, '16:25') },
-        { id: id(8, 3), organization_id: ORG, shift_id: pastSwap.id, from_user: P.tomas, to_user: null, taker_id: P.eva, status: 'approved', note: 'Lékař', review_note: 'Díky, Evo!', reviewed_at: daysAgo(9, '08:05'), created_at: daysAgo(11, '12:00'), updated_at: daysAgo(9, '08:05') },
-    ];
+    // Every pick tolerates "nothing found" (any date, any time of day): a swap whose shift
+    // is missing is simply left out instead of crashing the whole dataset.
+    const startsAfter = (uid: string, ms: number) =>
+        scheduled_shifts.find((s) => s.user_id === uid && Date.parse(s.starts_at as string) > ms);
+    const swapShift = startsAfter(P.eva, now.getTime() + 2 * 86400000) ?? startsAfter(P.eva, now.getTime());
+    const openOffer = startsAfter(P.ondrej, now.getTime() + 5 * 86400000) ?? startsAfter(P.ondrej, now.getTime());
+    const pastSwap = scheduled_shifts.find((s) => s.user_id === P.tomas && Date.parse(s.starts_at as string) < now.getTime());
+    const shift_swaps: Row[] = ([
+        swapShift && { id: id(8, 1), organization_id: ORG, shift_id: swapShift.id, from_user: P.eva, to_user: null, taker_id: P.veronika, status: 'taken', note: 'V sobotu mám svatbu kamarádky.', review_note: null, reviewed_at: null, created_at: daysAgo(2, '13:10'), updated_at: daysAgo(1, '09:42') },
+        openOffer && { id: id(8, 2), organization_id: ORG, shift_id: openOffer.id, from_user: P.ondrej, to_user: null, taker_id: null, status: 'open', note: 'Zkouška ve škole, vezme to někdo?', review_note: null, reviewed_at: null, created_at: daysAgo(1, '16:25'), updated_at: daysAgo(1, '16:25') },
+        pastSwap && { id: id(8, 3), organization_id: ORG, shift_id: pastSwap.id, from_user: P.tomas, to_user: null, taker_id: P.eva, status: 'approved', note: 'Lékař', review_note: 'Díky, Evo!', reviewed_at: daysAgo(9, '08:05'), created_at: daysAgo(11, '12:00'), updated_at: daysAgo(9, '08:05') },
+    ] as (Row | undefined)[]).filter((r): r is Row => !!r);
 
     // --- Member requests (what the list_member_requests RPC returns) ---------------------
     const member_requests_view: Row[] = [

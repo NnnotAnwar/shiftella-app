@@ -12,7 +12,7 @@ import {
 import { z } from 'zod';
 
 /** Audit rows that only notify someone (bell / push / Telegram); never shown in the Activity Log. */
-export const NOTIFICATION_ONLY_ACTIONS = ['shift_reminder', 'daily_digest'] as const;
+export const NOTIFICATION_ONLY_ACTIONS = ['shift_reminder', 'daily_digest', 'feedback_new'] as const;
 
 /**
  * --- TIMESHEET SERVICE ---

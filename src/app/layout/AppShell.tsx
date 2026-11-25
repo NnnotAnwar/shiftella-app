@@ -18,6 +18,7 @@ import { BottomNav } from './BottomNav';
 import { BiometricLock } from '@features/auth/BiometricLock';
 import { useBiometricEnabled } from '@features/auth/biometricSetting';
 import { CommandPalette } from '../CommandPalette';
+import { FeedbackHost } from '@features/feedback/FeedbackDialog';
 import { TrialBanner } from '@features/billing/TrialBanner';
 import { PlanEndedDialog } from '@features/billing/PlanEndedDialog';
 import { LocationPopup, type LocationPopupVariant } from '@features/locations/components/LocationPopup';
@@ -287,6 +288,9 @@ export function AppShell() {
         selectedLocationId={selectedLocationId}
         onSelectLocation={handleLocationSelect}
       />
+
+      {/* SEND FEEDBACK — opened from anywhere via openFeedback() */}
+      <FeedbackHost />
 
       {/* GLOBAL OVERLAYS */}
       <AnimatePresence>

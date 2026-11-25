@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { MagnifyingGlassIcon, MapPinIcon, SunIcon, MoonIcon, SignOutIcon, type Icon } from '@phosphor-icons/react';
+import { MagnifyingGlassIcon, MapPinIcon, SunIcon, MoonIcon, SignOutIcon, ChatCircleTextIcon, type Icon } from '@phosphor-icons/react';
 
 import { useNavItems } from './navigation';
 import { useTranslation } from '@shared/preferences/PreferencesContext';
@@ -10,6 +10,7 @@ import { useRecentLocations } from '@features/locations/useRecentLocations';
 import { useBackHandler } from '@shared/hooks/useBackHandler';
 import { useTheme } from '@app/providers/ThemeContext';
 import { useAuthContext } from '@features/auth/AuthContext';
+import { openFeedback } from '@features/feedback/feedbackSignal';
 
 /**
  * --- COMMAND PALETTE (⌘K / Ctrl+K) ---
@@ -107,6 +108,15 @@ export function CommandPalette({ open, onClose, locations, selectedLocationId, o
                 run: () => {
                     setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
                     onClose();
+                },
+            },
+            {
+                key: 'a:feedback',
+                label: t('feedback.open'),
+                icon: ChatCircleTextIcon,
+                run: () => {
+                    onClose();
+                    openFeedback();
                 },
             },
             {

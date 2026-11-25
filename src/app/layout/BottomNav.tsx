@@ -8,6 +8,7 @@ import {
     CaretRightIcon,
 } from '@phosphor-icons/react';
 import { useAuthContext } from '@features/auth/AuthContext';
+import { openFeedback } from '@features/feedback/feedbackSignal';
 import { useTheme } from '@app/providers/ThemeContext';
 import { usePreferences } from '@shared/preferences/PreferencesContext';
 import { getFullInitials } from '@shared/utils/getInitials';
@@ -229,7 +230,17 @@ export function BottomNav() {
                                 {t('nav.logout')}
                             </button>
                             <p className="mt-2 text-center text-micro normal-case tracking-normal text-gray-400 dark:text-gray-500">
-                                {APP_NAME} v{__APP_VERSION__}
+                                {APP_NAME} v{__APP_VERSION__} ·{' '}
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setMenuOpen(false);
+                                        openFeedback();
+                                    }}
+                                    className="font-semibold text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-300"
+                                >
+                                    {t('feedback.open')}
+                                </button>
                             </p>
                         </motion.div>
                     </motion.div>

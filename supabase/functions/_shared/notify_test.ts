@@ -1,7 +1,7 @@
 // Deno tests for the reminder + digest copy (send-push / Telegram).
 //   cp -R supabase/functions /tmp/fn && cd /tmp/fn && deno test _shared/notify_test.ts
 import { deepStrictEqual, strictEqual } from 'node:assert';
-import { digestBody, messagesFromWebhook, pragueClock, render } from './notify.ts';
+import { digestBody, feedbackCopy, messagesFromWebhook, pragueClock, render } from './notify.ts';
 
 Deno.test('pragueClock: Prague time, both languages (winter UTC+1)', () => {
     strictEqual(pragueClock('2026-11-25T07:00:00Z', 'cs'), '8:00');
@@ -67,4 +67,21 @@ Deno.test('time off: every kind reads right in Czech ("žádost o …") and Engl
     strictEqual(render(msg('timeoff_declined', 'vacation'), 'cs').body, 'Vaše žádost o dovolenou (29. 12.) byla zamítnuta.');
     strictEqual(render(msg('timeoff_approved', 'comp_time'), 'en').body, 'Your time off in lieu (29. 12.) was approved.');
     strictEqual(render(msg('timeoff_requested', 'something_new'), 'en').body, 'Eva requested leave: 29. 12..');
+});
+
+Deno.test('feedback_new: the Superadmin gets type, sender, organization and an excerpt', async () => {
+    const msgs = await messagesFromWebhook({} as never, 'shift_audit_log', {
+        target_user_id: 'sa',
+        action: 'feedback_new',
+        details: { kind: 'bug', target_name: 'Jana Nová', subject_name: 'Café U Mostu', note: 'Export crashes' },
+    });
+    deepStrictEqual(msgs, [{
+        userId: 'sa',
+        key: 'feedback_new',
+        vars: { kind: 'bug', who: 'Jana Nová', org: 'Café U Mostu', text: 'Export crashes' },
+        route: '/feedback',
+    }]);
+    deepStrictEqual(render(msgs[0], 'cs'), { title: '💬 Zpětná vazba · Chyba', body: 'Jana Nová (Café U Mostu) — Export crashes' });
+    deepStrictEqual(render(msgs[0], 'en'), { title: '💬 Feedback · Bug', body: 'Jana Nová (Café U Mostu) — Export crashes' });
+    deepStrictEqual(feedbackCopy({ kind: 'nope' }, 'en'), { title: '💬 Feedback', body: 'A user' });
 });

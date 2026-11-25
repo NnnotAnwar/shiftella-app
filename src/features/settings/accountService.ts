@@ -13,12 +13,13 @@ import { supabase } from '@shared/api/supabaseClient';
 
 /** Gather everything we hold about the current user into one JSON payload. */
 export async function buildMyDataExport(userId: string): Promise<string> {
-    const [profile, shifts, scheduled, timeOff, notifications] = await Promise.all([
+    const [profile, shifts, scheduled, timeOff, notifications, feedback] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
         supabase.from('shifts').select('*').eq('user_id', userId).order('started_at', { ascending: false }),
         supabase.from('scheduled_shifts').select('*').eq('user_id', userId).order('starts_at', { ascending: false }),
         supabase.from('time_off').select('*').eq('user_id', userId).order('starts_on', { ascending: false }),
         supabase.from('shift_audit_log').select('*').eq('target_user_id', userId).order('created_at', { ascending: false }),
+        supabase.from('app_feedback').select('kind, message, may_contact, route, app_version, language, user_agent, status, created_at').eq('user_id', userId).order('created_at', { ascending: false }),
     ]);
 
     const payload = {
@@ -29,6 +30,7 @@ export async function buildMyDataExport(userId: string): Promise<string> {
         scheduled_shifts: scheduled.data ?? [],
         time_off: timeOff.data ?? [],
         notifications: notifications.data ?? [],
+        feedback: feedback.data ?? [],
     };
     return JSON.stringify(payload, null, 2);
 }

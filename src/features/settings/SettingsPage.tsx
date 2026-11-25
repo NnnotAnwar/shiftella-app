@@ -12,6 +12,7 @@ import {
   DownloadSimpleIcon,
   TrashIcon,
   CreditCardIcon,
+  ChatCircleTextIcon,
 } from '@phosphor-icons/react';
 import { ConfirmDialog } from '@features/admin/components/Modal';
 import { toast } from '@shared/toast/toastStore';
@@ -32,6 +33,7 @@ import { PageHeader } from '@shared/components/PageHeader';
 import { APP_NAME } from '@shared/brand';
 import { canManageBilling } from '@features/billing/useBilling';
 import { CalendarFeedCard } from './calendar/CalendarFeedCard';
+import { openFeedback } from '@features/feedback/feedbackSignal';
 
 const APP_VERSION = __APP_VERSION__;
 const SUPPORT_EMAIL = 'anuarkairulla@gmail.com';
@@ -373,6 +375,14 @@ export default function SettingsPage() {
             </div>
           </div>
 
+          <button type="button" onClick={() => openFeedback()} className={`w-full text-left ${rowClass}`}>
+            <div className={rowIconClass}><ChatCircleTextIcon weight="bold" className="w-4 h-4" /></div>
+            <div className="min-w-0 flex-1">
+              <p className="text-meta font-semibold text-ink dark:text-white">{t('feedback.open')}</p>
+              <p className="text-caption text-ink-soft dark:text-slate-400">{t('feedback.settingsHint')}</p>
+            </div>
+            <CaretRightIcon weight="bold" className="w-4 h-4 text-gray-300 dark:text-gray-600 shrink-0" />
+          </button>
           <MailRow
             icon={<LifebuoyIcon weight="bold" className="w-4 h-4" />}
             label={t('settings.support')}

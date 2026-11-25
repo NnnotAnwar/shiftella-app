@@ -428,8 +428,135 @@ class Query implements PromiseLike<Result> {
 }
 
 // --- RPCs -------------------------------------------------------------------------
+// --- Write RPCs (mirror the SQL functions closely enough for the demo / e2e) --------
+// Before these existed, an unknown RPC quietly "succeeded" and nothing changed — in the
+// public demo, approving a swap or a name change did nothing. A throw becomes { error }.
+const nowIso = () => new Date().toISOString();
+const meId = () => String(currentProfile()?.id ?? DEMO_USER_ID);
+const nameOf = (uid: unknown) => {
+    const p = db.profiles.find((x) => x.id === uid);
+    return p ? [p.first_name, p.last_name].filter(Boolean).join(' ') || String(p.username) : null;
+};
+function mustFind(table: string, rowId: unknown): Row {
+    const row = (db[table] ?? []).find((r) => r.id === rowId);
+    if (!row) throw new Error('Not found.');
+    return row;
+}
+function done<T>(v: T): T {
+    persist();
+    return v;
+}
+
 const rpcs: Record<string, (args: Row) => unknown> = {
     list_member_requests: () => db.member_requests_view,
+    // Requests inbox: approve / decline (role requests switch the person's role on approve).
+    review_member_request: (args) => {
+        const r = mustFind('member_requests_view', args.p_id);
+        if (r.status !== 'pending') throw new Error('This request was already decided.');
+        if (args.p_approve && r.kind === 'role' && r.user_id) {
+            const p = db.profiles.find((x) => x.id === r.user_id);
+            if (p) p.org_role_id = r.org_role_id;
+            r.current_role_name = r.role_name;
+        }
+        Object.assign(r, { status: args.p_approve ? 'approved' : 'declined', review_note: args.p_note ?? null, reviewer_name: nameOf(meId()), reviewed_at: nowIso() });
+        return done(null);
+    },
+    submit_member_request: (args) => {
+        const me = currentProfile();
+        const role = db.org_roles?.find((r) => r.id === args.p_org_role);
+        const row: Row = {
+            id: crypto.randomUUID(), organization_id: me?.organization_id, user_id: args.p_anonymous ? null : meId(),
+            person_name: args.p_anonymous ? null : nameOf(meId()), kind: args.p_kind, subject: args.p_subject ?? null, body: args.p_body ?? null,
+            org_role_id: args.p_org_role ?? null, role_name: role?.name ?? null, role_color: role?.color ?? null, current_role_name: null,
+            anonymous: !!args.p_anonymous, status: 'pending', review_note: null, reviewer_name: null, reviewed_at: null, created_at: nowIso(), mine: true, can_review: true,
+        };
+        db.member_requests_view.unshift(row);
+        return done(row.id);
+    },
+    cancel_member_request: (args) => {
+        db.member_requests_view = db.member_requests_view.filter((r) => r.id !== args.p_id);
+        return done(null);
+    },
+    // Name changes: approve writes the new name onto the profile.
+    review_name_change_request: (args) => {
+        const r = mustFind('name_change_requests', args.p_id);
+        if (r.status !== 'pending') throw new Error('This request was already decided.');
+        if (args.p_approve) {
+            const p = db.profiles.find((x) => x.id === r.user_id);
+            if (p) Object.assign(p, { first_name: r.requested_first_name, last_name: r.requested_last_name });
+        }
+        Object.assign(r, { status: args.p_approve ? 'approved' : 'declined', review_note: args.p_review_note ?? null, reviewed_at: nowIso() });
+        return done(null);
+    },
+    request_name_change: (args) => {
+        const me = currentProfile();
+        db.name_change_requests = db.name_change_requests.filter((r) => !(r.user_id === meId() && r.status === 'pending'));
+        db.name_change_requests.unshift({
+            id: crypto.randomUUID(), user_id: meId(), organization_id: me?.organization_id, current_first_name: me?.first_name ?? null, current_last_name: me?.last_name ?? null,
+            requested_first_name: args.p_first_name, requested_last_name: args.p_last_name, note: args.p_note ?? null, review_note: null, status: 'pending', reviewed_at: null, created_at: nowIso(),
+        });
+        return done(null);
+    },
+    cancel_name_change_request: (args) => {
+        db.name_change_requests = db.name_change_requests.filter((r) => r.id !== args.p_id);
+        return done(null);
+    },
+    // Shift swaps: offer → take → review (approve hands the rota shift to the taker).
+    offer_shift_swap: (args) => {
+        const sh = mustFind('scheduled_shifts', args.p_shift);
+        const row: Row = { id: crypto.randomUUID(), organization_id: sh.organization_id, shift_id: sh.id, from_user: meId(), to_user: args.p_to_user ?? null, taker_id: null, status: 'open', note: args.p_note ?? null, review_note: null, reviewed_at: null, created_at: nowIso(), updated_at: nowIso() };
+        db.shift_swaps.unshift(row);
+        return done(row.id);
+    },
+    take_shift_swap: (args) => {
+        const sw = mustFind('shift_swaps', args.p_id);
+        if (sw.status !== 'open') throw new Error('This swap is no longer open.');
+        Object.assign(sw, { status: 'taken', taker_id: meId(), updated_at: nowIso() });
+        return done(null);
+    },
+    withdraw_shift_swap: (args) => {
+        const sw = mustFind('shift_swaps', args.p_id);
+        Object.assign(sw, { status: 'withdrawn', updated_at: nowIso() });
+        return done(null);
+    },
+    review_shift_swap: (args) => {
+        const sw = mustFind('shift_swaps', args.p_id);
+        if (sw.status !== 'taken') throw new Error('This swap is no longer waiting for a decision.');
+        if (args.p_approve) {
+            const sh = db.scheduled_shifts.find((x) => x.id === sw.shift_id);
+            if (sh) sh.user_id = sw.taker_id;
+        }
+        Object.assign(sw, { status: args.p_approve ? 'approved' : 'declined', review_note: args.p_note ?? null, reviewed_at: nowIso(), updated_at: nowIso() });
+        return done(null);
+    },
+    // Rota: publish the drafts in a range.
+    publish_schedule: (args) => {
+        const from = Date.parse(String(args.p_from));
+        const to = Date.parse(String(args.p_to));
+        for (const s of db.scheduled_shifts) {
+            const t = Date.parse(String(s.starts_at));
+            if (!s.published && t >= from && t < to) s.published = true;
+        }
+        return done(null);
+    },
+    // Timesheets: manager edits of clock records.
+    admin_create_shift: (args) => {
+        const p = db.profiles.find((x) => x.id === args.p_user_id);
+        db.shifts.unshift({
+            id: crypto.randomUUID(), user_id: args.p_user_id, organization_id: p?.organization_id, location_id: args.p_location_id,
+            started_at: args.p_started_at, ended_at: args.p_ended_at, role: args.p_role ?? null, previous_location_id: null, created_at: nowIso(),
+        });
+        return done(null);
+    },
+    admin_update_shift: (args) => {
+        const sh = mustFind('shifts', args.p_shift_id);
+        Object.assign(sh, { started_at: args.p_started_at, ended_at: args.p_ended_at, location_id: args.p_location_id });
+        return done(null);
+    },
+    admin_delete_shift: (args) => {
+        db.shifts = db.shifts.filter((x) => x.id !== args.p_shift_id);
+        return done(null);
+    },
     org_usage: () => ({
         members: db.profiles.length,
         locations: db.locations.filter((l) => !l.archived_at).length,
@@ -710,7 +837,11 @@ export const supabase: any = {
     rpc: (fn: string, args: Row = {}) => {
         record(`rpc.${fn}`, args);
         const impl = rpcs[fn];
-        return Promise.resolve({ data: impl ? impl(args) : null, error: null });
+        try {
+            return Promise.resolve({ data: impl ? impl(args) : null, error: null });
+        } catch (e) {
+            return Promise.resolve({ data: null, error: { message: e instanceof Error ? e.message : String(e), code: 'P0001' } });
+        }
     },
     auth,
     channel,

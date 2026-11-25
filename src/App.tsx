@@ -64,6 +64,7 @@ const SettingsPage = lazy(() => import('./features/settings/SettingsPage'));
 const ProfilePage = lazy(() => import('./features/profile/ProfilePage'));
 const LegalPage = lazy(() => import('./features/legal/LegalPage').then((m) => ({ default: m.LegalPage })));
 const BillingPage = lazy(() => import('./features/billing/BillingPage').then((m) => ({ default: m.BillingPage })));
+const HelpPage = lazy(() => import('./features/help/HelpPage').then((m) => ({ default: m.HelpPage })));
 
 /** Handles Android hardware back button: go back in history or exit app. */
 function BackButtonHandler() {
@@ -141,6 +142,8 @@ export default function App() {
                         <Route path="settings" element={<SettingsPage />} />
                         {/* Billing: the org's Head Admin (page self-guards); plan gates wrap Team/Business pages above. */}
                         <Route path="billing" element={<BillingPage />} />
+                        {/* Help centre: everyone; articles are role-aware (managers' ones flagged, not hidden). */}
+                        <Route path="help" element={<HelpPage />} />
                         <Route path="profile" element={<ProfilePage />} />
                         <Route path="profile/:userId" element={<ProfilePage />} />
                       </Route>

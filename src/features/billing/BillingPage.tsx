@@ -17,6 +17,7 @@ import { BillingError, billingService } from './billingService';
 import { billingErrorMessage } from './planErrors';
 import { canManageBilling, isNativeApp, useEntitlements, useOrgUsage, useSubscription } from './useBilling';
 import { useRedirectAction } from './useRedirectAction';
+import { HelpLink } from '@features/help/HelpLink';
 import {
     BUSINESS_MIN_SEATS,
     LIMITS,
@@ -294,6 +295,7 @@ function BillingInner() {
             <PageHeader
                 eyebrow={t('billing.eyebrow')}
                 title={t('billing.title')}
+                help={<HelpLink article="billing-beta" />}
                 description={native ? t('billing.manageOnWeb', { app: APP_NAME }) : t('billing.description')}
                 actions={
                     !native &&

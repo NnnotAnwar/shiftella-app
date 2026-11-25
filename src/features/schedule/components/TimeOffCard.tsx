@@ -18,6 +18,7 @@ import { can } from '@shared/auth/permissions';
 import { useInvalidateLeave, useLeaveBalances, useLeaveSettings } from '@features/leave/useLeave';
 import { LeaveBalancesModal } from '@features/leave/LeaveBalancesModal';
 import type { LeaveBalance } from '@features/leave/leaveService';
+import { HelpLink } from '@features/help/HelpLink';
 
 /**
  * --- TIME OFF CARD ---
@@ -255,10 +256,13 @@ export function TimeOffCard({
                 <span className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
                     <SunHorizonIcon weight="fill" className="w-4 h-4" />
                 </span>
-                <p className="flex-1 text-body-strong text-gray-900 dark:text-white">
-                    {t('timeoff.title')}
-                    {pending.length > 0 && <span className="text-amber-500 font-normal"> · {pending.length}</span>}
-                </p>
+                <div className="flex flex-1 items-center gap-1 text-body-strong text-gray-900 dark:text-white">
+                    <span>
+                        {t('timeoff.title')}
+                        {pending.length > 0 && <span className="text-amber-500 font-normal"> · {pending.length}</span>}
+                    </span>
+                    <HelpLink article={seesBalances ? 'leave-balances' : 'request-time-off'} />
+                </div>
                 {seesBalances && (
                     <Button size="sm" variant="ghost" icon={ScalesIcon} onClick={() => setBalancesOpen(true)}>
                         {t('leave.balances')}

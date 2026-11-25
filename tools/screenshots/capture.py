@@ -125,6 +125,12 @@ def shot_timeoff(page: Page, base: str, out: Path) -> None:
     page.screenshot(path=out / "timeoff-card.png")
 
 
+def shot_help(page: Page, base: str, out: Path) -> None:
+    # Help centre with one article open (deep link), e.g. --only help
+    go(page, base, "/help?a=leave-balances")
+    page.screenshot(path=out / "help.png")
+
+
 def shot_billing(page: Page, base: str, out: Path) -> None:
     go(page, base, "/billing")
     page.screenshot(path=out / "billing.png")
@@ -194,6 +200,7 @@ DESKTOP_SHOTS = {
     "analytics": shot_analytics,
     "palette": shot_palette,
     "documents": shot_documents,
+    "help": shot_help,
 }
 MOBILE_SHOTS = {
     "mobile-home": shot_mobile_home,

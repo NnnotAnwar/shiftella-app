@@ -11,6 +11,7 @@ import {
     GearIcon,
     MegaphoneIcon,
     CreditCardIcon,
+    QuestionIcon,
     type Icon,
 } from '@phosphor-icons/react';
 
@@ -97,6 +98,8 @@ export const NAV_ITEMS: readonly NavItemDef[] = [
     // First in System, with a status pill, so the owner never has to hunt for it.
     { id: 'billing', labelKey: 'nav.billing', icon: CreditCardIcon, route: '/billing', section: 'system', visible: (c) => c.billing, pill: 'billing' },
     { id: 'settings', labelKey: 'nav.settings', icon: GearIcon, route: '/settings', section: 'system' },
+    // Help centre — last in System; on phones it lives in the "More" sheet.
+    { id: 'help', labelKey: 'nav.help', icon: QuestionIcon, route: '/help', section: 'system' },
 ];
 
 /** A nav item resolved for the current user: visible, translated and badged. */

@@ -10,6 +10,7 @@ import { TimeOffRequestModal } from '@features/schedule/components/TimeOffCard';
 import { RequestCard } from './RequestCard';
 import { MemberRequestModal } from './MemberRequestModal';
 import { useRequests, canDecideOn, markRequestsSeen, isMine } from './useRequests';
+import { HelpLink } from '@features/help/HelpLink';
 
 /**
  * --- REQUESTS (the shared inbox) ---
@@ -60,7 +61,11 @@ export function RequestsPage() {
 
     return (
         <div className="space-y-4 px-1 pb-10">
-            <PageHeader eyebrow={canObserve ? t('requests.inbox') : t('requests.mine')} title={t('nav.requests')} />
+            <PageHeader
+                eyebrow={canObserve ? t('requests.inbox') : t('requests.mine')}
+                title={t('nav.requests')}
+                help={<HelpLink article={can(user, 'requests.decide') ? 'decide-time-off' : 'request-time-off'} />}
+            />
 
             {tabs.length > 0 && (
                 <div className="segmented">

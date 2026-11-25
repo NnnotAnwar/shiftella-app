@@ -342,6 +342,8 @@ class Query implements PromiseLike<Result> {
                 } else {
                     // Column defaults the real tables have (e.g. a new clock-in has no end yet).
                     const defaults: Row = this.table === 'shifts' ? { ended_at: null, previous_location_id: null } : {};
+                    // shift_confirmations: confirmed_at defaults to now() (the app's schema requires it).
+                    if (this.table === 'shift_confirmations') Object.assign(defaults, { confirmed_at: now });
                     // shift_notes: the DB trigger copies the location from the shift.
                     if (this.table === 'shift_notes') {
                         const shift = (db.shifts ?? []).find((x) => x.id === p.shift_id);

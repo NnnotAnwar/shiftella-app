@@ -1,0 +1,54 @@
+Shiftella — Proprietary Software Licence
+Copyright (c) 2026 Anuar Kairulla. All rights reserved.
+
+This repository and everything in it — source code, database schema and
+migrations, Edge Functions, build and deploy configuration, the user interface,
+design, texts, translations, images, screenshots, logos and the name
+"Shiftella" — (the "Software") are the exclusive property of the copyright
+holder and are protected by copyright law, including the Czech Copyright Act
+(zákon č. 121/2000 Sb., autorský zákon) and international treaties.
+
+NO LICENCE IS GRANTED. The source is published for transparency and reference
+only. Without the copyright holder's prior written permission you may not:
+
+  1. copy, reproduce or download the Software, in whole or in part, except as
+     strictly necessary to view it on GitHub;
+  2. modify, translate, adapt or create derivative works of it;
+  3. use, run, host, deploy or offer it, or any part of it, as a product or
+     service, commercially or otherwise;
+  4. distribute, publish, sublicense, sell, rent or lend it;
+  5. reverse-engineer it, or use it, its data model or its design to build a
+     competing product;
+  6. use it, in whole or in part, to train or fine-tune machine-learning models;
+  7. remove or alter this notice or any copyright notice.
+
+Viewing this repository, or forking it within GitHub as GitHub's Terms of
+Service allow, grants no rights beyond that. Contributions are not accepted
+unless agreed in writing.
+
+Using the hosted service at https://shiftella.app is governed by its own Terms
+of Service, not by this file.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND. IN NO EVENT
+SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY
+ARISING FROM ANY USE OF THE SOFTWARE.
+
+Permission requests: support@shiftella.app
+
+-------------------------------------------------------------------------------
+
+Shiftella — licence k proprietárnímu softwaru
+Copyright (c) 2026 Anuar Kairulla. Všechna práva vyhrazena.
+
+Tento repozitář a vše, co obsahuje (zdrojový kód, databázové schéma, funkce,
+konfigurace, uživatelské rozhraní, design, texty, překlady, obrázky, loga
+a název „Shiftella“), je výhradním vlastnictvím autora a je chráněno autorským
+zákonem č. 121/2000 Sb. a mezinárodními smlouvami.
+
+ŽÁDNÁ LICENCE SE NEUDĚLUJE. Zdrojový kód je zveřejněn pouze pro náhled. Bez
+předchozího písemného souhlasu autora je zakázáno jej kopírovat, upravovat,
+používat, provozovat, šířit, prodávat, používat k tvorbě konkurenčního produktu
+nebo k trénování modelů strojového učení, a odstraňovat toto upozornění.
+Rozhodující je anglické znění výše.
+
+Žádosti o svolení: support@shiftella.app

@@ -470,8 +470,14 @@ export function Sidebar({ onLocationSelect, onOpenSearch }: SidebarProps) {
   const navItems = useNavItems();
   const currentRoute = useLocation();
 
-  // Desktop compact "icon-rail" mode, persisted across sessions.
-  const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sidebar-collapsed') === '1');
+  // Desktop compact "icon-rail" mode, persisted across sessions. With no saved
+  // choice, tablets (md–lg) start on the rail: the full 16rem sidebar left a
+  // phone-width column for pages that had already switched to their wide layouts.
+  const [collapsed, setCollapsed] = useState(() => {
+    const saved = localStorage.getItem('sidebar-collapsed');
+    if (saved !== null) return saved === '1';
+    return !!window.matchMedia?.('(max-width: 1023.98px)').matches;
+  });
   const toggleCollapsed = () => {
     setCollapsed((v) => {
       const next = !v;

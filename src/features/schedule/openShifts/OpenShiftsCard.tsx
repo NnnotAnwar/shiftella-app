@@ -162,9 +162,11 @@ export function OpenShiftsCard({ user, locations, canManage }: { user: User; loc
 
     return (
         <section className="glass rounded-2xl p-3">
-            <header className="flex items-start justify-between gap-3 px-1">
-                <div className="min-w-0">
-                    <h2 className="flex items-center gap-1.5 text-card-title text-ink dark:text-white">
+            {/* Title + action on one row, the hint below at full width — side by side the
+                hint got squeezed into a one-word column on phones (long uk/sk labels). */}
+            <header className="px-1">
+                <div className="flex items-center justify-between gap-3">
+                    <h2 className="flex min-w-0 items-center gap-1.5 text-card-title text-ink dark:text-white">
                         {t('open.title')}
                         {relevant.some((o) => !o.claimed_by) && (
                             <span className="rounded-full bg-emerald-500/12 px-1.5 text-[11px] font-semibold leading-5 tabular-nums text-emerald-700 dark:text-emerald-300">
@@ -172,13 +174,13 @@ export function OpenShiftsCard({ user, locations, canManage }: { user: User; loc
                             </span>
                         )}
                     </h2>
-                    <p className="mt-0.5 text-caption text-ink-soft dark:text-slate-400">{t('open.hint')}</p>
+                    {canManage && (
+                        <Button size="sm" variant="tonal" icon={PlusIcon} onClick={() => setPosting(true)} className="shrink-0">
+                            {t('open.post')}
+                        </Button>
+                    )}
                 </div>
-                {canManage && (
-                    <Button size="sm" variant="tonal" icon={PlusIcon} onClick={() => setPosting(true)}>
-                        {t('open.post')}
-                    </Button>
-                )}
+                <p className="mt-0.5 text-caption text-ink-soft dark:text-slate-400">{t('open.hint')}</p>
             </header>
 
             {relevant.length === 0 ? (

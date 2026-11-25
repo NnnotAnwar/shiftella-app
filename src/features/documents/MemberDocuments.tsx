@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useSyncExternalStore } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { DownloadSimpleIcon, FileImageIcon, FilePdfIcon, FolderOpenIcon, PlusIcon, TrashIcon, XIcon } from '@phosphor-icons/react';
 import { useAuthContext } from '@features/auth/AuthContext';
@@ -12,6 +12,7 @@ import { toast } from '@shared/toast/toastStore';
 import { formatDayNumeric } from '@shared/utils/date';
 import type { Profile } from '@shared/types';
 import { documentsService, type MemberDocument } from './documentsService';
+import { DOC_UNDO_MS, pendingDeletes } from './pendingDeletes';
 import {
     DOC_ACCEPT,
     DOC_TYPES,
@@ -77,6 +78,7 @@ export function MemberDocuments({ member, className = '' }: { member: Member; cl
     const key = ['member-documents', member.id] as const;
 
     const docs = useQuery({ queryKey: key, queryFn: () => documentsService.list(member.id), enabled: canView });
+    useSyncExternalStore(pendingDeletes.subscribe, pendingDeletes.version);
 
     const upload = useMutation({
         mutationFn: (d: NonNullable<typeof draft>) =>
@@ -99,7 +101,7 @@ export function MemberDocuments({ member, className = '' }: { member: Member; cl
     if (!user || !canView || !member.organization_id) return null;
 
     const today = isoDay(new Date());
-    const list = docs.data ?? [];
+    const list = (docs.data ?? []).filter((d) => !pendingDeletes.isHidden(d.id));
 
     const pick = (file: File | undefined) => {
         if (fileRef.current) fileRef.current.value = '';
@@ -113,15 +115,17 @@ export function MemberDocuments({ member, className = '' }: { member: Member; cl
     };
 
     const remove = (doc: MemberDocument) => {
-        // Hide now; delete for real once the Undo window has passed.
-        qc.setQueryData<MemberDocument[]>(key, (old) => (old ?? []).filter((d) => d.id !== doc.id));
+        // Hide now; delete for real once the Undo window has passed (also if the
+        // page is closed meanwhile — see ./pendingDeletes).
+        pendingDeletes.schedule(doc);
         toast(t('docs.deleted'), 'success', {
-            action: { label: t('common.undo'), onClick: () => qc.invalidateQueries({ queryKey: key }) },
+            duration: DOC_UNDO_MS,
+            action: { label: t('common.undo'), onClick: () => pendingDeletes.cancel(doc.id) },
             onExpire: () => {
-                documentsService
-                    .remove(doc)
+                pendingDeletes
+                    .commit(doc.id)
                     .catch(() => toast(t('docs.error'), 'error'))
-                    .finally(() => qc.invalidateQueries({ queryKey: key }));
+                    .finally(() => void qc.invalidateQueries({ queryKey: key }));
             },
         });
     };

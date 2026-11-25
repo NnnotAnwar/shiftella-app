@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { SunIcon, MoonIcon } from '@phosphor-icons/react';
+import { ArrowLeftIcon, SunIcon, MoonIcon } from '@phosphor-icons/react';
+import { Link } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core';
 import { useTheme } from '@app/providers/ThemeContext';
 import { usePreferences, useTranslation } from '@shared/preferences/PreferencesContext';
 import { LANGUAGES } from '@shared/i18n/translations';
@@ -62,6 +64,19 @@ export function ThemeToggle() {
     );
 }
 
+function BackHome() {
+    const t = useTranslation();
+    return (
+        <Link
+            to="/"
+            className="absolute top-[calc(1rem+env(safe-area-inset-top,0px))] left-[calc(1rem+env(safe-area-inset-left,0px))] z-10 inline-flex h-8 items-center gap-1.5 rounded-xl border border-gray-200/60 bg-white/60 px-2.5 text-caption font-semibold text-ink-soft backdrop-blur-md transition-colors hover:text-ink dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:text-white"
+        >
+            <ArrowLeftIcon weight="bold" className="size-3.5" />
+            {t('auth.backHome')}
+        </Link>
+    );
+}
+
 /**
  * --- AUTH SHELL ---
  * The frame shared by the signed-out pages (sign in, create an organization):
@@ -74,6 +89,9 @@ export function AuthShell({ title, eyebrow, children, below }: { title: string; 
             {/* Ambient brand glow */}
             <div className="pointer-events-none absolute -top-24 -left-24 w-80 h-80 rounded-full bg-emerald-500/20 blur-3xl" />
             <div className="pointer-events-none absolute -bottom-32 -right-20 w-96 h-96 rounded-full bg-emerald-400/10 blur-3xl" />
+
+            {/* Back to the landing page (web only: in the native app "/" is this sign-in). */}
+            {!Capacitor.isNativePlatform() && <BackHome />}
 
             {/* Language + theme toggles */}
             <div className="absolute top-[calc(1rem+env(safe-area-inset-top,0px))] right-[calc(1rem+env(safe-area-inset-right,0px))] z-10 flex items-center gap-2">

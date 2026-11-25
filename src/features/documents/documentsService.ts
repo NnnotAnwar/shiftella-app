@@ -1,4 +1,5 @@
 import { supabase } from '@shared/api/supabaseClient';
+import { withKeepalive } from '@shared/api/keepalive';
 import { z } from 'zod';
 import { docMime, fileExt, type DocType } from './documentTypes';
 
@@ -77,11 +78,23 @@ export const documentsService = {
         return MemberDocumentSchema.parse(data);
     },
 
-    /** The file, then the row (the file's delete rule needs the folder, not the row). */
-    async remove(doc: Pick<MemberDocument, 'id' | 'file_path'>): Promise<void> {
-        const rm = await supabase.storage.from(DOCUMENTS_BUCKET).remove([doc.file_path]);
+    /**
+     * The file, then the row (the file's delete rule needs the folder, not the row).
+     * `parallel` sends both at once — used when the page is closing, so neither
+     * waits on the other's response.
+     */
+    async remove(doc: Pick<MemberDocument, 'id' | 'file_path'>, opts: { parallel?: boolean } = {}): Promise<void> {
+        const file = () => supabase.storage.from(DOCUMENTS_BUCKET).remove([doc.file_path]);
+        const row = () => supabase.from('member_documents').delete().eq('id', doc.id);
+        if (opts.parallel) {
+            const [rm, del] = await Promise.all([withKeepalive(file), withKeepalive(row)]);
+            if (rm.error) throw rm.error;
+            if (del.error) throw del.error;
+            return;
+        }
+        const rm = await file();
         if (rm.error) throw rm.error;
-        const { error } = await supabase.from('member_documents').delete().eq('id', doc.id);
+        const { error } = await row();
         if (error) throw error;
     },
 

@@ -12,6 +12,8 @@ import { boardRole } from '@features/shifts/boardRole';
 import { MobileLocationField } from '@features/locations/components/MobileLocationField';
 import { UserProfileModal } from '@features/profile/components/UserProfileModal';
 import { AnnouncementBanner } from '@features/announcements/AnnouncementBanner';
+import { HandoverCard } from '@features/shiftNotes/HandoverCard';
+import { ShiftNoteCard } from '@features/shiftNotes/ShiftNoteCard';
 import { useTranslation } from '@shared/preferences/PreferencesContext';
 import { DashboardHeader } from './DashboardHeader';
 import { GettingStarted } from './GettingStarted';
@@ -133,6 +135,10 @@ export function HomePage() {
           so starting a shift reads as the same card waking up. */}
       <ActiveShift onPickLocation={handleLocationSelect} />
       <CheckIn onPickLocation={handleLocationSelect} />
+
+      {/* HANDOVER from the previous shift(s) here (unread, last 24 h) + your own shift note. */}
+      <HandoverCard />
+      <ShiftNoteCard />
 
       {/* NEXT ROSTERED SHIFT — quick glance + link to the schedule. */}
       <NextShiftCard />

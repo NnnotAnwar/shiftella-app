@@ -168,6 +168,23 @@ export function documentExpiringCopy(
         : { title: 'Document expiring soon', body: `${lead}: valid until ${date} (${left}).` };
 }
 
+// In-app feedback types (mirror FEEDBACK_KINDS in src/features/feedback/feedbackLogic.ts).
+const FEEDBACK_KIND: Record<Lang, Record<string, string>> = {
+    en: { idea: 'Idea', bug: 'Bug', question: 'Question', praise: 'Praise' },
+    cs: { idea: 'Nápad', bug: 'Chyba', question: 'Dotaz', praise: 'Pochvala' },
+};
+
+/** The owner's alert for new in-app feedback: "💬 Feedback · Bug" / "Jana (Café) — It crashes…". */
+export function feedbackCopy(v: { kind?: string; who?: string; org?: string; text?: string }, lang: Lang): { title: string; body: string } {
+    const cs = lang === 'cs';
+    const kind = FEEDBACK_KIND[lang][String(v.kind ?? '')];
+    const who = [v.who || (cs ? 'Uživatel' : 'A user'), v.org ? `(${v.org})` : ''].filter(Boolean).join(' ');
+    return {
+        title: `💬 ${cs ? 'Zpětná vazba' : 'Feedback'}${kind ? ` · ${kind}` : ''}`,
+        body: v.text ? `${who} — ${v.text}` : who,
+    };
+}
+
 /** Render a notification's title + body for a recipient's language. */
 export function render(msg: PushMessage, lang: Lang): { title: string; body: string } {
     if (msg.title !== undefined || msg.body !== undefined) {
@@ -224,6 +241,8 @@ export function render(msg: PushMessage, lang: Lang): { title: string; body: str
                 title: cs ? 'Dnešní přehled' : 'Today at a glance',
                 body: digestBody({ shifts: Number(v.shifts), people: Number(v.people), open: Number(v.open), requests: Number(v.requests) }, lang),
             };
+        case 'feedback_new':
+            return feedbackCopy({ kind: String(v.kind ?? ''), who: String(v.who ?? ''), org: String(v.org ?? ''), text: String(v.text ?? '') }, lang);
         case 'document_expiring':
             return documentExpiringCopy(
                 { who: v.who ? String(v.who) : '', type: String(v.type ?? 'other'), name: String(v.name ?? ''), date: String(v.date ?? ''), days: Number(v.days ?? 0) },
@@ -528,6 +547,19 @@ export async function messagesFromWebhook(admin: SupabaseClient, table: string, 
                     },
                     route: '/requests',
                     category: 'requests',
+                }];
+            case 'feedback_new':
+                // In-app feedback → the platform Superadmin (rate-limited in the database).
+                return [{
+                    userId: target,
+                    key: 'feedback_new',
+                    vars: {
+                        kind: (details.kind as string) || '',
+                        who: (details.target_name as string) || '',
+                        org: (details.subject_name as string) || '',
+                        text: (details.note as string) || '',
+                    },
+                    route: '/feedback',
                 }];
             case 'profile_updated': {
                 const changes = (details.changes as { field: string }[] | undefined) ?? [];

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { SendFeedbackLink } from '@features/feedback/SendFeedbackLink';
 import { useSearchParams } from 'react-router-dom';
 import { CaretDownIcon, LifebuoyIcon } from '@phosphor-icons/react';
 import { useAuthContext } from '@features/auth/AuthContext';
@@ -97,8 +98,7 @@ export function HelpPage() {
                     </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                    {/* TODO(feat/in-app-feedback): put the "Send feedback" button here, next to the email link,
-                        once that branch lands — it is being built separately; don't duplicate it. */}
+                    <SendFeedbackLink className="px-2" />
                     {/* Same-context mailto (no target=_blank): a blank tab hangs in the native webview. */}
                     <a href={mailto} className={`${BASE} ${SIZES.sm} ${VARIANTS.secondary}`}>
                         {t('help.contactButton')}

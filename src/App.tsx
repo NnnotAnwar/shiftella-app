@@ -59,12 +59,14 @@ const AdminPage = lazy(() => import('./features/admin/AdminPage').then((m) => ({
 const RequestsPage = lazy(() => import('./features/requests/RequestsPage').then((m) => ({ default: m.RequestsPage })));
 const TimesheetsPage = lazy(() => import('./features/timesheets/TimesheetsPage').then((m) => ({ default: m.TimesheetsPage })));
 const AnalyticsPage = lazy(() => import('./features/analytics/AnalyticsPage').then((m) => ({ default: m.AnalyticsPage })));
+const ShiftNotesPage = lazy(() => import('./features/shiftNotes/ShiftNotesPage').then((m) => ({ default: m.ShiftNotesPage })));
 const AuditLogPage = lazy(() => import('./features/timesheets/AuditLogPage').then((m) => ({ default: m.AuditLogPage })));
 const SettingsPage = lazy(() => import('./features/settings/SettingsPage'));
 const ProfilePage = lazy(() => import('./features/profile/ProfilePage'));
 const LegalPage = lazy(() => import('./features/legal/LegalPage').then((m) => ({ default: m.LegalPage })));
 const BillingPage = lazy(() => import('./features/billing/BillingPage').then((m) => ({ default: m.BillingPage })));
 const HelpPage = lazy(() => import('./features/help/HelpPage').then((m) => ({ default: m.HelpPage })));
+const FeedbackInboxPage = lazy(() => import('./features/feedback/FeedbackInboxPage').then((m) => ({ default: m.FeedbackInboxPage })));
 
 /** Handles Android hardware back button: go back in history or exit app. */
 function BackButtonHandler() {
@@ -134,6 +136,8 @@ export default function App() {
                           <Route path="timesheets" element={<GatedPage feature="timesheets" titleKey="nav.timesheets"><TimesheetsPage /></GatedPage>} />
                           {/* Owner analytics: rota + timesheets read (the page self-guards; the RPC checks too). */}
                           <Route path="analytics" element={<GatedPage feature="timesheets" titleKey="nav.analytics"><AnalyticsPage /></GatedPage>} />
+                          {/* Shift notes per location + day: timesheet readers (self-guards; RLS too). Not plan-gated. */}
+                          <Route path="notes" element={<ShiftNotesPage />} />
                           {/* Activity Log is admin-only (rank >= 30); the page self-guards too. */}
                           <Route path="activity" element={<GatedPage feature="activityLog" titleKey="nav.activity"><AuditLogPage /></GatedPage>} />
                         </Route>
@@ -144,6 +148,8 @@ export default function App() {
                         <Route path="billing" element={<BillingPage />} />
                         {/* Help centre: everyone; articles are role-aware (managers' ones flagged, not hidden). */}
                         <Route path="help" element={<HelpPage />} />
+                        {/* Feedback inbox: the platform Superadmin only (page self-guards; RLS too). */}
+                        <Route path="feedback" element={<FeedbackInboxPage />} />
                         <Route path="profile" element={<ProfilePage />} />
                         <Route path="profile/:userId" element={<ProfilePage />} />
                       </Route>

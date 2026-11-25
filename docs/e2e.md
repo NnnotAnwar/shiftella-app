@@ -24,6 +24,7 @@ What it covers:
 - **signup.spec** — the owner sign-up: landing CTA (free-beta wording) → form → "check your email"; the organization name and names reach `auth.signUp`; terms required; existing email.
 - **invite.spec** — the owner invites an employee from Admin → the invite "email" link → the invitee sets a username + password → lands in the app as an Employee; an invalid link.
 - **billing.spec** — free beta on: "Free beta", everything included, no plans to buy; beta off after the trial: the plans show.
+- **feedback.spec** — Send feedback from Settings (type, message, "may contact") → "Thanks, sent"; the context (route, version, language) reaches the insert, the sender doesn't (the database sets it); opening it from the ⌘K palette on a phone.
 - **csp.spec** — the server sends the CSP line of `deploy/hetzner/shiftella.caddy`; a violation really fails a test; every main screen and every public page render; PDF and Excel exports download.
 
 Every test also fails on **any CSP violation** (console or `securitypolicyviolation` event) or uncaught page error (`e2e/local/fixtures.ts`).

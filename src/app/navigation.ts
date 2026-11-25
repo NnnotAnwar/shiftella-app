@@ -10,8 +10,10 @@ import {
     ChartLineUpIcon,
     GearIcon,
     MegaphoneIcon,
+    NotePencilIcon,
     CreditCardIcon,
     QuestionIcon,
+    ChatCircleTextIcon,
     type Icon,
 } from '@phosphor-icons/react';
 
@@ -21,6 +23,8 @@ import { billingNavPill, type NavPill } from '@features/billing/navPill';
 import { useTranslation } from '@shared/preferences/PreferencesContext';
 import { useRequestsBadge } from '@features/requests/useRequests';
 import { useUnreadAnnouncementCount } from '@features/announcements/useUnreadAnnouncementCount';
+import { useNewFeedbackCount } from '@features/feedback/useFeedback';
+import { isSuperAdmin } from '@shared/auth/permissions';
 import type { TranslationKey } from '@shared/i18n/translations';
 
 /**
@@ -49,10 +53,11 @@ export interface NavCaps {
     activity: boolean; // activity.view
     analytics: boolean; // analytics.view (rota + timesheets read)
     billing: boolean; // the org's Head Admin (and Superadmin)
+    superadmin: boolean; // the platform Superadmin (feedback inbox)
 }
 
 /** Named live-badge sources, resolved by `useNavItems`. */
-type BadgeSource = 'pendingRequests' | 'unreadAnnouncements';
+type BadgeSource = 'pendingRequests' | 'unreadAnnouncements' | 'newFeedback';
 
 /** Named status-pill sources, resolved by `useNavItems`. */
 type PillSource = 'billing';
@@ -92,12 +97,15 @@ export const NAV_ITEMS: readonly NavItemDef[] = [
     { id: 'announcements', labelKey: 'nav.announcements', icon: MegaphoneIcon, route: '/announcements', section: 'work', mobileSlot: { staff: 4 }, badge: 'unreadAnnouncements' },
     { id: 'requests', labelKey: 'nav.requests', icon: UserCircleGearIcon, route: '/requests', section: 'work', badge: 'pendingRequests' },
     { id: 'timesheets', labelKey: 'nav.timesheets', icon: ClockUserIcon, route: '/timesheets', section: 'manage', visible: (c) => c.timesheets, mobileSlot: { manager: 3 } },
+    { id: 'notes', labelKey: 'nav.shiftNotes', icon: NotePencilIcon, route: '/notes', section: 'manage', visible: (c) => c.timesheets },
     { id: 'admin', labelKey: 'nav.team', icon: ShieldCheckIcon, route: '/admin', section: 'manage', visible: (c) => c.team, mobileSlot: { manager: 4 } },
     { id: 'analytics', labelKey: 'nav.analytics', icon: ChartLineUpIcon, route: '/analytics', section: 'manage', visible: (c) => c.analytics },
     { id: 'activity', labelKey: 'nav.activity', icon: ClockCounterClockwiseIcon, route: '/activity', section: 'manage', visible: (c) => c.activity },
     // First in System, with a status pill, so the owner never has to hunt for it.
     { id: 'billing', labelKey: 'nav.billing', icon: CreditCardIcon, route: '/billing', section: 'system', visible: (c) => c.billing, pill: 'billing' },
     { id: 'settings', labelKey: 'nav.settings', icon: GearIcon, route: '/settings', section: 'system' },
+    // Platform owner only: what users sent from "Send feedback".
+    { id: 'feedback', labelKey: 'nav.feedback', icon: ChatCircleTextIcon, route: '/feedback', section: 'system', visible: (c) => c.superadmin, badge: 'newFeedback' },
     // Help centre — last in System; on phones it lives in the "More" sheet.
     { id: 'help', labelKey: 'nav.help', icon: QuestionIcon, route: '/help', section: 'system' },
 ];
@@ -132,13 +140,15 @@ export function useNavItems(): ResolvedNavItem[] {
     // Deciders: requests waiting for them; everyone else: unseen decisions on their own.
     const pendingRequests = useRequestsBadge();
     const unreadAnnouncements = useUnreadAnnouncementCount();
+    const newFeedback = useNewFeedbackCount();
+    const superadmin = !!user && isSuperAdmin(user);
     const ent = useEntitlements();
     const t = useTranslation();
 
     return useMemo(() => {
-        const caps: NavCaps = { team, timesheets, activity, analytics, billing };
+        const caps: NavCaps = { team, timesheets, activity, analytics, billing, superadmin };
         const audience: MobileAudience = observer ? 'manager' : 'staff';
-        const badges: Record<BadgeSource, number> = { pendingRequests, unreadAnnouncements };
+        const badges: Record<BadgeSource, number> = { pendingRequests, unreadAnnouncements, newFeedback };
         const pills: Record<PillSource, NavPill | null> = { billing: billing ? billingNavPill(ent, { t, native: isNativeApp() }) : null };
         return NAV_ITEMS.filter((i) => !i.visible || i.visible(caps)).map((i) => ({
             id: i.id,
@@ -151,5 +161,5 @@ export function useNavItems(): ResolvedNavItem[] {
             badgeCount: i.badge ? badges[i.badge] : 0,
             pill: i.pill ? pills[i.pill] : null,
         }));
-    }, [team, timesheets, activity, analytics, billing, observer, pendingRequests, unreadAnnouncements, ent, t]);
+    }, [team, timesheets, activity, analytics, billing, superadmin, observer, pendingRequests, unreadAnnouncements, newFeedback, ent, t]);
 }

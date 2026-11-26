@@ -606,6 +606,8 @@ yarn build
 npx cap sync
 npx cap open android   # or: npx cap open ios
 ```
+- App version: `package.json` "version" drives both stores — versionName/MARKETING_VERSION = `1.14.10`, build number = `major·1 000 000 + minor·1 000 + patch` (`1014010`). Android reads it at build time; **after bumping `package.json`, run `corepack yarn native:version`** to write it into the iOS project (CI's `native:version --check` fails until you do).
+- Test APK without Android Studio: run the **Android debug APK** workflow (`gh workflow run android-debug-apk.yml --ref dev -f target=preprod`) and download the APK from the run's artifacts. It needs the repository secret `GOOGLE_SERVICES_JSON` (`gh secret set GOOGLE_SERVICES_JSON < android/app/google-services.json`). Debug-signed, for sideloading only — not the Play Store build.
 
 ### Push notifications (native)
 Push requires Firebase (FCM). In short: create a Firebase project, add the

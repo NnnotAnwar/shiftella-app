@@ -1,0 +1,133 @@
+name: Android debug APK
+
+# Builds an installable (debug-signed) Android APK for testing on a phone.
+# Run it by hand: Actions → "Android debug APK" → Run workflow, or
+#   gh workflow run android-debug-apk.yml --ref dev -f target=preprod
+# The APK is attached to the run as the "shiftella-<target>-<version>" artifact.
+#
+# Needs the repository secret GOOGLE_SERVICES_JSON (the contents of
+# android/app/google-services.json from Firebase; the file itself is gitignored):
+#   gh secret set GOOGLE_SERVICES_JSON < android/app/google-services.json
+#
+# This is NOT the Play Store build: that one needs a release keystore and an .aab.
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Which backend the app talks to
+        type: choice
+        options: [preprod, production]
+        default: preprod
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Reuse the deploy environments' public VITE_* variables.
+    environment: ${{ inputs.target }}
+    steps:
+      - name: Resolve target
+        id: target
+        env:
+          TARGET: ${{ inputs.target }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          # Same pins as deploy-hetzner.yml: a prod app only from master, and
+          # each build must point at its own Supabase project.
+          case "$TARGET" in
+            production)
+              [ "$REF_NAME" = "master" ] || { echo "::error::production APKs must be built from master (this run is on '$REF_NAME')"; exit 1; }
+              url=https://shiftella.app;     ref=dcqvipzjqxpbaymaxhxu ;;
+            preprod)
+              url=https://dev.shiftella.app; ref=fusnqxykhdzcvhqbsevb ;;
+            *) echo "::error::unknown target '$TARGET'"; exit 1 ;;
+          esac
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "supabase_ref=$ref" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Get Yarn cache folder
+        id: yarn-cache
+        run: echo "dir=$(corepack yarn config get cacheFolder)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ steps.yarn-cache.outputs.dir }}
+          key: yarn-${{ runner.os }}-${{ hashFiles('yarn.lock') }}
+          restore-keys: yarn-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: corepack yarn install --immutable
+
+      - name: Build web app
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL || secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY || secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_PUBLIC_SITE_URL: ${{ steps.target.outputs.url }}
+          VITE_TELEGRAM_BOT_USERNAME: ${{ vars.VITE_TELEGRAM_BOT_USERNAME }}
+          SUPABASE_REF: ${{ steps.target.outputs.supabase_ref }}
+        run: |
+          for v in VITE_SUPABASE_URL VITE_SUPABASE_PUBLISHABLE_KEY; do
+            [ -n "${!v}" ] || { echo "::error::$v is not set for the '${{ inputs.target }}' environment"; exit 1; }
+          done
+          expected="https://$SUPABASE_REF.supabase.co"
+          if [ "${VITE_SUPABASE_URL%/}" != "$expected" ]; then
+            echo "::error::VITE_SUPABASE_URL must be $expected for this environment"; exit 1
+          fi
+          corepack yarn build
+
+      - name: Add google-services.json
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          [ -n "$GOOGLE_SERVICES_JSON" ] || { echo "::error::repository secret GOOGLE_SERVICES_JSON is not set (push notifications need it)"; exit 1; }
+          printf '%s' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+          node -e '
+            const d = JSON.parse(require("fs").readFileSync("android/app/google-services.json", "utf8"));
+            const pkgs = d.client.map(c => c.client_info.android_client_info.package_name);
+            if (!pkgs.includes("com.shiftella.app")) { console.error("::error::google-services.json has no client for com.shiftella.app (found: " + pkgs.join(", ") + ")"); process.exit(1); }
+            console.log("Firebase project:", d.project_info.project_id);
+          '
+
+      - name: Sync Capacitor
+        run: corepack yarn cap sync android
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Build APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Name the APK
+        id: apk
+        env:
+          TARGET: ${{ inputs.target }}
+        run: |
+          version=$(node -p 'require("./package.json").version')
+          name="shiftella-$TARGET-$version-${GITHUB_SHA::7}"
+          mv android/app/build/outputs/apk/debug/app-debug.apk "$name.apk"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "### APK: \`$name.apk\` (backend: ${{ steps.target.outputs.url }})" >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.apk.outputs.name }}
+          path: ${{ steps.apk.outputs.name }}.apk
+          retention-days: 14
+          if-no-files-found: error
